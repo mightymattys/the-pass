@@ -5,7 +5,7 @@ product first, not a trading strategy.
 
 ## Phase 0: Product Contract Freeze
 
-Status: ready.
+Status: implemented.
 
 Deliverables:
 

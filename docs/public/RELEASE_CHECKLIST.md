@@ -2,36 +2,51 @@
 
 Use this before pushing or publishing The Pass.
 
+Status: passed for `main` on 2026-07-09.
+
 ## Repository Safety
 
-- [ ] No secrets, keys, tokens, cookies, or credentials.
-- [ ] No paid data files or license-restricted data.
-- [ ] No private account balances, fills, order IDs, or PnL.
-- [ ] No live order placement path.
-- [ ] No proprietary strategy parameters unless intentionally public.
+- [x] No secrets, keys, tokens, cookies, or credentials.
+- [x] No paid data files or license-restricted data.
+- [x] No private account balances, fills, order IDs, or PnL.
+- [x] No live order placement path.
+- [x] No proprietary strategy parameters unless intentionally public.
 
 ## Plugin Readiness
 
-- [ ] `.codex-plugin/plugin.json` validates.
-- [ ] Every skill has a clear trigger and safety boundary.
-- [ ] Skill implementation contracts are documented.
-- [ ] README explains the product and live-trading boundary.
-- [ ] ADRs for product scope, storage, engine, providers, risk, and public distribution are
+- [x] `.codex-plugin/plugin.json` validates.
+- [x] Every skill has a clear trigger and safety boundary.
+- [x] Skill implementation contracts are documented.
+- [x] README explains the product and live-trading boundary.
+- [x] ADRs for product scope, storage, engine, providers, risk, and public distribution are
       accepted.
 
 ## Artifact Readiness
 
-- [ ] Templates exist for source notes, StrategySpec, data manifests, run receipts, metrics,
+- [x] Templates exist for source notes, StrategySpec, data manifests, run receipts, metrics,
       cost waterfalls, and verdicts.
-- [ ] Schemas exist for core artifacts and adapter descriptors.
-- [ ] Artifact lifecycle is documented.
-- [ ] Public examples are synthetic or public-safe.
-- [ ] Synthetic golden path package is present and stays blocked from paper promotion.
+- [x] Schemas exist for core artifacts and adapter descriptors.
+- [x] Artifact lifecycle is documented.
+- [x] Public examples are synthetic or public-safe.
+- [x] Synthetic golden path package is present and stays blocked from paper promotion.
+- [x] Killed random baseline package is present.
+- [x] Adapter descriptors validate for dummy, crypto, futures, and prediction-market examples.
 
 ## Distribution
 
-- [ ] LICENSE exists.
-- [ ] CONTRIBUTING exists.
-- [ ] SECURITY exists.
-- [ ] CI validates the public scaffold.
-- [ ] GitHub repository visibility is public only after this checklist passes.
+- [x] LICENSE exists.
+- [x] CONTRIBUTING exists.
+- [x] SECURITY exists.
+- [x] CI validates the public scaffold.
+- [x] GitHub repository visibility is public only after this checklist passes.
+
+Evidence:
+
+```bash
+python3 scripts/validate_public_repo.py
+python3 -m unittest discover -s tests
+the-pass validate-package examples/synthetic-breakout/package
+the-pass validate-package examples/synthetic-random-baseline/package
+the-pass validate examples/adapters/crypto-binance-spot-klines.yaml --type adapter
+the-pass receipts verify --ledger /tmp/the-pass-ledger.jsonl
+```

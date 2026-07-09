@@ -9,6 +9,9 @@ import re
 import sys
 from pathlib import Path
 
+from jsonschema import Draft202012Validator
+from jsonschema.exceptions import SchemaError
+
 
 ROOT = Path(__file__).resolve().parents[1]
 PLACEHOLDER_MARKER = "[" + "TO" + "DO:"
@@ -20,6 +23,27 @@ FORBIDDEN_PATTERNS = [
     re.compile(r"xox[baprs]-[A-Za-z0-9-]{20,}"),
     re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----"),
 ]
+LIVE_ORDER_PATTERNS = [
+    re.compile(pattern, re.IGNORECASE)
+    for pattern in (
+        r"\bcreate_order\b",
+        r"\bplace_order\b",
+        r"\bsend_order\b",
+        r"\bsubmit_order\b",
+        r"\bmarket_order\b",
+        r"\blimit_order\b",
+        r"\border_send\b",
+        r"\border_create\b",
+        r"\bccxt\b",
+        r"\bib_insync\b",
+        r"\bpy_clob_client\b",
+        r"\balpaca_trade_api\b",
+    )
+]
+LIVE_SCAN_DIRS = {"src", "scripts", ".github", ".codex-plugin"}
+LIVE_SCAN_SUFFIXES = {".py", ".toml", ".yaml", ".yml", ".json"}
+PAID_OR_PRIVATE_DATA_SUFFIXES = {".parquet", ".feather", ".h5", ".hdf5", ".duckdb", ".sqlite", ".db", ".pkl", ".pickle"}
+ALLOWED_DATA_DIR_FILES = {"README.md", ".gitkeep"}
 
 IGNORED_DIRS = {
     ".git",
@@ -147,6 +171,11 @@ def validate_schemas() -> None:
         fail(f"missing schemas: {', '.join(sorted(missing))}")
     for path in schemas_dir.glob("*.json"):
         validate_json(path)
+        schema = json.loads(path.read_text(encoding="utf-8"))
+        try:
+            Draft202012Validator.check_schema(schema)
+        except SchemaError as exc:
+            fail(f"invalid JSON Schema in {path.relative_to(ROOT)}: {exc.message}")
 
 
 def validate_adapter_examples() -> None:
@@ -250,6 +279,13 @@ def validate_public_safety() -> None:
     for path in iter_files():
         if path.stat().st_size > 1_000_000:
             fail(f"unexpected large tracked-style file: {path.relative_to(ROOT)}")
+        if path.suffix.lower() in PAID_OR_PRIVATE_DATA_SUFFIXES:
+            fail(f"paid/private data-like file extension in tracked path: {path.relative_to(ROOT)}")
+        if "data" in path.parts:
+            data_index = path.parts.index("data")
+            if len(path.parts) > data_index + 1 and path.parts[data_index + 1] in {"raw", "normalized"}:
+                if path.name not in ALLOWED_DATA_DIR_FILES:
+                    fail(f"tracked data file is not allowed in {path.relative_to(ROOT)}")
         try:
             text = path.read_text(encoding="utf-8")
         except UnicodeDecodeError:
@@ -259,6 +295,19 @@ def validate_public_safety() -> None:
         for pattern in FORBIDDEN_PATTERNS:
             if pattern.search(text):
                 fail(f"secret-like pattern in {path.relative_to(ROOT)}")
+
+
+def validate_no_live_order_paths() -> None:
+    for path in iter_files():
+        if path.suffix.lower() not in LIVE_SCAN_SUFFIXES:
+            continue
+        top_level = path.relative_to(ROOT).parts[0]
+        if top_level not in LIVE_SCAN_DIRS:
+            continue
+        text = path.read_text(encoding="utf-8")
+        for pattern in LIVE_ORDER_PATTERNS:
+            if pattern.search(text):
+                fail(f"live order-placement pattern in {path.relative_to(ROOT)}: {pattern.pattern}")
 
 
 def main() -> int:
@@ -273,6 +322,7 @@ def main() -> int:
     validate_example_packages()
     validate_markdown_links()
     validate_public_safety()
+    validate_no_live_order_paths()
     print("public repo validation passed")
     return 0
 

@@ -48,6 +48,7 @@ See [docs/plugin/COMMANDS.md](docs/plugin/COMMANDS.md) for the full command cont
 
 - [Main plan](docs/research/the-pass-plan.md)
 - [Implementation build plan](docs/implementation/BUILD_PLAN.md)
+- [Completion audit](docs/implementation/COMPLETION_AUDIT.md)
 - [Artifact lifecycle](docs/implementation/ARTIFACT_LIFECYCLE.md)
 - [Skill contracts](docs/implementation/SKILL_CONTRACTS.md)
 - [Validation and safety](docs/implementation/VALIDATION_AND_SAFETY.md)
@@ -58,6 +59,7 @@ See [docs/plugin/COMMANDS.md](docs/plugin/COMMANDS.md) for the full command cont
 - [Artifact templates](templates/)
 - [Public-safe golden path example](examples/synthetic-breakout/)
 - [Public-safe killed baseline example](examples/synthetic-random-baseline/)
+- [Public release checklist](docs/public/RELEASE_CHECKLIST.md)
 
 ## Current State
 

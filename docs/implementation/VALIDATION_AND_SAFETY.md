@@ -19,20 +19,19 @@ promotion.
 - Plugin manifest exists and has required metadata.
 - All expected skills exist.
 - All core schemas exist and are valid JSON.
+- All core schemas pass the JSON Schema Draft 2020-12 schema checker.
+- Public-safe example packages and adapter descriptors are present.
+- Fixture data fingerprints match their manifests.
 - No high-confidence secret patterns are present.
 - No leftover scaffold placeholders.
 - No unexpectedly large tracked-style files.
-
-Future additions:
-
-- Detect live order-placement keywords in core plugin paths.
-- Detect common paid data dump extensions under tracked paths.
-- Validate artifact schemas with a portable schema linter.
-- Run live-boundary static checks before accepting adapter code.
+- No paid/private data dump extensions are tracked.
+- `data/raw/` and `data/normalized/` do not contain tracked data files.
+- Core code/config paths do not contain known live order-placement API patterns.
 
 ## Artifact Validation
 
-Planned CLI:
+Implemented CLI:
 
 ```bash
 the-pass validate <artifact>
@@ -48,6 +47,8 @@ Rules:
 - Every artifact declares or implies its schema.
 - Required fields must be present before gate use.
 - Validation errors must be actionable and point to fields.
+- Adapter artifacts receive additional contract checks for provider review, mode safety,
+  timestamp, cost, fill, risk, and settlement policies.
 
 ## Package Validation
 
