@@ -499,6 +499,10 @@ promotion_gates:
 
 ## 9. Gate-based roadmap
 
+Status note: the phase numbers in `docs/implementation/BUILD_PLAN.md` describe the public
+framework build and are implemented. The phases in this section describe the separate
+trading research roadmap; they have not started and do not claim strategy evidence.
+
 ### Phase 0: Public plugin and research operating system
 
 Build:
@@ -1008,8 +1012,9 @@ cost model, audit workflow and promotion gates.
 Default stack:
 
 - Storage: Parquet files partitioned by `source/venue/instrument/date` for raw and normalized
-  market data where adapters need data files; DuckDB for local analytical queries; SQLite for
-  small ledgers; Postgres only when multiple processes/users need concurrent writes.
+  market data where adapters need data files; DuckDB for local analytical queries; the MVP
+  receipt ledger is append-only JSONL with a SHA-256 hash chain; SQLite is deferred until
+  scale requires it, and Postgres remains reserved for concurrent multi-user operation.
 - Screening: adapter-selected engine. pandas/NumPy and vectorbt are allowed examples, never
   final execution proof by themselves.
 - Event simulation: adapter-selected engine. Any simulator must expose explicit cost, fill,

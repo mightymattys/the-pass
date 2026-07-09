@@ -24,8 +24,8 @@ research gate" or "reduce reproducibility failures to zero".
 
 ## Editable Paths
 
-- `experiments/runs/<run-id>/simmer_laps.yaml`
-- Superseding artifacts under `experiments/runs/<new-run-id>/`
+- `experiments/runs/<strategy-id>/<run-id>/simmer_laps.yaml`
+- Superseding artifacts under `experiments/runs/<strategy-id>/<new-run-id>/`
 - `reports/simmer/`
 - Narrow code or artifact paths required by the active gate.
 
@@ -43,7 +43,7 @@ research gate" or "reduce reproducibility failures to zero".
 - Do not reinterpret the gate after seeing results.
 - At the start of each lap, record hypothesis, intended change, files touched, command to run, and expected pass/fail signal.
 - After each lap, record artifact paths, validation output, metric changes, blockers, and whether the lap moved the target gate.
-- If two consecutive laps do not move the target gate, recommend block or kill instead of continuing blindly.
+- If two consecutive laps do not move the target gate, recommend blocked or kill instead of continuing blindly.
 - Use `refire` for confirmed defects and `taste` for independent gate review.
 
 ## Required Checks

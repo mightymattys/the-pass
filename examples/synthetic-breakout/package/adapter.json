@@ -1,4 +1,5 @@
 {
+  "schema_version": 1,
   "id": "synthetic-breakout",
   "name": "Synthetic Breakout Adapter",
   "mode": "diagnostic",

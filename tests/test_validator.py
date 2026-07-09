@@ -1,11 +1,17 @@
 from __future__ import annotations
 
+import io
 import json
+import os
 import shutil
 import tempfile
 import unittest
+from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
+from unittest.mock import patch
 
+import the_pass.validator as validator_module
+from the_pass.cli import main as cli_main
 from the_pass.ledger import (
     LedgerError,
     append_ledger_entry,
@@ -13,7 +19,7 @@ from the_pass.ledger import (
     read_ledger_entries,
     verify_ledger_file,
 )
-from the_pass.validator import validate_artifact, validate_package
+from the_pass.validator import default_schema_dir, validate_artifact, validate_package
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -30,7 +36,7 @@ SCHEMA_DIR = ROOT / "schemas"
 
 
 def workflow_artifacts() -> dict[str, dict]:
-    return {
+    artifacts = {
         "hypothesis": {
             "id": "hypothesis-1",
             "created_at": "2026-07-09T00:00:00Z",
@@ -192,6 +198,9 @@ def workflow_artifacts() -> dict[str, dict]:
             "status": "blocked",
         },
     }
+    for document in artifacts.values():
+        document["schema_version"] = 1
+    return artifacts
 
 
 def prepare_paper_candidate(package: Path, *, reviewer: str = "independent-auditor") -> None:
@@ -267,6 +276,46 @@ def prepare_paper_candidate(package: Path, *, reviewer: str = "independent-audit
 
 
 class ValidatorTests(unittest.TestCase):
+    def test_rfc3339_date_time_format_is_enforced(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            artifact = Path(tmp) / "cost_waterfall.json"
+            document = json.loads((EXAMPLE_PACKAGE / "cost_waterfall.json").read_text(encoding="utf-8"))
+
+            document["created_at"] = "not-a-date"
+            artifact.write_text(json.dumps(document), encoding="utf-8")
+            invalid = validate_artifact(artifact, schema_dir=SCHEMA_DIR, artifact_type="cost_waterfall")
+
+            document["created_at"] = "2026-07-09T00:00:00Z"
+            artifact.write_text(json.dumps(document), encoding="utf-8")
+            valid = validate_artifact(artifact, schema_dir=SCHEMA_DIR, artifact_type="cost_waterfall")
+
+        self.assertFalse(invalid.ok)
+        self.assertTrue(
+            any(issue.path == "$.created_at" and "date-time" in issue.message for issue in invalid.issues)
+        )
+        self.assertTrue(valid.ok, [issue.as_dict() for issue in valid.issues])
+
+    def test_foreign_plugin_does_not_supply_default_schemas(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            foreign = root / "foreign-plugin"
+            packaged = root / "installed" / "the_pass" / "schemas"
+            (foreign / ".codex-plugin").mkdir(parents=True)
+            (foreign / "schemas").mkdir()
+            packaged.mkdir(parents=True)
+            (foreign / ".codex-plugin" / "plugin.json").write_text(
+                json.dumps({"name": "some-other-plugin"}), encoding="utf-8"
+            )
+            original_cwd = Path.cwd()
+            try:
+                os.chdir(foreign)
+                with patch.object(validator_module, "__file__", str(packaged.parent / "validator.py")):
+                    selected = default_schema_dir()
+            finally:
+                os.chdir(original_cwd)
+
+        self.assertEqual(selected, packaged.resolve())
+
     def test_workflow_artifacts_validate(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             for artifact_type, document in workflow_artifacts().items():
@@ -275,6 +324,29 @@ class ValidatorTests(unittest.TestCase):
                     artifact.write_text(json.dumps(document), encoding="utf-8")
                     result = validate_artifact(artifact, schema_dir=SCHEMA_DIR, artifact_type=artifact_type)
                     self.assertTrue(result.ok, [issue.as_dict() for issue in result.issues])
+
+    def test_new_schema_minimal_fixtures_validate(self) -> None:
+        for artifact_type in ("findings", "screen_report", "paper_plan", "approval_pack"):
+            with self.subTest(artifact_type=artifact_type), tempfile.TemporaryDirectory() as tmp:
+                artifact = Path(tmp) / f"{artifact_type}.json"
+                artifact.write_text(json.dumps(workflow_artifacts()[artifact_type]), encoding="utf-8")
+
+                result = validate_artifact(artifact, schema_dir=SCHEMA_DIR, artifact_type=artifact_type)
+
+                self.assertTrue(result.ok, [issue.as_dict() for issue in result.issues])
+
+    def test_new_schema_missing_required_field_fails(self) -> None:
+        for artifact_type in ("findings", "screen_report", "paper_plan", "approval_pack"):
+            with self.subTest(artifact_type=artifact_type), tempfile.TemporaryDirectory() as tmp:
+                document = workflow_artifacts()[artifact_type]
+                del document["created_at"]
+                artifact = Path(tmp) / f"{artifact_type}.json"
+                artifact.write_text(json.dumps(document), encoding="utf-8")
+
+                result = validate_artifact(artifact, schema_dir=SCHEMA_DIR, artifact_type=artifact_type)
+
+                self.assertFalse(result.ok)
+                self.assertTrue(any(issue.path == "$" for issue in result.issues))
 
     def test_findings_cannot_pass_with_blocking_finding(self) -> None:
         document = workflow_artifacts()["findings"]
@@ -383,6 +455,7 @@ class ValidatorTests(unittest.TestCase):
             artifact = Path(tmp) / "adapter.yaml"
             artifact.write_text(
                 """
+schema_version: 1
 id: test-adapter
 name: Test Adapter
 mode: diagnostic
@@ -436,6 +509,7 @@ safety:
             artifact = Path(tmp) / "adapter.yaml"
             artifact.write_text(
                 """
+schema_version: 1
 id: bad-adapter
 name: Bad Adapter
 mode: diagnostic
@@ -580,6 +654,27 @@ safety:
         self.assertFalse(result.ok)
         self.assertTrue(any("null or random baseline" in issue.message for issue in result.issues))
 
+    def test_paper_candidate_requires_recorded_null_baseline_result(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            package = Path(tmp) / "package"
+            shutil.copytree(EXAMPLE_PACKAGE, package)
+            prepare_paper_candidate(package)
+            metrics_path = package / "metrics_report.json"
+            metrics = json.loads(metrics_path.read_text(encoding="utf-8"))
+            metrics["robustness"]["null_baseline_result"] = ""
+            metrics_path.write_text(json.dumps(metrics), encoding="utf-8")
+
+            result = validate_package(package, schema_dir=SCHEMA_DIR)
+
+        self.assertFalse(result.ok)
+        self.assertTrue(
+            any(
+                issue.path == "$.metrics_report.robustness.null_baseline_result"
+                and issue.message == "paper_candidate verdicts require a recorded null/random baseline result"
+                for issue in result.issues
+            )
+        )
+
     def test_paper_candidate_rejects_cost_reconciliation_mismatch(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             package = Path(tmp) / "package"
@@ -679,8 +774,28 @@ safety:
         self.assertEqual(entries[0]["strategy_id"], "synthetic-breakout-v0")
         self.assertEqual(entries[0]["gate"], "research_gate")
         self.assertEqual(entries[0]["verdict"], "blocked")
+        self.assertEqual(entries[0]["package_path"], "package")
         self.assertEqual(entries[0]["cost_waterfall"]["path"], "cost_waterfall.json")
         self.assertEqual(entries[0]["open_blockers"], ["paper promotion blocked by diagnostic adapter mode"])
+
+    def test_missing_ledger_verify_fails_but_summary_succeeds(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            ledger = Path(tmp) / "missing-ledger.jsonl"
+            issues = verify_ledger_file(ledger)
+
+            verify_stderr = io.StringIO()
+            with redirect_stderr(verify_stderr):
+                verify_exit = cli_main(["receipts", "verify", "--ledger", str(ledger)])
+
+            summary_stdout = io.StringIO()
+            with redirect_stdout(summary_stdout):
+                summary_exit = cli_main(["receipts", "--ledger", str(ledger)])
+
+        self.assertEqual([issue.message for issue in issues], ["ledger file does not exist"])
+        self.assertEqual(verify_exit, 1)
+        self.assertIn("ledger file does not exist", verify_stderr.getvalue())
+        self.assertEqual(summary_exit, 0)
+        self.assertIn("No receipts recorded", summary_stdout.getvalue())
 
     def test_random_baseline_ledger_entry_is_killed(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -728,6 +843,21 @@ safety:
         self.assertTrue(second.appended)
         self.assertEqual(len(entries), 2)
         self.assertEqual({entry["gate"] for entry in entries}, {"research_gate", "paper_gate"})
+
+    def test_ledger_paths_remain_valid_when_tree_moves(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            original = Path(tmp) / "original"
+            moved = Path(tmp) / "moved"
+            original.mkdir()
+            package = original / "package"
+            ledger = original / "ledger.jsonl"
+            shutil.copytree(EXAMPLE_PACKAGE, package)
+            append_ledger_entry(ledger, package, gate="research_gate")
+
+            shutil.move(original, moved)
+            issues = verify_ledger_file(moved / "ledger.jsonl")
+
+        self.assertFalse(issues, [issue.as_dict() for issue in issues])
 
     def test_ledger_rejects_invalid_gate_name(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

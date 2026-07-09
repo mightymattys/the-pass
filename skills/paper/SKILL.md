@@ -9,7 +9,8 @@ Use this skill when a candidate is ready for paper/replay observation.
 
 ## Inputs
 
-- Backtest package that passed `taste`.
+- Backtest package whose `verdict_report.verdict` is `paper_candidate` and whose receipt
+  ledger verifies.
 - Candidate StrategySpec, adapter artifact, config hash, and observation window.
 - Divergence thresholds and stop conditions.
 
@@ -41,7 +42,11 @@ Use this skill when a candidate is ready for paper/replay observation.
 - Use the same decision logic as the accepted backtest where possible.
 - Track paper-vs-backtest divergence.
 - No broker credentials or real order paths in public repo artifacts.
-- Verify that `taste` passed the backtest package. If it did not, return `blocked`.
+- Verify that the package's `verdict_report.verdict` equals `paper_candidate` and that
+  `the-pass receipts verify --ledger <ledger-path>` passes.
+- Before returning `paper_ready`, confirm the package's `package_id` appears at
+  `research_gate` in `the-pass receipts --ledger <ledger-path>`. If either receipt check
+  fails, return `blocked`.
 - Document every difference between backtest and paper decision logic before observation starts.
 - Set divergence thresholds, observation length, kill switches, and missing-data policies before observing results.
 - Record that generated paper orders are simulated intents only and cannot reach a broker or venue.
@@ -53,7 +58,8 @@ the-pass validate-package <source-package>
 the-pass validate <paper-plan> --type paper_plan
 the-pass validate <observation-manifest> --type observation_manifest
 the-pass validate <divergence-report> --type divergence_report
-the-pass receipts verify
+the-pass receipts verify --ledger <ledger-path>
+the-pass receipts --ledger <ledger-path>
 ```
 
 ## Outputs
@@ -66,4 +72,5 @@ the-pass receipts verify
 ## Exit States
 
 - `paper_ready`: plan is artifact-backed, uses the same decision logic, and cannot place real orders.
-- `blocked`: taste did not pass, divergence policy is missing, adapter is unsafe, or live paths/credentials appear.
+- `blocked`: the source verdict is not `paper_candidate`, receipt verification fails,
+  divergence policy is missing, the adapter is unsafe, or live paths/credentials appear.

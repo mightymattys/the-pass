@@ -27,7 +27,7 @@ Use this skill for full reproducible strategy tests.
 
 ## Editable Paths
 
-- `experiments/runs/<run-id>/`
+- `experiments/runs/<strategy-id>/<run-id>/`
 - `reports/`
 - `examples/**/package/` for public-safe fixtures.
 - `data/normalized/` only for public-safe or user-approved normalized fixtures.

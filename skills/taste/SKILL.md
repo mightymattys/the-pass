@@ -26,10 +26,10 @@ Use this skill when reviewing an experiment package, backtest, paper report, or 
 
 ## Editable Paths
 
-- `experiments/runs/<run-id>/verdict_report.yaml`
+- `experiments/runs/<strategy-id>/<run-id>/verdict_report.yaml`
 - `reports/reviews/`
-- `experiments/runs/<run-id>/findings.yaml`
-- `experiments/runs/<run-id>/refire_ticket.yaml`
+- `experiments/runs/<strategy-id>/<run-id>/findings.yaml`
+- `experiments/runs/<strategy-id>/<run-id>/refire_ticket.yaml`
 - `examples/**/package/verdict_report.json` for public-safe fixtures.
 
 ## Blocked Paths
@@ -49,9 +49,9 @@ Use this skill when reviewing an experiment package, backtest, paper report, or 
 - Compare against null or random baselines. Missing baseline blocks promotion unless a documented reason is artifact-backed.
 - Review safety flags. Any live order path, credentials, or live-trading flag in a public package blocks promotion.
 - Update or create a verdict report when the current verdict does not match the findings.
-- Treat `pass` as the command exit state. At `research_gate`, the corresponding artifact
-  verdict is `paper_candidate`; later gates record their decision in their own workflow
-  artifact and never expand the core verdict enum.
+- The exit state is the value written to `verdict_report.verdict`. A successful
+  `research_gate` review exits `paper_candidate`; later gates record their decisions in
+  their own workflow artifacts and never expand the core verdict enum.
 
 ## Review Areas
 
@@ -79,14 +79,14 @@ the-pass receipts verify
 ## Outputs
 
 - Findings with file references.
-- Gate result: pass, blocked, revise, or kill. For a passed `research_gate`, write
-  `paper_candidate` to `verdict_report`.
+- Gate result and `verdict_report.verdict`: `paper_candidate`, `blocked`, `revise`, or
+  `kill`.
 - Findings based on `templates/findings.yaml`.
 - Refire ticket based on `templates/refire_ticket.yaml` for confirmed fixable issues.
 
 ## Exit States
 
-- `pass`: artifacts validate, required evidence exists, and no blocker remains. Public diagnostic packages cannot use this for live approval.
+- `paper_candidate`: artifacts validate, required evidence exists, and no blocker remains. Public diagnostic packages cannot use this for live approval.
 - `blocked`: missing or weak evidence prevents promotion.
 - `revise`: fixable implementation or artifact issues require `refire`.
 - `kill`: the thesis, data, execution assumptions, or robustness evidence fail the gate.

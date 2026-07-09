@@ -1,4 +1,5 @@
 {
+  "schema_version": 1,
   "id": "synthetic-breakout-v0",
   "name": "Synthetic Breakout Fixture",
   "status": "research",

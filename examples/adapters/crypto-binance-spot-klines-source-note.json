@@ -1,4 +1,5 @@
 {
+  "schema_version": 1,
   "id": "crypto-binance-spot-klines-source-note",
   "type": "vendor-doc",
   "priority": "P1",

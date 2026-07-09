@@ -1,4 +1,5 @@
 {
+  "schema_version": 1,
   "id": "synthetic-random-baseline",
   "name": "Synthetic Random Baseline Adapter",
   "mode": "diagnostic",

@@ -15,7 +15,7 @@ folder name (`mise`, `research`, and so on), which Codex exposes as `/the-pass:<
 | `/the-pass:spec <idea>` | idea or hypothesis | `StrategySpec` | draft, research_ready, blocked |
 | `/the-pass:screen <spec>` | StrategySpec and optional data manifest | diagnostic screen report | reject, revise, backtest_candidate, blocked |
 | `/the-pass:backtest <spec>` | StrategySpec, data manifest, runner config | run package | complete, blocked |
-| `/the-pass:taste <run>` | run package | verdict and findings | pass, blocked, revise, kill |
+| `/the-pass:taste <run>` | run package | verdict and findings | paper_candidate, blocked, revise, kill |
 | `/the-pass:refire <findings>` | confirmed findings | patch or superseding artifacts | fixed, still_blocked |
 | `/the-pass:simmer <gate>` | target gate and package | iteration receipts | passed, blocked, killed |
 | `/the-pass:paper <candidate>` | tasted package | paper plan | paper_ready, blocked |
@@ -32,8 +32,8 @@ folder name (`mise`, `research`, and so on), which Codex exposes as `/the-pass:<
 - Gate IDs use lower snake case. The canonical IDs are `research_gate`, `paper_gate`,
   `risk_review`, and `live_gate`.
 
-`taste` uses `pass` as a command exit state. A passed `research_gate` writes
-`paper_candidate` to the core verdict artifact; later gates use their own schema-backed
+`taste` exit state is the value written to `verdict_report.verdict`. A successful
+`research_gate` review uses `paper_candidate`; later gates use their own schema-backed
 workflow artifacts. No core verdict means live approval.
 
 `spec` uses `research_ready` as a command exit state; its matching artifact state is
@@ -55,11 +55,12 @@ The first concrete CLI commands are artifact validators:
 the-pass validate <artifact>
 the-pass validate-package <run-dir>
 the-pass validate <adapter.yaml> --type adapter
-the-pass receipts add <run-dir>
-the-pass receipts verify
+the-pass receipts add <run-dir> --gate <gate-name> --ledger <path>
+the-pass receipts verify --ledger <path>
 the-pass receipts
 ```
 
 They accept JSON or YAML, infer all core and workflow artifact types where possible, and
 return non-zero on missing or weak evidence. Receipt commands maintain an append-only,
-hash-chained JSONL ledger and verify referenced artifact fingerprints.
+hash-chained JSONL ledger and verify referenced artifact fingerprints. The default gate
+for `receipts add` is `research_gate`.

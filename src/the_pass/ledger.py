@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import re
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -104,10 +105,14 @@ def verify_ledger_entries(entries: list[dict[str, Any]]) -> list[ValidationIssue
     return issues
 
 
-def verify_ledger_artifacts(entries: list[dict[str, Any]]) -> list[ValidationIssue]:
+def verify_ledger_artifacts(
+    entries: list[dict[str, Any]],
+    ledger_path: Path | None = None,
+) -> list[ValidationIssue]:
     """Verify that artifacts referenced by receipts still exist and match their hashes."""
 
     issues: list[ValidationIssue] = []
+    ledger_parent = ledger_path.resolve().parent if ledger_path is not None else Path.cwd().resolve()
     for entry_index, entry in enumerate(entries):
         entry_path = f"entry[{entry_index}]"
         package_value = entry.get("package_path")
@@ -115,7 +120,7 @@ def verify_ledger_artifacts(entries: list[dict[str, Any]]) -> list[ValidationIss
             issues.append(ValidationIssue(f"{entry_path}.package_path", "must be a non-empty path"))
             continue
 
-        package_dir = Path(package_value).resolve()
+        package_dir = (ledger_parent / package_value).resolve()
         if not package_dir.is_dir():
             issues.append(ValidationIssue(f"{entry_path}.package_path", "package directory does not exist"))
             continue
@@ -151,8 +156,10 @@ def verify_ledger_artifacts(entries: list[dict[str, Any]]) -> list[ValidationIss
 
 
 def verify_ledger_file(ledger_path: Path) -> list[ValidationIssue]:
+    if not ledger_path.exists():
+        return [ValidationIssue(str(ledger_path), "ledger file does not exist")]
     entries = read_ledger_entries(ledger_path)
-    return [*verify_ledger_entries(entries), *verify_ledger_artifacts(entries)]
+    return [*verify_ledger_entries(entries), *verify_ledger_artifacts(entries, ledger_path)]
 
 
 def package_relative_path(package_dir: Path, path: Path) -> str:
@@ -238,8 +245,15 @@ def failed_gates(verdict: dict[str, Any]) -> list[str]:
     return [item for item in value if isinstance(item, str)] if isinstance(value, list) else []
 
 
-def build_ledger_entry(package_dir: Path, *, gate: str, recorded_at: str | None = None) -> dict[str, Any]:
+def build_ledger_entry(
+    package_dir: Path,
+    *,
+    gate: str,
+    recorded_at: str | None = None,
+    ledger_path: Path | None = None,
+) -> dict[str, Any]:
     package_dir = package_dir.resolve()
+    ledger_path = (ledger_path or DEFAULT_LEDGER_PATH).resolve()
     if not GATE_NAME.fullmatch(gate):
         raise LedgerError("gate must be lower snake_case, for example research_gate")
     result = validate_package(package_dir)
@@ -273,7 +287,7 @@ def build_ledger_entry(package_dir: Path, *, gate: str, recorded_at: str | None 
         "schema": LEDGER_SCHEMA,
         "recorded_at": recorded_at or utc_now_iso(),
         "package_id": package_id,
-        "package_path": package_dir.as_posix(),
+        "package_path": Path(os.path.relpath(package_dir, ledger_path.parent)).as_posix(),
         "strategy_id": strategy_id,
         "run_id": run_id,
         "gate": gate,
@@ -297,12 +311,12 @@ def build_ledger_entry(package_dir: Path, *, gate: str, recorded_at: str | None 
 def append_ledger_entry(ledger_path: Path, package_dir: Path, *, gate: str) -> LedgerAppendResult:
     ledger_path = ledger_path.resolve()
     entries = read_ledger_entries(ledger_path)
-    issues = [*verify_ledger_entries(entries), *verify_ledger_artifacts(entries)]
+    issues = [*verify_ledger_entries(entries), *verify_ledger_artifacts(entries, ledger_path)]
     if issues:
         details = "; ".join(f"{issue.path}: {issue.message}" for issue in issues)
         raise LedgerError(f"refusing to append to invalid ledger: {details}")
 
-    entry = build_ledger_entry(package_dir, gate=gate)
+    entry = build_ledger_entry(package_dir, gate=gate, ledger_path=ledger_path)
     for existing in entries:
         if existing.get("package_id") == entry["package_id"] and existing.get("gate") == gate:
             return LedgerAppendResult(existing, False, "package already recorded")

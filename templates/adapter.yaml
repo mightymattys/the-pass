@@ -1,3 +1,4 @@
+schema_version: 1
 id: ""
 name: ""
 mode: diagnostic # diagnostic|research|paper|live-capable
@@ -6,7 +7,7 @@ owner: ""
 
 providers:
   - id: ""
-    type: "" # synthetic|exchange|broker|vendor|warehouse|manual
+    type: "" # examples: synthetic, exchange-public-market-data, licensed-vendor, venue-public-api
     license: ""
     url: ""
     fields: []
@@ -22,7 +23,7 @@ provider_review:
 
 engine:
   name: ""
-  role: "" # fixture-only|screening|backtest|paper|live
+  role: "" # examples: data-only, fixture-only
   limitations: []
 
 policies:

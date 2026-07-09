@@ -31,6 +31,18 @@ source -> source_note -> hypothesis -> StrategySpec -> screen -> backtest packag
 
 ## Package Layout
 
+Strategy-level artifacts live one directory above individual runs:
+
+```text
+experiments/runs/<strategy-id>/
+  strategy_spec.yaml
+  source_note.yaml
+```
+
+Each run package copies its `strategy_spec` and cited source notes from the strategy-level
+directory. The copies keep the package self-contained because `the-pass validate-package`
+requires `strategy_spec` inside the package directory.
+
 Recommended run package:
 
 ```text
@@ -105,3 +117,6 @@ Live decision pack additionally requires:
 - `blocked`: missing evidence or unresolved safety issue.
 
 No verdict can approve live trading.
+
+The screen workflow's `backtest_candidate` is a `screen_report.decision.status` exit state.
+It is not a `verdict_report.verdict` value.

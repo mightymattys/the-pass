@@ -1,3 +1,4 @@
+schema_version: 1
 id: generic-prediction-market
 name: Generic Prediction Market Adapter Descriptor
 mode: diagnostic

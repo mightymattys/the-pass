@@ -44,6 +44,8 @@ strategy hypotheses.
 - Tag OxfordStrat and similar pages as `strategy-review`, not academic proof.
 - Every source note must include claim, evidence, limitations, market applicability,
   required tests, and failure modes.
+- Copy the strategy-level `source_note.yaml` into every run package that cites it so
+  `experiments/runs/<strategy-id>/<run-id>/` remains self-contained.
 - Do not recommend promotion from reading alone.
 - Prefer primary sources for academic or technical claims. When using secondary strategy-review
   material, label it clearly and require independent tests.

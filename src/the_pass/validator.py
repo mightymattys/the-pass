@@ -4,12 +4,14 @@ from __future__ import annotations
 
 import json
 import math
+import re
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
 import yaml
-from jsonschema import Draft202012Validator
+from jsonschema import Draft202012Validator, FormatChecker
 from jsonschema.exceptions import ValidationError
 
 from .adapter_contract import validate_adapter_contract
@@ -46,6 +48,24 @@ PACKAGE_CORE_ARTIFACTS = (
 
 PACKAGE_OPTIONAL_ARTIFACTS = ("adapter", "source_note", "findings")
 ARTIFACT_EXTENSIONS = (".json", ".yaml", ".yml")
+
+FORMAT_CHECKER = FormatChecker()
+RFC3339_DATETIME = re.compile(
+    r"^\d{4}-\d{2}-\d{2}[Tt]\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:[Zz]|[+-]\d{2}:\d{2})$"
+)
+
+
+@FORMAT_CHECKER.checks("date-time")
+def _is_rfc3339_datetime(value: Any) -> bool:
+    if not isinstance(value, str):
+        return True
+    if RFC3339_DATETIME.fullmatch(value) is None:
+        return False
+    try:
+        datetime.fromisoformat(value.replace("Z", "+00:00").replace("z", "+00:00"))
+    except ValueError:
+        return False
+    return True
 
 
 @dataclass(frozen=True)
@@ -95,7 +115,16 @@ def repo_root_from(start: Path | None = None) -> Path:
 
 
 def default_schema_dir() -> Path:
-    return repo_root_from(Path(__file__).resolve()) / "schemas"
+    repo_root = repo_root_from(Path(__file__).resolve())
+    repo_schemas = repo_root / "schemas"
+    plugin_manifest = repo_root / ".codex-plugin" / "plugin.json"
+    try:
+        plugin = json.loads(plugin_manifest.read_text(encoding="utf-8"))
+        if isinstance(plugin, dict) and plugin.get("name") == "the-pass" and repo_schemas.is_dir():
+            return repo_schemas
+    except (OSError, UnicodeError, json.JSONDecodeError):
+        pass
+    return Path(__file__).resolve().parent / "schemas"
 
 
 def load_document(path: Path) -> Any:
@@ -297,7 +326,7 @@ def validate_artifact(
     except ArtifactValidationError as exc:
         return ValidationResult(False, [ValidationIssue(str(artifact_path), str(exc))], detected_type)
 
-    validator = Draft202012Validator(schema)
+    validator = Draft202012Validator(schema, format_checker=FORMAT_CHECKER)
     for error in sorted(validator.iter_errors(document), key=lambda item: list(item.absolute_path)):
         issues.append(ValidationIssue(schema_path(error), error.message))
 
@@ -620,11 +649,14 @@ def validate_package(package_dir: Path, *, schema_dir: Path | None = None) -> Va
                 )
         robustness = metrics.get("robustness", {})
         baseline_result = robustness.get("null_baseline_result") if isinstance(robustness, dict) else None
-        if (
-            not isinstance(baseline_result, str)
-            or not baseline_result.strip()
-            or baseline_result.strip().lower().startswith(("not applicable", "n/a", "none"))
-        ):
+        if not isinstance(baseline_result, str) or not baseline_result.strip():
+            issues.append(
+                ValidationIssue(
+                    "$.metrics_report.robustness.null_baseline_result",
+                    "paper_candidate verdicts require a recorded null/random baseline result",
+                )
+            )
+        elif baseline_result.strip().lower().startswith(("not applicable", "n/a", "none")):
             issues.append(
                 ValidationIssue(
                     "$.metrics_report.robustness.null_baseline_result",

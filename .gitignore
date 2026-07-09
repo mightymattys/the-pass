@@ -27,7 +27,8 @@ venv/
 
 # Generated reports and experiment outputs
 /reports/generated/
-/experiments/runs/
+/experiments/runs/*
+!/experiments/runs/README.md
 /experiments/screens/*
 /experiments/paper/*
 !/experiments/screens/README.md

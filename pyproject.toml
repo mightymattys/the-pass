@@ -21,3 +21,6 @@ the-pass = "the_pass.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+the_pass = ["schemas/*.json"]

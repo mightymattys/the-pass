@@ -68,6 +68,7 @@ EXAMPLE_PACKAGES = {
 REQUIRED_TEMPLATES = {f"{artifact_type}.yaml" for artifact_type in ARTIFACT_TYPES}
 REQUIRED_WORKFLOW_DIR_READMES = {
     "experiments/screens/README.md",
+    "experiments/runs/README.md",
     "experiments/paper/README.md",
     "research/hypotheses/README.md",
     "reports/reviews/README.md",
@@ -83,7 +84,7 @@ SKILL_EXIT_STATES = {
     "spec": ("draft", "research_ready", "blocked"),
     "screen": ("reject", "revise", "backtest_candidate", "blocked"),
     "backtest": ("complete", "blocked"),
-    "taste": ("pass", "blocked", "revise", "kill"),
+    "taste": ("paper_candidate", "blocked", "revise", "kill"),
     "refire": ("fixed", "still_blocked"),
     "simmer": ("passed", "blocked", "killed"),
     "paper": ("paper_ready", "blocked"),
@@ -269,6 +270,17 @@ def validate_schemas() -> None:
             Draft202012Validator.check_schema(schema)
         except SchemaError as exc:
             fail(f"invalid JSON Schema in {path.relative_to(ROOT)}: {exc.message}")
+
+        packaged_path = ROOT / "src" / "the_pass" / "schemas" / path.name
+        if not packaged_path.exists():
+            fail(f"missing packaged schema: {packaged_path.relative_to(ROOT)}")
+        if path.read_bytes() != packaged_path.read_bytes():
+            fail(f"packaged schema differs from root schema: {path.name}")
+
+    packaged_present = {path.name for path in (ROOT / "src" / "the_pass" / "schemas").glob("*.json")}
+    stale_packaged = packaged_present - present
+    if stale_packaged:
+        fail(f"packaged schemas without root counterparts: {', '.join(sorted(stale_packaged))}")
 
 
 def validate_templates() -> None:

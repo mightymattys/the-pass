@@ -31,3 +31,6 @@ Slash-workflow artifacts:
 The implemented `the-pass validate` and `the-pass validate-package` commands accept YAML or
 JSON input, parse it into structured data, and validate against these schemas plus semantic
 cross-artifact checks before a gate can pass.
+
+`verdict_report.verdict` intentionally has no `pass` or `promote` value.
+`paper_candidate` is the only advance state, and every later promotion remains human-gated.

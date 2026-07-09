@@ -25,6 +25,10 @@ Default paths:
 Every dataset must have a manifest with source, licensing note, schema, time range,
 fingerprint, and known gaps.
 
+Implementation note (2026-07-09): the MVP receipt ledger shipped as append-only JSONL with
+a SHA-256 hash chain in `src/the_pass/ledger.py`. SQLite is deferred until scale or
+concurrent-writer requirements justify it.
+
 ## Alternatives Considered
 
 - Postgres first: rejected until concurrent writes or multi-user access become real.

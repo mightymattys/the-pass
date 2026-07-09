@@ -52,7 +52,8 @@ strategy research workflow.
 - Do not add real order placement, broker credentials, private keys, or paid data files.
 - Prefer public-safe examples and synthetic samples.
 - Make setup idempotent: rerunning the skill should not destroy user work.
-- Ensure the repo has ADRs, templates, source notes, experiment receipts, reports, and a
+- Ensure the repo has ADRs, templates, source notes, the two-level
+  `experiments/runs/<strategy-id>/<run-id>/` tree, experiment receipts, reports, and a
   public-release checklist.
 - Check whether all command skills exist and have valid front matter.
 - Check that schemas and templates cover the core artifact package: adapter, source note,

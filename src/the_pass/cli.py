@@ -123,7 +123,7 @@ def main(argv: list[str] | None = None) -> int:
                 return 0 if not issues else 1
 
             entries = read_ledger_entries(ledger_path)
-            issues = verify_ledger_file(ledger_path)
+            issues = verify_ledger_file(ledger_path) if ledger_path.exists() else []
             if issues:
                 if args.format == "json":
                     print(

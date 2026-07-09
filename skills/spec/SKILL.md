@@ -43,6 +43,9 @@ Use this skill when converting an idea, source claim, or existing strategy into 
 - Require data, cost, fill, latency, and risk assumptions.
 - If the idea cannot state a falsifiable edge thesis, keep it in research.
 - Write a `StrategySpec` from the template. Do not leave required fields implicit.
+- Copy the strategy-level `strategy_spec.yaml` into every
+  `experiments/runs/<strategy-id>/<run-id>/` package so package validation is
+  self-contained.
 - Separate thesis from implementation details: the thesis must be falsifiable before any backtest exists.
 - Add `done_when` and `kill_when` that can be checked by `taste`.
 - Keep status at `draft` or `research` unless existing artifacts justify a later state.

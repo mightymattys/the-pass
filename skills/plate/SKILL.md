@@ -1,6 +1,6 @@
 ---
 name: plate
-description: "Prepare the next-gate approval pack after a candidate has passed research, backtest, taste, and paper requirements."
+description: "Prepare the next-gate approval pack after a candidate has a paper_candidate verdict, verified receipts, and paper evidence."
 ---
 
 # The Pass Plate
@@ -37,6 +37,10 @@ packages evidence for the next human-controlled gate.
 ## Procedure
 
 - Include exact config hash and artifact links.
+- Verify that the source package's `verdict_report.verdict` equals `paper_candidate` and
+  that `the-pass receipts verify --ledger <ledger-path>` passes.
+- Before returning `packaged`, confirm the package's `package_id` appears at `paper_gate` in
+  `the-pass receipts --ledger <ledger-path>`. If either receipt check fails, return `blocked`.
 - Include risk limits, rollback plan, monitoring plan, and unresolved risks.
 - Live approval must be explicit, dated, and tied to an exact adapter and config hash.
 - Public packs must redact secrets, account identifiers, and proprietary data.
@@ -51,8 +55,8 @@ packages evidence for the next human-controlled gate.
 
 ```bash
 the-pass validate <approval-pack> --type approval_pack
-the-pass receipts verify
-the-pass receipts
+the-pass receipts verify --ledger <ledger-path>
+the-pass receipts --ledger <ledger-path>
 ```
 
 ## Outputs
@@ -64,4 +68,6 @@ the-pass receipts
 ## Exit States
 
 - `packaged`: evidence pack is complete and ready for a human-controlled decision.
-- `blocked`: exact config, adapter, risk limit, rollback, monitoring, receipt, or human decision evidence is missing.
+- `blocked`: the source verdict is not `paper_candidate`, receipt verification fails, or
+  exact config, adapter, risk limit, rollback, monitoring, receipt, or human decision
+  evidence is missing.

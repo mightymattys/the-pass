@@ -1,4 +1,5 @@
 {
+  "schema_version": 1,
   "id": "synthetic-breakout-fixture",
   "type": "code",
   "priority": "P2",

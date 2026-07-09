@@ -1,4 +1,5 @@
 {
+  "schema_version": 1,
   "id": "synthetic-random-baseline-fixture",
   "type": "code",
   "priority": "P2",

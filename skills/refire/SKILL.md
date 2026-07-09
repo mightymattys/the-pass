@@ -25,7 +25,7 @@ Use this skill after `taste` confirms actionable issues.
 ## Editable Paths
 
 - The narrow files named by the confirmed finding.
-- `experiments/runs/<run-id>/` for superseding artifacts and rerun receipts.
+- `experiments/runs/<strategy-id>/<run-id>/` for superseding artifacts and rerun receipts.
 - `reports/reviews/` for verification notes.
 - Tests that directly cover the finding.
 
@@ -50,11 +50,12 @@ Use this skill after `taste` confirms actionable issues.
 Run the command named by the finding. For package issues, default to:
 
 ```bash
-the-pass validate <refire-ticket> --type refire_ticket
 the-pass validate-package <package-dir>
 the-pass receipts add <package-dir> --gate <gate-name>
 the-pass receipts verify
 ```
+
+Review the refire ticket against its template; it is a review-only artifact.
 
 ## Outputs
 

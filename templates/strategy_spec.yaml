@@ -1,3 +1,4 @@
+schema_version: 1
 id: ""
 name: ""
 status: draft # draft|research|killed|paper_candidate|paper|risk_review|live_candidate

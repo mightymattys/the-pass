@@ -5,13 +5,17 @@ Audit date: 2026-07-09.
 This file maps the build plan to the evidence that proves the current public framework is
 complete. It does not claim that any trading strategy has edge.
 
+The phases below are the implemented framework phases from `BUILD_PLAN.md`. The trading
+roadmap phases in `docs/research/the-pass-plan.md` are a separate numbering system and have
+not started.
+
 ## Phase Evidence
 
 | Phase | Status | Evidence |
 | --- | --- | --- |
 | 0 Product Contract Freeze | implemented | ADRs in `docs/adr/`, plugin manifest, skills, schemas, templates, CI, public release checklist |
 | 1 Artifact Validator CLI | implemented | `the-pass validate`, `the-pass validate-package`, JSON/YAML tests, package validation in CI |
-| 2 Receipt Ledger | implemented | `the-pass receipts add/verify/summary`, hash-chain tests, ledger simulation in CI |
+| 2 Receipt Ledger | implemented | `the-pass receipts add`, `the-pass receipts verify`, bare `the-pass receipts` summary, hash-chain tests, ledger simulation in CI |
 | 3 Skill Implementation | implemented | all 11 valid skills define inputs, read paths, editable paths, blocked paths, checks, schema-backed outputs, and exit states |
 | 4 Synthetic Golden Path | implemented | `examples/synthetic-breakout` validates and stays `blocked`; `examples/synthetic-random-baseline` validates and stays `kill` |
 | 5 Adapter SDK | implemented | strict adapter schema, adapter contract checks, dummy adapter, non-compliant adapter unit test |
