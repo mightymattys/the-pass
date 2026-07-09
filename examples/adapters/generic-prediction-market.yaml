@@ -1,0 +1,43 @@
+id: generic-prediction-market
+name: Generic Prediction Market Adapter Descriptor
+mode: diagnostic
+asset_classes: [prediction-market]
+owner: the-pass
+
+providers:
+  - id: public-prediction-market-api
+    type: venue-public-api
+    license: venue-specific terms required before research promotion
+    url: ""
+    fields: [market_id, outcome_id, event_time, best_bid, best_ask, last_price, volume, resolution_source]
+    limitations:
+      - descriptor only
+      - no market data included
+      - market semantics and resolution rules vary by venue
+
+provider_review:
+  license: venue terms must permit internal research and archival
+  redistribution: do not commit venue snapshots unless redistribution rights are explicit
+  authentication: public endpoints only for diagnostic use
+  retention: raw snapshots must be immutable with collection timestamps
+  deterministic_replay: false
+  limitations:
+    - diagnostic descriptor cannot prove settlement or resolution quality
+    - promotion requires archived order books and resolution reconciliation
+
+engine:
+  name: adapter-descriptor
+  role: data-only
+  limitations: [no settlement engine, no order placement, no custody integration]
+
+policies:
+  timestamp: event, receive, decision, and resolution timestamps must be separated
+  cost_model: venue fees, spreads, slippage, settlement costs, and missed fills are required
+  fill_model: quote snapshots cannot prove fills without depth, queue, and order-state replay
+  risk_model: correlated resolution risk, market voiding, liquidity gaps, and max loss must be explicit
+  settlement: resolution source, dispute window, payout, and reconciliation policy are required
+
+safety:
+  live_trading_enabled: false
+  real_order_path_available: false
+  credentials_required: false

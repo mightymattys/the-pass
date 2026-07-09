@@ -1,0 +1,43 @@
+id: generic-futures-contract
+name: Generic Futures Contract Adapter Descriptor
+mode: diagnostic
+asset_classes: [futures]
+owner: the-pass
+
+providers:
+  - id: licensed-futures-provider
+    type: licensed-vendor
+    license: adapter-specific licensed data required before research promotion
+    url: ""
+    fields: [timestamp, contract, open, high, low, close, volume, session, tick_size, multiplier]
+    limitations:
+      - descriptor only
+      - no redistributable futures data included
+      - roll and session semantics must be provider-specific
+
+provider_review:
+  license: placeholder for a licensed provider contract
+  redistribution: do not commit futures market data unless redistribution rights are explicit
+  authentication: provider credentials required outside public repo
+  retention: raw responses must be immutable and private unless license permits publication
+  deterministic_replay: false
+  limitations:
+    - public descriptor cannot validate vendor entitlements
+    - research promotion requires accepted provider review
+
+engine:
+  name: adapter-descriptor
+  role: data-only
+  limitations: [no downloader, no order placement, no roll engine]
+
+policies:
+  timestamp: event, receive, session, and exchange calendar times must be separated
+  cost_model: exchange fees, commissions, tick value, spread, and roll costs are required
+  fill_model: fills require trade/book replay or conservative bar assumptions marked diagnostic
+  risk_model: multiplier, margin, session gaps, limit moves, and expiry risk must be explicit
+  settlement: expiry, roll, cash or physical settlement, and holiday calendars are adapter responsibilities
+
+safety:
+  live_trading_enabled: false
+  real_order_path_available: false
+  credentials_required: false

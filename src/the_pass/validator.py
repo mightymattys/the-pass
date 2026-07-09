@@ -11,6 +11,7 @@ import yaml
 from jsonschema import Draft202012Validator
 from jsonschema.exceptions import ValidationError
 
+from .adapter_contract import validate_adapter_contract
 
 ARTIFACT_TYPES = {
     "adapter": "adapter.schema.json",
@@ -205,6 +206,10 @@ def validate_artifact(
     validator = Draft202012Validator(schema)
     for error in sorted(validator.iter_errors(document), key=lambda item: list(item.absolute_path)):
         issues.append(ValidationIssue(schema_path(error), error.message))
+
+    if detected_type == "adapter" and not issues:
+        for issue in validate_adapter_contract(document):
+            issues.append(ValidationIssue(issue.path, issue.message, issue.severity))
 
     schema_id = schema.get("$id")
     return ValidationResult(not issues, issues, detected_type, schema_id if isinstance(schema_id, str) else None)

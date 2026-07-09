@@ -88,12 +88,15 @@ def validate_python_package() -> None:
     cli_path = ROOT / "src" / "the_pass" / "cli.py"
     validator_path = ROOT / "src" / "the_pass" / "validator.py"
     ledger_path = ROOT / "src" / "the_pass" / "ledger.py"
+    adapter_contract_path = ROOT / "src" / "the_pass" / "adapter_contract.py"
     if not cli_path.exists():
         fail("missing src/the_pass/cli.py")
     if not validator_path.exists():
         fail("missing src/the_pass/validator.py")
     if not ledger_path.exists():
         fail("missing src/the_pass/ledger.py")
+    if not adapter_contract_path.exists():
+        fail("missing src/the_pass/adapter_contract.py")
 
 
 def validate_skills() -> None:
@@ -144,6 +147,24 @@ def validate_schemas() -> None:
         fail(f"missing schemas: {', '.join(sorted(missing))}")
     for path in schemas_dir.glob("*.json"):
         validate_json(path)
+
+
+def validate_adapter_examples() -> None:
+    adapters_dir = ROOT / "examples" / "adapters"
+    required = {
+        "dummy-diagnostic.yaml",
+        "crypto-binance-spot-klines.yaml",
+        "generic-futures-contract.yaml",
+        "generic-prediction-market.yaml",
+        "crypto-binance-spot-klines-source-note.json",
+    }
+    if not adapters_dir.exists():
+        fail("missing examples/adapters")
+    present = {path.name for path in adapters_dir.iterdir() if path.is_file()}
+    missing = required - present
+    if missing:
+        fail(f"missing adapter examples: {', '.join(sorted(missing))}")
+    validate_json(adapters_dir / "crypto-binance-spot-klines-source-note.json")
 
 
 def validate_example_packages() -> None:
@@ -248,6 +269,7 @@ def main() -> int:
     validate_python_package()
     validate_skills()
     validate_schemas()
+    validate_adapter_examples()
     validate_example_packages()
     validate_markdown_links()
     validate_public_safety()

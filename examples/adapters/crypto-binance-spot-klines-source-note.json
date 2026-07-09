@@ -1,0 +1,30 @@
+{
+  "id": "crypto-binance-spot-klines-source-note",
+  "type": "vendor-doc",
+  "priority": "P1",
+  "status": "reviewed",
+  "url": "https://developers.binance.com/docs/binance-spot-api-docs/rest-api/market-data-endpoints",
+  "bibliography": "Binance Spot API market data endpoint documentation and market-data-only FAQ.",
+  "claim": "Binance spot public market data can describe a diagnostic crypto kline adapter without credentials or order placement.",
+  "evidence": "Binance documents spot market data endpoints including /api/v3/klines and a market-data-only host for public market data.",
+  "limitations": "Documentation and endpoint behavior can change; downloaded market data is not redistributed by this repo; klines do not prove executable fills.",
+  "market_applicability": ["crypto spot diagnostics"],
+  "tradable_implication": "None. This descriptor can support data-boundary checks only.",
+  "required_tests": [
+    "Adapter artifact validates",
+    "Provider terms are reviewed before research promotion",
+    "Archived replayable data is available before any paper candidate verdict"
+  ],
+  "failure_modes": [
+    "Live endpoint data treated as deterministic historical evidence",
+    "Kline bars mistaken for executable fills",
+    "Provider terms or redistribution rights assumed instead of reviewed"
+  ],
+  "system_requirements": [
+    "No credentials",
+    "No order placement",
+    "Capture receive time in any future collector"
+  ],
+  "notes_owner": "the-pass",
+  "review_date": "2026-07-09"
+}

@@ -7,6 +7,8 @@ artifacts.
 ## Required Adapter Outputs
 
 - `adapter.yaml` describing mode, asset class, providers, engine, and safety boundary.
+- Provider review fields covering license, redistribution, authentication, retention,
+  deterministic replay, and limitations.
 - Source notes for provider and market-structure assumptions.
 - StrategySpec with asset class, venue, instrument universe, horizon, and edge thesis.
 - Data manifest with provider, license note, schema, time coverage, fingerprints, and gaps.
@@ -49,7 +51,17 @@ providers:
   - id: synthetic-fixture
     type: synthetic
     license: public-safe
+    url: ""
     fields: [timestamp, open, high, low, close, volume]
+    limitations: []
+
+provider_review:
+  license: public-safe synthetic fixture
+  redistribution: fixture can be redistributed with the repository
+  authentication: none
+  retention: tracked fixture data only
+  deterministic_replay: true
+  limitations: []
 
 engine:
   name: none
@@ -79,6 +91,9 @@ Promotion constraints:
 ## Adapter Gate Checklist
 
 - Data provider license is documented.
+- Redistribution rights are explicit before data is committed or published.
+- Authentication and credential needs are explicit.
+- Retention and replay policy are explicit.
 - Timestamp policy separates event time and receive time where relevant.
 - Instrument metadata is explicit.
 - Cost and fill assumptions are explicit.
@@ -88,6 +103,7 @@ Promotion constraints:
 
 ## Examples
 
+- Concrete public-data descriptor: [crypto Binance spot klines](adapters/crypto-binance-spot-klines.md).
 - Crypto perp adapter: funding, mark/index price, liquidation events, book depth, venue
   outages.
 - Futures adapter: contract metadata, roll policy, sessions, tick value, exchange fees.

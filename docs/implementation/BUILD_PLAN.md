@@ -123,6 +123,8 @@ Kill or revise when:
 
 ## Phase 5: Adapter SDK
 
+Status: implemented.
+
 Build:
 
 - `adapter.yaml` schema.
@@ -141,6 +143,8 @@ Kill or revise when:
 - Adapter-specific logic leaks into core gate logic.
 
 ## Phase 6: First Real Adapter
+
+Status: implemented.
 
 Choose one adapter only after Phases 1-5 pass. The adapter should be public-safe and useful
 for testing the framework, not for publishing private edge.

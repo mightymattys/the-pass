@@ -1,0 +1,38 @@
+id: dummy-diagnostic
+name: Dummy Diagnostic Adapter
+mode: diagnostic
+asset_classes: [synthetic]
+owner: the-pass
+
+providers:
+  - id: dummy-fixture
+    type: synthetic
+    license: public-safe fixture
+    url: ""
+    fields: [timestamp, value]
+    limitations: [no market data, no execution evidence]
+
+provider_review:
+  license: public-safe synthetic fixture
+  redistribution: fixture can be redistributed with the repository
+  authentication: none
+  retention: tracked fixture data only
+  deterministic_replay: true
+  limitations: [no provider outage model]
+
+engine:
+  name: none
+  role: fixture-only
+  limitations: [descriptor only]
+
+policies:
+  timestamp: synthetic event timestamp only
+  cost_model: no costs; descriptor validation only
+  fill_model: no fills; descriptor validation only
+  risk_model: no capital at risk
+  settlement: not applicable
+
+safety:
+  live_trading_enabled: false
+  real_order_path_available: false
+  credentials_required: false

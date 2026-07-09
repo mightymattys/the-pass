@@ -25,6 +25,13 @@ jobs:
         run: |
           the-pass validate-package examples/synthetic-breakout/package
           the-pass validate-package examples/synthetic-random-baseline/package
+      - name: Validate adapter descriptors with CLI
+        run: |
+          the-pass validate examples/adapters/dummy-diagnostic.yaml --type adapter
+          the-pass validate examples/adapters/crypto-binance-spot-klines.yaml --type adapter
+          the-pass validate examples/adapters/generic-futures-contract.yaml --type adapter
+          the-pass validate examples/adapters/generic-prediction-market.yaml --type adapter
+          the-pass validate examples/adapters/crypto-binance-spot-klines-source-note.json --type source_note
       - name: Validate receipt ledger CLI
         run: |
           the-pass receipts add examples/synthetic-breakout/package --ledger /tmp/the-pass-ledger.jsonl --gate research_gate

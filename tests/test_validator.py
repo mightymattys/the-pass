@@ -19,6 +19,12 @@ ROOT = Path(__file__).resolve().parents[1]
 EXAMPLE_PACKAGE = ROOT / "examples" / "synthetic-breakout" / "package"
 RANDOM_BASELINE_PACKAGE = ROOT / "examples" / "synthetic-random-baseline" / "package"
 EXAMPLE_PACKAGES = (EXAMPLE_PACKAGE, RANDOM_BASELINE_PACKAGE)
+ADAPTER_EXAMPLES = (
+    ROOT / "examples" / "adapters" / "dummy-diagnostic.yaml",
+    ROOT / "examples" / "adapters" / "crypto-binance-spot-klines.yaml",
+    ROOT / "examples" / "adapters" / "generic-futures-contract.yaml",
+    ROOT / "examples" / "adapters" / "generic-prediction-market.yaml",
+)
 SCHEMA_DIR = ROOT / "schemas"
 
 
@@ -45,6 +51,14 @@ providers:
     type: synthetic
     license: public-safe
     fields: [timestamp, close]
+    limitations: []
+provider_review:
+  license: public-safe synthetic fixture
+  redistribution: fixture can be redistributed with the repository
+  authentication: none
+  retention: tracked fixture data only
+  deterministic_replay: true
+  limitations: []
 engine:
   name: none
   role: fixture-only
@@ -67,6 +81,61 @@ safety:
 
         self.assertTrue(result.ok, [issue.as_dict() for issue in result.issues])
         self.assertEqual(result.artifact_type, "adapter")
+
+    def test_adapter_examples_validate(self) -> None:
+        for adapter in ADAPTER_EXAMPLES:
+            with self.subTest(adapter=adapter):
+                result = validate_artifact(adapter, schema_dir=SCHEMA_DIR, artifact_type="adapter")
+
+                self.assertTrue(result.ok, [issue.as_dict() for issue in result.issues])
+
+    def test_adapter_contract_blocks_missing_provider_license(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            artifact = Path(tmp) / "adapter.yaml"
+            artifact.write_text(
+                """
+id: bad-adapter
+name: Bad Adapter
+mode: diagnostic
+asset_classes: [crypto]
+owner: tester
+providers:
+  - id: public-feed
+    type: exchange-public-market-data
+    license: unknown
+    fields: [timestamp, close]
+    limitations: []
+provider_review:
+  license: unknown
+  redistribution: unknown
+  authentication: none
+  retention: unknown
+  deterministic_replay: false
+  limitations: []
+engine:
+  name: descriptor
+  role: data-only
+  limitations: []
+policies:
+  timestamp: event timestamp only
+  cost_model: diagnostic placeholder
+  fill_model: diagnostic placeholder
+  risk_model: no capital
+  settlement: spot
+safety:
+  live_trading_enabled: false
+  real_order_path_available: false
+  credentials_required: false
+""".strip(),
+                encoding="utf-8",
+            )
+
+            result = validate_artifact(artifact, schema_dir=SCHEMA_DIR, artifact_type="adapter")
+
+        self.assertFalse(result.ok)
+        messages = {issue.path: issue.message for issue in result.issues}
+        self.assertIn("$.providers[0].license", messages)
+        self.assertIn("$.provider_review.license", messages)
 
     def test_package_blocks_missing_required_artifact(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

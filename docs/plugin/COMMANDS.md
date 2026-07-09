@@ -42,6 +42,7 @@ The first concrete CLI commands are artifact validators:
 ```bash
 the-pass validate <artifact>
 the-pass validate-package <run-dir>
+the-pass validate <adapter.yaml> --type adapter
 the-pass receipts add <run-dir>
 the-pass receipts verify
 the-pass receipts

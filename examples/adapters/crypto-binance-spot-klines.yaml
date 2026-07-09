@@ -1,0 +1,47 @@
+id: crypto-binance-spot-klines
+name: Crypto Binance Spot Klines Diagnostic Adapter
+mode: diagnostic
+asset_classes: [crypto]
+owner: the-pass
+
+providers:
+  - id: binance-spot-market-data
+    type: exchange-public-market-data
+    license: Binance public market data documentation; verify terms before research promotion
+    url: https://developers.binance.com/docs/binance-spot-api-docs/rest-api/market-data-endpoints
+    fields: [open_time, open, high, low, close, volume, close_time, quote_volume, trades]
+    limitations:
+      - public endpoint availability and terms can change
+      - spot klines are not an execution-quality fill source
+      - no order book queue, funding, liquidation, or account data
+
+provider_review:
+  license: public market-data endpoint documented by Binance; redistribution requires separate review
+  redistribution: do not commit downloaded Binance data; store only small public-safe fixtures
+  authentication: none for market-data-only URLs
+  retention: raw provider responses must be stored immutably outside public fixtures
+  deterministic_replay: false
+  limitations:
+    - live endpoint data is unstable external state
+    - research promotion requires archived snapshots or licensed replayable data
+    - endpoint rate limits and availability must be recorded per run
+
+engine:
+  name: adapter-descriptor
+  role: data-only
+  limitations:
+    - no data downloader in core
+    - no backtest engine coupling
+    - no order placement
+
+policies:
+  timestamp: kline open time is event time; receive time must be captured by a collector outside this descriptor
+  cost_model: spot fees, spread, and slippage must be supplied by a strategy package before backtest promotion
+  fill_model: klines cannot prove fills; use diagnostic-only fills until trade/book replay exists
+  risk_model: no sizing or capital at risk in this adapter
+  settlement: spot crypto transfer, custody, and venue-risk assumptions are out of scope for diagnostics
+
+safety:
+  live_trading_enabled: false
+  real_order_path_available: false
+  credentials_required: false

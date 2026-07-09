@@ -9,10 +9,19 @@
       "id": "synthetic-random-fixture",
       "type": "synthetic",
       "license": "public-safe",
+      "url": "",
       "fields": ["timestamp", "close", "random_signal", "gross_return", "cost", "net_return"],
       "limitations": ["Deterministic fixture", "No real market microstructure", "No tradable edge"]
     }
   ],
+  "provider_review": {
+    "license": "public-safe synthetic fixture",
+    "redistribution": "fixture can be redistributed with the repository",
+    "authentication": "none",
+    "retention": "tracked fixture data only",
+    "deterministic_replay": true,
+    "limitations": ["No real market data", "No provider outage model"]
+  },
   "engine": {
     "name": "none",
     "role": "fixture-only",

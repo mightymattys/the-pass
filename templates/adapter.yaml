@@ -8,8 +8,17 @@ providers:
   - id: ""
     type: "" # synthetic|exchange|broker|vendor|warehouse|manual
     license: ""
+    url: ""
     fields: []
     limitations: []
+
+provider_review:
+  license: ""
+  redistribution: ""
+  authentication: ""
+  retention: ""
+  deterministic_replay: false
+  limitations: []
 
 engine:
   name: ""

@@ -52,6 +52,7 @@ See [docs/plugin/COMMANDS.md](docs/plugin/COMMANDS.md) for the full command cont
 - [Skill contracts](docs/implementation/SKILL_CONTRACTS.md)
 - [Validation and safety](docs/implementation/VALIDATION_AND_SAFETY.md)
 - [Adapter contract](docs/adapter-contract.md)
+- [Adapter examples](examples/adapters/)
 - [ADR decisions](docs/adr/)
 - [Artifact schemas](schemas/)
 - [Artifact templates](templates/)
@@ -67,6 +68,8 @@ The repository is ready for implementation work:
 - Artifact templates and JSON Schemas exist.
 - Public safety validation and CI are configured.
 - Synthetic golden path and killed baseline examples exercise the first end-to-end workflow target.
+- Adapter descriptors cover a dummy adapter, a concrete public crypto data adapter, and generic
+  futures and prediction-market descriptors without core market-specific logic.
 
 Run local validation:
 
@@ -76,6 +79,7 @@ python3 scripts/validate_public_repo.py
 python3 -m unittest discover -s tests
 the-pass validate-package examples/synthetic-breakout/package
 the-pass validate-package examples/synthetic-random-baseline/package
+the-pass validate examples/adapters/crypto-binance-spot-klines.yaml --type adapter
 the-pass receipts add examples/synthetic-breakout/package --ledger /tmp/the-pass-ledger.jsonl
 the-pass receipts add examples/synthetic-random-baseline/package --ledger /tmp/the-pass-ledger.jsonl
 the-pass receipts verify --ledger /tmp/the-pass-ledger.jsonl

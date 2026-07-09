@@ -9,10 +9,19 @@
       "id": "synthetic-fixture",
       "type": "synthetic",
       "license": "public-safe",
+      "url": "",
       "fields": ["timestamp", "open", "high", "low", "close", "volume"],
       "limitations": ["No real market microstructure", "No evidence of tradable edge"]
     }
   ],
+  "provider_review": {
+    "license": "public-safe synthetic fixture",
+    "redistribution": "fixture can be redistributed with the repository",
+    "authentication": "none",
+    "retention": "tracked fixture data only",
+    "deterministic_replay": true,
+    "limitations": ["No real market data", "No provider outage model"]
+  },
   "engine": {
     "name": "none",
     "role": "fixture-only",
