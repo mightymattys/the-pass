@@ -1,5 +1,5 @@
 ---
-name: "the-pass:receipts"
+name: receipts
 description: "Summarize The Pass run receipts, evidence artifacts, gate decisions, and unresolved risks."
 ---
 
@@ -48,6 +48,7 @@ exists for a strategy or repo.
 ```bash
 the-pass receipts verify --ledger <ledger-path>
 the-pass receipts --ledger <ledger-path>
+the-pass validate <receipt-summary> --type receipt_summary
 ```
 
 When appending:

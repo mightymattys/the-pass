@@ -1,5 +1,5 @@
 ---
-name: "the-pass:taste"
+name: taste
 description: "Independently review a strategy package for data leakage, overfitting, weak execution assumptions, risk issues, and promotion blockers."
 ---
 
@@ -10,7 +10,7 @@ Use this skill when reviewing an experiment package, backtest, paper report, or 
 ## Inputs
 
 - Package directory or artifact bundle.
-- Target gate: research, backtest, paper, risk review, or live candidate.
+- Target gate: `research_gate`, `paper_gate`, `risk_review`, or `live_gate`.
 - Optional prior findings and known constraints.
 
 ## Read First
@@ -49,6 +49,9 @@ Use this skill when reviewing an experiment package, backtest, paper report, or 
 - Compare against null or random baselines. Missing baseline blocks promotion unless a documented reason is artifact-backed.
 - Review safety flags. Any live order path, credentials, or live-trading flag in a public package blocks promotion.
 - Update or create a verdict report when the current verdict does not match the findings.
+- Treat `pass` as the command exit state. At `research_gate`, the corresponding artifact
+  verdict is `paper_candidate`; later gates record their decision in their own workflow
+  artifact and never expand the core verdict enum.
 
 ## Review Areas
 
@@ -63,6 +66,7 @@ Use this skill when reviewing an experiment package, backtest, paper report, or 
 
 ```bash
 the-pass validate-package <package-dir>
+the-pass validate <findings> --type findings
 ```
 
 If a verdict changes, validate again and add a receipt:
@@ -75,7 +79,8 @@ the-pass receipts verify
 ## Outputs
 
 - Findings with file references.
-- Gate result: pass, blocked, revise, or kill.
+- Gate result: pass, blocked, revise, or kill. For a passed `research_gate`, write
+  `paper_candidate` to `verdict_report`.
 - Findings based on `templates/findings.yaml`.
 - Refire ticket based on `templates/refire_ticket.yaml` for confirmed fixable issues.
 

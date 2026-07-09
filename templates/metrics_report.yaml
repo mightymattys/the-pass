@@ -5,6 +5,9 @@ created_at: YYYY-MM-DDTHH:MM:SSZ
 sample:
   start_time: ""
   end_time: ""
+  evaluation_scope: "" # in_sample|out_of_sample|walk_forward|diagnostic
+  holdout_start_time: ""
+  holdout_end_time: ""
   trades: 0
   signals: 0
   instruments: []

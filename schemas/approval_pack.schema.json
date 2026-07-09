@@ -1,0 +1,115 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://the-pass.dev/schemas/approval_pack.schema.json",
+  "title": "ApprovalPack",
+  "type": "object",
+  "required": ["id", "created_at", "strategy_id", "requested_gate", "config_hash", "adapter", "evidence", "risk_limits", "operations", "human_decisions_required", "safety", "status"],
+  "properties": {
+    "id": { "type": "string", "minLength": 1 },
+    "created_at": { "type": "string", "minLength": 1 },
+    "strategy_id": { "type": "string" },
+    "requested_gate": { "enum": ["risk_review", "live_gate"] },
+    "config_hash": { "type": "string" },
+    "adapter": { "type": "string" },
+    "evidence": {
+      "type": "object",
+      "required": ["receipts", "verdict_reports", "paper_reports", "risk_reports"],
+      "properties": {
+        "receipts": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "verdict_reports": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "paper_reports": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "risk_reports": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+      }
+    },
+    "risk_limits": {
+      "type": "object",
+      "required": ["max_notional", "max_daily_loss", "max_drawdown", "kill_switches"],
+      "properties": {
+        "max_notional": { "type": "string" },
+        "max_daily_loss": { "type": "string" },
+        "max_drawdown": { "type": "string" },
+        "kill_switches": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+      }
+    },
+    "operations": {
+      "type": "object",
+      "required": ["monitoring_plan", "rollback_plan", "incident_runbook"],
+      "properties": {
+        "monitoring_plan": { "type": "string" },
+        "rollback_plan": { "type": "string" },
+        "incident_runbook": { "type": "string" }
+      }
+    },
+    "human_decisions_required": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["decision", "owner", "status"],
+        "properties": {
+          "decision": { "type": "string", "minLength": 1 },
+          "owner": { "type": "string", "minLength": 1 },
+          "status": { "const": "pending" }
+        }
+      }
+    },
+    "safety": {
+      "type": "object",
+      "required": ["grants_approval", "live_trading_enabled", "real_order_path_available"],
+      "properties": {
+        "grants_approval": { "const": false },
+        "live_trading_enabled": { "const": false },
+        "real_order_path_available": { "const": false }
+      }
+    },
+    "status": { "enum": ["packaged", "blocked"] }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "status": { "const": "packaged" } } },
+      "then": {
+        "properties": {
+          "strategy_id": { "minLength": 1 },
+          "config_hash": { "minLength": 1 },
+          "adapter": { "minLength": 1 },
+          "evidence": {
+            "properties": {
+              "receipts": { "minItems": 1 },
+              "verdict_reports": { "minItems": 1 },
+              "paper_reports": { "minItems": 1 }
+            }
+          },
+          "risk_limits": {
+            "properties": {
+              "max_notional": { "minLength": 1 },
+              "max_daily_loss": { "minLength": 1 },
+              "max_drawdown": { "minLength": 1 },
+              "kill_switches": { "minItems": 1 }
+            }
+          },
+          "operations": {
+            "properties": {
+              "monitoring_plan": { "minLength": 1 },
+              "rollback_plan": { "minLength": 1 },
+              "incident_runbook": { "minLength": 1 }
+            }
+          },
+          "human_decisions_required": { "minItems": 1 }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "status": { "const": "packaged" },
+          "requested_gate": { "const": "live_gate" }
+        }
+      },
+      "then": {
+        "properties": {
+          "evidence": { "properties": { "risk_reports": { "minItems": 1 } } }
+        }
+      }
+    }
+  ],
+  "additionalProperties": true
+}

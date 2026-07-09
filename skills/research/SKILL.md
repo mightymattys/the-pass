@@ -1,5 +1,5 @@
 ---
-name: "the-pass:research"
+name: research
 description: "Convert studies, books, investor notes, vendor docs, or strategy-review pages into structured source notes and falsifiable trading hypotheses."
 ---
 
@@ -17,7 +17,9 @@ strategy hypotheses.
 ## Read First
 
 - `templates/source_note.yaml`
+- `templates/hypothesis.yaml`
 - `schemas/source_note.schema.json`
+- `schemas/hypothesis.schema.json`
 - Existing related notes in `research/sources/`
 - `docs/research/the-pass-plan.md`
 - `docs/implementation/SKILL_CONTRACTS.md`
@@ -53,12 +55,14 @@ strategy hypotheses.
 
 ```bash
 the-pass validate <path-to-source-note>
+the-pass validate <path-to-hypothesis> --type hypothesis
 ```
 
 ## Outputs
 
 - Source notes based on `templates/source_note.yaml`.
-- Hypotheses that can become `StrategySpec` files.
+- Structured hypotheses based on `templates/hypothesis.yaml` that can become `StrategySpec`
+  files.
 - Missing evidence and required tests.
 
 ## Exit States

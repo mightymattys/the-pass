@@ -1,5 +1,5 @@
 ---
-name: "the-pass:screen"
+name: screen
 description: "Design or run a fast diagnostic strategy screen with conservative costs, null baselines, and no promotion claims."
 ---
 
@@ -47,10 +47,9 @@ Use this skill for early diagnostic screens before a full event-driven backtest.
 
 ## Required Checks
 
-Validate any schema-backed artifacts you create:
-
 ```bash
-the-pass validate <artifact>
+the-pass validate <screen-report> --type screen_report
+the-pass validate <data-manifest> --type data_manifest
 ```
 
 ## Outputs

@@ -10,13 +10,17 @@ blockers, not only prose.
 - Prefer public-safe examples.
 - If required evidence is missing, return `blocked`.
 - Every gate claim must cite artifacts.
+- Every structured output must validate against the matching schema before its success state
+  can be returned.
+- Gate IDs use lower snake case; core gates are `research_gate`, `paper_gate`, `risk_review`,
+  and `live_gate`.
 
 ## Contracts
 
 | Skill | Inputs | Writes | Must Check | Exit States |
 | --- | --- | --- | --- | --- |
 | `mise` | repo path | setup docs, folders, missing templates | plugin manifest, ADRs, public safety, schemas | ready, repaired, blocked |
-| `research` | topic or source URL/content | source notes, hypothesis list | source type, claim, evidence, limitations, required tests | reviewed, rejected, blocked |
+| `research` | topic or source URL/content | source notes, hypothesis artifacts | source type, claim, evidence, limitations, required tests | reviewed, rejected, blocked |
 | `spec` | idea or hypothesis | `StrategySpec` | edge thesis, data needs, costs, risks, done/kill criteria | draft, research_ready, blocked |
 | `screen` | StrategySpec, optional data manifest | screen report | diagnostic-only assumptions, null baseline, costs | reject, revise, backtest_candidate, blocked |
 | `backtest` | StrategySpec, data manifest, runner config | run package | manifest, receipt, metrics, cost waterfall, safety flags | complete, blocked |
@@ -58,6 +62,10 @@ Skills must not write:
 - Null/random baseline exists or absence is justified.
 - Execution assumptions are explicit.
 - Safety flags say live trading is disabled and real order path is unavailable.
+
+`pass` is the `taste` command state. At `research_gate`, the matching
+`verdict_report.verdict` is `paper_candidate`, not `pass`.
+`research_ready` is the `spec` command state; the matching StrategySpec state is `research`.
 
 `paper` can recommend risk review only when:
 

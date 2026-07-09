@@ -7,6 +7,7 @@ import unittest
 from pathlib import Path
 
 from the_pass.ledger import (
+    LedgerError,
     append_ledger_entry,
     build_ledger_entry,
     read_ledger_entries,
@@ -28,7 +29,348 @@ ADAPTER_EXAMPLES = (
 SCHEMA_DIR = ROOT / "schemas"
 
 
+def workflow_artifacts() -> dict[str, dict]:
+    return {
+        "hypothesis": {
+            "id": "hypothesis-1",
+            "created_at": "2026-07-09T00:00:00Z",
+            "status": "ready_for_spec",
+            "proposed_name": "Synthetic breakout hypothesis",
+            "source_notes": ["source_note.yaml"],
+            "edge": {
+                "primary_family": "trend",
+                "thesis": "persistent moves continue after a breakout",
+                "mechanism": "slow information diffusion",
+            },
+            "market": {"asset_classes": ["futures"], "venues": [], "instruments": [], "timeframes": ["1h"]},
+            "test": {
+                "next_test": "diagnostic screen",
+                "required_data": ["adjusted OHLCV"],
+                "null_or_random_baseline": "random entries with matched holding period",
+                "falsification_criteria": ["net performance does not beat baseline"],
+            },
+            "risks": {"costs": [], "execution": [], "data": [], "regime": []},
+            "kill_when": ["fails the predefined baseline"],
+            "blockers": [],
+        },
+        "screen_report": {
+            "id": "screen-1",
+            "created_at": "2026-07-09T00:00:00Z",
+            "strategy_spec": "strategy_spec.yaml",
+            "data_manifest": "",
+            "mode": "diagnostic",
+            "sample": {"start_time": "", "end_time": "", "instruments": [], "observations": None},
+            "variants": {"tried": [], "selected": "", "rejected": []},
+            "baseline": {"type": "null_random", "result": ""},
+            "costs": {"fee_model": "", "spread_model": "", "slippage_model": "", "assumptions": []},
+            "results": {"gross_metrics": {}, "net_metrics": {}, "robustness_notes": []},
+            "decision": {"status": "blocked", "reason": "cost model missing", "next_action": "define costs"},
+            "safety": {"promotion_claim": False, "live_trading_enabled": False, "real_order_path_available": False},
+        },
+        "findings": {
+            "id": "findings-1",
+            "created_at": "2026-07-09T00:00:00Z",
+            "package": "package",
+            "reviewer": "independent-reviewer",
+            "target_gate": "research_gate",
+            "findings": [],
+            "summary": {"gate_result": "pass", "unresolved_blockers": [], "next_action": "prepare paper plan"},
+        },
+        "refire_ticket": {
+            "id": "refire-1",
+            "created_at": "2026-07-09T00:00:00Z",
+            "source_finding": "finding-1",
+            "package": "package",
+            "target_gate": "research_gate",
+            "scope": {"allowed_paths": ["runner.py"], "blocked_paths": ["credentials"]},
+            "fix_plan": {
+                "issue": "timestamp ordering",
+                "intended_change": "sort before signal calculation",
+                "verification_commands": ["pytest tests/test_runner.py"],
+            },
+            "result": {"status": "still_blocked", "superseding_package": "", "evidence": []},
+        },
+        "simmer_laps": {
+            "id": "simmer-1",
+            "created_at": "2026-07-09T00:00:00Z",
+            "target_gate": "research_gate",
+            "package": "package",
+            "budget": {"max_laps": 2, "stop_condition": "gate passes", "kill_condition": "no progress"},
+            "laps": [
+                {
+                    "lap": 1,
+                    "hypothesis": "receipt link is stale",
+                    "intended_change": "repair link",
+                    "files_touched": ["run_receipt.yaml"],
+                    "command": "the-pass validate-package package",
+                    "expected_signal": "package validates",
+                    "observed_result": "still blocked",
+                    "moved_gate": False,
+                    "blockers": ["missing costs"],
+                }
+            ],
+            "final": {"status": "blocked", "reason": "missing costs", "next_action": "source fee data"},
+        },
+        "paper_plan": {
+            "id": "paper-1",
+            "created_at": "2026-07-09T00:00:00Z",
+            "source_package": "",
+            "strategy_spec": "",
+            "adapter": "",
+            "config_hash": "",
+            "observation": {"start_after": "", "minimum_days": None, "minimum_signals": None, "instruments": []},
+            "decision_logic": {"same_as_backtest": True, "differences": []},
+            "divergence_policy": {
+                "max_cost_divergence": "",
+                "max_signal_divergence": "",
+                "max_fill_divergence": "",
+                "stop_conditions": [],
+            },
+            "safety": {
+                "simulated_intents_only": True,
+                "live_trading_enabled": False,
+                "real_order_path_available": False,
+                "credentials_required": False,
+            },
+            "status": "blocked",
+        },
+        "observation_manifest": {
+            "id": "observation-1",
+            "created_at": "2026-07-09T00:00:00Z",
+            "paper_plan": "paper_plan.yaml",
+            "source_package": "package",
+            "data_capture": {
+                "event_time_field": "event_time",
+                "receive_time_field": "receive_time",
+                "decision_time_field": "decision_time",
+                "storage_path": "observations.jsonl",
+            },
+            "signals": {"format": "jsonl", "fields": ["event_time", "side"]},
+            "simulated_orders": {"format": "jsonl", "fields": ["price", "size"], "cannot_reach_broker": True},
+            "quality": {
+                "missing_data_policy": "stop",
+                "outage_policy": "stop",
+                "clock_skew_policy": "block above threshold",
+            },
+        },
+        "divergence_report": {
+            "id": "divergence-1",
+            "created_at": "2026-07-09T00:00:00Z",
+            "paper_plan": "paper_plan.yaml",
+            "observation_manifest": "observation_manifest.yaml",
+            "sample": {"start_time": "", "end_time": "", "signals": None, "simulated_orders": None},
+            "comparisons": {
+                "signal_divergence": None,
+                "cost_divergence": None,
+                "fill_divergence": None,
+                "pnl_divergence": None,
+            },
+            "breaches": [],
+            "decision": {"status": "blocked", "reason": "observation incomplete", "next_action": "continue observation"},
+        },
+        "approval_pack": {
+            "id": "approval-1",
+            "created_at": "2026-07-09T00:00:00Z",
+            "strategy_id": "",
+            "requested_gate": "live_gate",
+            "config_hash": "",
+            "adapter": "",
+            "evidence": {"receipts": [], "verdict_reports": [], "paper_reports": [], "risk_reports": []},
+            "risk_limits": {"max_notional": "", "max_daily_loss": "", "max_drawdown": "", "kill_switches": []},
+            "operations": {"monitoring_plan": "", "rollback_plan": "", "incident_runbook": ""},
+            "human_decisions_required": [],
+            "safety": {"grants_approval": False, "live_trading_enabled": False, "real_order_path_available": False},
+            "status": "blocked",
+        },
+        "receipt_summary": {
+            "id": "summary-1",
+            "created_at": "2026-07-09T00:00:00Z",
+            "ledger": "",
+            "filters": {"strategy_id": "", "gate": "", "verdict": "", "date_range": ""},
+            "summary": {"entries": 0, "strategies": [], "verdicts": {}, "open_blockers": []},
+            "packages": [],
+            "status": "blocked",
+        },
+    }
+
+
+def prepare_paper_candidate(package: Path, *, reviewer: str = "independent-auditor") -> None:
+    adapter_path = package / "adapter.json"
+    adapter = json.loads(adapter_path.read_text(encoding="utf-8"))
+    adapter["mode"] = "research"
+    adapter_path.write_text(json.dumps(adapter), encoding="utf-8")
+
+    metrics_path = package / "metrics_report.json"
+    metrics = json.loads(metrics_path.read_text(encoding="utf-8"))
+    metrics["gross_metrics"]["pnl"] = 1.0
+    metrics["net_metrics"]["pnl"] = 0.5
+    metrics["sample"]["trades"] = 10
+    metrics["sample"].update(
+        {
+            "evaluation_scope": "out_of_sample",
+            "holdout_start_time": "2026-01-21T00:00:00Z",
+            "holdout_end_time": "2026-01-31T00:00:00Z",
+        }
+    )
+    metrics["robustness"]["null_baseline_result"] = "candidate exceeded the matched random baseline"
+    metrics["robustness"].update(
+        {
+            "dsr_or_psr": 0.95,
+            "pbo": 0.1,
+            "stress_results": ["remains net positive at 1.5x fees and 2x slippage"],
+            "parameter_stability": "neighboring parameter values remain net positive",
+        }
+    )
+    metrics_path.write_text(json.dumps(metrics), encoding="utf-8")
+
+    costs_path = package / "cost_waterfall.json"
+    costs = json.loads(costs_path.read_text(encoding="utf-8"))
+    costs["gross_pnl"] = 1.0
+    costs["net_pnl"] = 0.5
+    costs["costs"].update({"fees": 0.1, "spread": 0.2, "slippage": 0.2, "funding": 0, "borrow": 0, "roll": 0, "rejects_or_missed_fills": 0})
+    costs["assumptions"].update(
+        {
+            "fee_model": "historical venue fee schedule",
+            "fill_model": "touch plus queue haircut",
+            "latency_model": "250 ms signal-to-order delay",
+            "depth_model": "top-of-book participation capped at 10 percent",
+        }
+    )
+    costs_path.write_text(json.dumps(costs), encoding="utf-8")
+
+    findings = workflow_artifacts()["findings"]
+    findings["package"] = "."
+    findings["reviewer"] = reviewer
+    (package / "findings.json").write_text(json.dumps(findings), encoding="utf-8")
+
+    verdict_path = package / "verdict_report.json"
+    verdict = json.loads(verdict_path.read_text(encoding="utf-8"))
+    verdict["verdict"] = "paper_candidate"
+    verdict["owner"] = reviewer
+    verdict["gate_results"]["failed_gates"] = []
+    verdict_path.write_text(json.dumps(verdict), encoding="utf-8")
+
+    strategy_path = package / "strategy_spec.json"
+    strategy = json.loads(strategy_path.read_text(encoding="utf-8"))
+    strategy["status"] = "research"
+    strategy["execution"].update(
+        {
+            "order_type": "limit",
+            "fill_model": "touch plus queue haircut",
+            "fee_model": "historical venue fee schedule",
+            "slippage_model": "spread and depth based",
+        }
+    )
+    strategy["validation"]["train_test_split"] = "first 66 percent train, next 14 percent validation"
+    strategy["validation"]["holdout_policy"] = "latest 20 percent locked until final review"
+    strategy_path.write_text(json.dumps(strategy), encoding="utf-8")
+
+
 class ValidatorTests(unittest.TestCase):
+    def test_workflow_artifacts_validate(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            for artifact_type, document in workflow_artifacts().items():
+                with self.subTest(artifact_type=artifact_type):
+                    artifact = Path(tmp) / f"{artifact_type}.json"
+                    artifact.write_text(json.dumps(document), encoding="utf-8")
+                    result = validate_artifact(artifact, schema_dir=SCHEMA_DIR, artifact_type=artifact_type)
+                    self.assertTrue(result.ok, [issue.as_dict() for issue in result.issues])
+
+    def test_findings_cannot_pass_with_blocking_finding(self) -> None:
+        document = workflow_artifacts()["findings"]
+        document["findings"] = [
+            {
+                "id": "finding-1",
+                "severity": "P1",
+                "status": "confirmed",
+                "title": "Lookahead leakage",
+                "evidence": {"artifact": "runner.py", "path": "runner.py:10", "note": "future value used"},
+                "blocks_promotion": True,
+                "recommendation": "fix timestamp alignment",
+            }
+        ]
+        with tempfile.TemporaryDirectory() as tmp:
+            artifact = Path(tmp) / "findings.json"
+            artifact.write_text(json.dumps(document), encoding="utf-8")
+            result = validate_artifact(artifact, schema_dir=SCHEMA_DIR, artifact_type="findings")
+
+        self.assertFalse(result.ok)
+        self.assertTrue(any("unresolved blocking findings" in issue.message for issue in result.issues))
+
+    def test_backtest_candidate_requires_real_screen_sample(self) -> None:
+        document = workflow_artifacts()["screen_report"]
+        document["decision"]["status"] = "backtest_candidate"
+        document["variants"]["tried"] = [{"lookback": 20}]
+        document["variants"]["selected"] = "lookback=20"
+        document["baseline"]["result"] = "candidate exceeded matched random entries"
+        document["costs"].update(
+            {"fee_model": "venue fees", "spread_model": "historical spread", "slippage_model": "depth haircut"}
+        )
+        document["costs"]["assumptions"] = ["pessimistic fill"]
+        document["results"] = {"gross_metrics": {"pnl": 1}, "net_metrics": {"pnl": 0.5}, "robustness_notes": ["stable"]}
+        with tempfile.TemporaryDirectory() as tmp:
+            artifact = Path(tmp) / "screen_report.json"
+            artifact.write_text(json.dumps(document), encoding="utf-8")
+            result = validate_artifact(artifact, schema_dir=SCHEMA_DIR, artifact_type="screen_report")
+
+        self.assertFalse(result.ok)
+        self.assertTrue(any(issue.path.startswith("$.sample") for issue in result.issues))
+
+    def test_hypothesis_with_blockers_is_not_ready_for_spec(self) -> None:
+        document = workflow_artifacts()["hypothesis"]
+        document["blockers"] = ["data license unresolved"]
+        with tempfile.TemporaryDirectory() as tmp:
+            artifact = Path(tmp) / "hypothesis.json"
+            artifact.write_text(json.dumps(document), encoding="utf-8")
+            result = validate_artifact(artifact, schema_dir=SCHEMA_DIR, artifact_type="hypothesis")
+
+        self.assertFalse(result.ok)
+        self.assertTrue(any(issue.path == "$.blockers" for issue in result.issues))
+
+    def test_research_strategy_spec_requires_falsifiable_fields(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            artifact = Path(tmp) / "strategy_spec.json"
+            spec = json.loads((EXAMPLE_PACKAGE / "strategy_spec.json").read_text(encoding="utf-8"))
+            spec["status"] = "research"
+            spec["edge"]["thesis"] = ""
+            artifact.write_text(json.dumps(spec), encoding="utf-8")
+
+            result = validate_artifact(artifact, schema_dir=SCHEMA_DIR, artifact_type="strategy_spec")
+
+        self.assertFalse(result.ok)
+        self.assertTrue(any(issue.path == "$.edge.thesis" for issue in result.issues))
+
+    def test_approval_pack_cannot_grant_human_approval(self) -> None:
+        document = workflow_artifacts()["approval_pack"]
+        document["human_decisions_required"] = [
+            {"decision": "approve live trading", "owner": "human-risk-owner", "status": "approved"}
+        ]
+        with tempfile.TemporaryDirectory() as tmp:
+            artifact = Path(tmp) / "approval_pack.json"
+            artifact.write_text(json.dumps(document), encoding="utf-8")
+            result = validate_artifact(artifact, schema_dir=SCHEMA_DIR, artifact_type="approval_pack")
+
+        self.assertFalse(result.ok)
+        self.assertTrue(any(issue.path.endswith("status") for issue in result.issues))
+
+    def test_simmer_stops_after_two_no_progress_laps(self) -> None:
+        document = workflow_artifacts()["simmer_laps"]
+        first_lap = document["laps"][0]
+        document["budget"]["max_laps"] = 3
+        document["laps"] = [
+            {**first_lap, "lap": 1, "moved_gate": False},
+            {**first_lap, "lap": 2, "moved_gate": False},
+            {**first_lap, "lap": 3, "moved_gate": True},
+        ]
+        document["final"] = {"status": "passed", "reason": "late movement", "next_action": "continue"}
+        with tempfile.TemporaryDirectory() as tmp:
+            artifact = Path(tmp) / "simmer_laps.json"
+            artifact.write_text(json.dumps(document), encoding="utf-8")
+            result = validate_artifact(artifact, schema_dir=SCHEMA_DIR, artifact_type="simmer_laps")
+
+        self.assertFalse(result.ok)
+        self.assertTrue(any("two consecutive no-progress" in issue.message for issue in result.issues))
+
     def test_synthetic_packages_validate(self) -> None:
         for package in EXAMPLE_PACKAGES:
             with self.subTest(package=package):
@@ -148,6 +490,45 @@ safety:
         self.assertFalse(result.ok)
         self.assertTrue(any("missing required artifact: metrics_report" in issue.message for issue in result.issues))
 
+    def test_package_links_must_target_canonical_artifacts(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            package = Path(tmp) / "package"
+            shutil.copytree(EXAMPLE_PACKAGE, package)
+            receipt_path = package / "run_receipt.json"
+            receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+            receipt["strategy_spec"] = "metrics_report.json"
+            receipt_path.write_text(json.dumps(receipt), encoding="utf-8")
+
+            result = validate_package(package, schema_dir=SCHEMA_DIR)
+
+        self.assertFalse(result.ok)
+        self.assertTrue(any(issue.path == "$.run_receipt.strategy_spec" for issue in result.issues))
+
+    def test_package_rejects_ambiguous_artifact_extensions(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            package = Path(tmp) / "package"
+            shutil.copytree(EXAMPLE_PACKAGE, package)
+            shutil.copy(package / "strategy_spec.json", package / "strategy_spec.yaml")
+
+            result = validate_package(package, schema_dir=SCHEMA_DIR)
+
+        self.assertFalse(result.ok)
+        self.assertTrue(any("ambiguous artifact strategy_spec" in issue.message for issue in result.issues))
+
+    def test_package_rejects_artifact_symlink_outside_package(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            package = Path(tmp) / "package"
+            outside_spec = Path(tmp) / "outside-strategy-spec.json"
+            shutil.copytree(EXAMPLE_PACKAGE, package)
+            shutil.copy(package / "strategy_spec.json", outside_spec)
+            (package / "strategy_spec.json").unlink()
+            (package / "strategy_spec.json").symlink_to(outside_spec)
+
+            result = validate_package(package, schema_dir=SCHEMA_DIR)
+
+        self.assertFalse(result.ok)
+        self.assertTrue(any("escapes package directory" in issue.message for issue in result.issues))
+
     def test_diagnostic_adapter_cannot_be_paper_candidate(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             package = Path(tmp) / "package"
@@ -155,12 +536,120 @@ safety:
             verdict_path = package / "verdict_report.json"
             verdict = json.loads(verdict_path.read_text(encoding="utf-8"))
             verdict["verdict"] = "paper_candidate"
+            verdict["gate_results"]["failed_gates"] = []
             verdict_path.write_text(json.dumps(verdict, indent=2), encoding="utf-8")
 
             result = validate_package(package, schema_dir=SCHEMA_DIR)
 
         self.assertFalse(result.ok)
         self.assertTrue(any("diagnostic adapters cannot produce paper_candidate" in issue.message for issue in result.issues))
+
+    def test_paper_candidate_requires_independent_review_artifact(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            package = Path(tmp) / "package"
+            shutil.copytree(EXAMPLE_PACKAGE, package)
+            prepare_paper_candidate(package)
+
+            result = validate_package(package, schema_dir=SCHEMA_DIR)
+
+        self.assertTrue(result.ok, [issue.as_dict() for issue in result.issues])
+
+    def test_paper_candidate_rejects_self_review(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            package = Path(tmp) / "package"
+            shutil.copytree(EXAMPLE_PACKAGE, package)
+            prepare_paper_candidate(package, reviewer="the-pass")
+
+            result = validate_package(package, schema_dir=SCHEMA_DIR)
+
+        self.assertFalse(result.ok)
+        self.assertTrue(any("must be independent" in issue.message for issue in result.issues))
+
+    def test_paper_candidate_rejects_placeholder_baseline(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            package = Path(tmp) / "package"
+            shutil.copytree(EXAMPLE_PACKAGE, package)
+            prepare_paper_candidate(package)
+            metrics_path = package / "metrics_report.json"
+            metrics = json.loads(metrics_path.read_text(encoding="utf-8"))
+            metrics["robustness"]["null_baseline_result"] = "not applicable"
+            metrics_path.write_text(json.dumps(metrics), encoding="utf-8")
+
+            result = validate_package(package, schema_dir=SCHEMA_DIR)
+
+        self.assertFalse(result.ok)
+        self.assertTrue(any("null or random baseline" in issue.message for issue in result.issues))
+
+    def test_paper_candidate_rejects_cost_reconciliation_mismatch(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            package = Path(tmp) / "package"
+            shutil.copytree(EXAMPLE_PACKAGE, package)
+            prepare_paper_candidate(package)
+            costs_path = package / "cost_waterfall.json"
+            costs = json.loads(costs_path.read_text(encoding="utf-8"))
+            costs["net_pnl"] = 0.6
+            costs_path.write_text(json.dumps(costs), encoding="utf-8")
+
+            result = validate_package(package, schema_dir=SCHEMA_DIR)
+
+        self.assertFalse(result.ok)
+        self.assertTrue(any("gross_pnl minus" in issue.message for issue in result.issues))
+
+    def test_paper_candidate_requires_out_of_sample_evidence(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            package = Path(tmp) / "package"
+            shutil.copytree(EXAMPLE_PACKAGE, package)
+            prepare_paper_candidate(package)
+            metrics_path = package / "metrics_report.json"
+            metrics = json.loads(metrics_path.read_text(encoding="utf-8"))
+            metrics["sample"]["evaluation_scope"] = "in_sample"
+            metrics_path.write_text(json.dumps(metrics), encoding="utf-8")
+
+            result = validate_package(package, schema_dir=SCHEMA_DIR)
+
+        self.assertFalse(result.ok)
+        self.assertTrue(any("holdout window" in issue.message for issue in result.issues))
+
+    def test_paper_candidate_requires_reviewed_source_notes(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            package = Path(tmp) / "package"
+            shutil.copytree(EXAMPLE_PACKAGE, package)
+            prepare_paper_candidate(package)
+            source_path = package / "source_note.json"
+            source_note = json.loads(source_path.read_text(encoding="utf-8"))
+            source_note["status"] = "unread"
+            source_path.write_text(json.dumps(source_note), encoding="utf-8")
+
+            result = validate_package(package, schema_dir=SCHEMA_DIR)
+
+        self.assertFalse(result.ok)
+        self.assertTrue(any("reviewed or implemented" in issue.message for issue in result.issues))
+
+    def test_data_manifest_requires_sha256_fingerprint(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            artifact = Path(tmp) / "data_manifest.json"
+            manifest = json.loads((EXAMPLE_PACKAGE / "data_manifest.json").read_text(encoding="utf-8"))
+            manifest["fingerprint"]["value"] = "not-a-hash"
+            artifact.write_text(json.dumps(manifest), encoding="utf-8")
+
+            result = validate_artifact(artifact, schema_dir=SCHEMA_DIR, artifact_type="data_manifest")
+
+        self.assertFalse(result.ok)
+        self.assertTrue(any(issue.path == "$.fingerprint.value" for issue in result.issues))
+
+    def test_kill_verdict_requires_reason(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            package = Path(tmp) / "package"
+            shutil.copytree(RANDOM_BASELINE_PACKAGE, package)
+            verdict_path = package / "verdict_report.json"
+            verdict = json.loads(verdict_path.read_text(encoding="utf-8"))
+            verdict["kill_reason"] = ""
+            verdict_path.write_text(json.dumps(verdict), encoding="utf-8")
+
+            result = validate_package(package, schema_dir=SCHEMA_DIR)
+
+        self.assertFalse(result.ok)
+        self.assertTrue(any("kill_reason" in issue.path for issue in result.issues))
 
     def test_ledger_package_id_is_deterministic_across_copies(self) -> None:
         with tempfile.TemporaryDirectory() as left_tmp, tempfile.TemporaryDirectory() as right_tmp:
@@ -224,6 +713,59 @@ safety:
         self.assertFalse(second.appended)
         self.assertEqual(len(entries), 1)
         self.assertEqual(first.entry["package_id"], second.entry["package_id"])
+
+    def test_same_package_can_be_recorded_at_distinct_gates(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            ledger = Path(tmp) / "ledger.jsonl"
+            package = Path(tmp) / "package"
+            shutil.copytree(EXAMPLE_PACKAGE, package)
+
+            first = append_ledger_entry(ledger, package, gate="research_gate")
+            second = append_ledger_entry(ledger, package, gate="paper_gate")
+            entries = read_ledger_entries(ledger)
+
+        self.assertTrue(first.appended)
+        self.assertTrue(second.appended)
+        self.assertEqual(len(entries), 2)
+        self.assertEqual({entry["gate"] for entry in entries}, {"research_gate", "paper_gate"})
+
+    def test_ledger_rejects_invalid_gate_name(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            ledger = Path(tmp) / "ledger.jsonl"
+            package = Path(tmp) / "package"
+            shutil.copytree(EXAMPLE_PACKAGE, package)
+
+            with self.assertRaises(LedgerError):
+                append_ledger_entry(ledger, package, gate="Risk Review")
+
+    def test_ledger_verify_detects_artifact_tampering(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            ledger = Path(tmp) / "ledger.jsonl"
+            package = Path(tmp) / "package"
+            shutil.copytree(EXAMPLE_PACKAGE, package)
+            append_ledger_entry(ledger, package, gate="research_gate")
+            metrics_path = package / "metrics_report.json"
+            metrics = json.loads(metrics_path.read_text(encoding="utf-8"))
+            metrics["limitations"].append("changed after receipt")
+            metrics_path.write_text(json.dumps(metrics), encoding="utf-8")
+
+            issues = verify_ledger_file(ledger)
+
+        self.assertTrue(any(issue.path.endswith(".sha256") for issue in issues))
+
+    def test_ledger_refuses_append_after_artifact_tampering(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            ledger = Path(tmp) / "ledger.jsonl"
+            first_package = Path(tmp) / "first-package"
+            second_package = Path(tmp) / "second-package"
+            shutil.copytree(EXAMPLE_PACKAGE, first_package)
+            shutil.copytree(RANDOM_BASELINE_PACKAGE, second_package)
+            append_ledger_entry(ledger, first_package, gate="research_gate")
+            metrics_path = first_package / "metrics_report.json"
+            metrics_path.write_text(metrics_path.read_text(encoding="utf-8") + "\n", encoding="utf-8")
+
+            with self.assertRaises(LedgerError):
+                append_ledger_entry(ledger, second_package, gate="research_gate")
 
     def test_ledger_verify_detects_tampering(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

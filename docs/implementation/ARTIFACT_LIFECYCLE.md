@@ -6,7 +6,7 @@ validate, and support the gate claim.
 ## Lifecycle
 
 ```text
-source -> source_note -> StrategySpec -> screen -> backtest package
+source -> source_note -> hypothesis -> StrategySpec -> screen -> backtest package
        -> taste -> refire/simmer -> paper -> plate -> receipts
 ```
 
@@ -15,12 +15,18 @@ source -> source_note -> StrategySpec -> screen -> backtest package
 | Stage | Primary Artifact | Created By | Mutable? | Promotion Use |
 | --- | --- | --- | --- | --- |
 | Source review | `source_note` | `research` | yes until reviewed | Required for source-backed claims |
+| Hypothesis | `hypothesis` | `research` | yes before StrategySpec | Bridges claims to falsifiable tests |
 | Strategy definition | `StrategySpec` | `spec` | yes before first run | Required for all runs |
 | Data evidence | `data_manifest` | `backtest` or adapter | no after run | Required for every run |
 | Run evidence | `run_receipt` | runner or skill | no after run | Required for every run |
 | Performance evidence | `metrics_report` | runner or skill | no after run | Required for verdict |
 | Cost evidence | `cost_waterfall` | runner or skill | no after run | Required for verdict |
 | Decision | `verdict_report` | `taste` or gate skill | append/supersede | Required for gate |
+| Review findings | `findings` | `taste` | append/supersede | Explains independent gate result |
+| Repair scope | `refire_ticket` | `taste` or `refire` | append/supersede | Constrains confirmed fixes |
+| Paper plan | `paper_plan` | `paper` | no after observation starts | Required for paper observation |
+| Paper evidence | `observation_manifest`, `divergence_report` | `paper` | append/supersede | Required for risk review |
+| Approval evidence | `approval_pack` | `plate` | append/supersede | Human decision input only |
 | Ledger | receipt index | `receipts` | append-only | Required for audit |
 
 ## Package Layout
@@ -36,6 +42,7 @@ experiments/runs/<strategy-id>/<run-id>/
   metrics_report.yaml
   cost_waterfall.yaml
   verdict_report.yaml
+  findings.yaml            # required for paper_candidate
   logs/
 ```
 
@@ -58,7 +65,8 @@ artifact paths, SHA-256 fingerprints, strategy ID, run ID, gate, verdict, cost r
 manifest, open blockers, `previous_hash`, and `entry_hash`.
 
 `the-pass receipts add` validates a package before appending it. `the-pass receipts verify`
-recomputes the hash chain and fails if any previous entry was edited silently.
+recomputes the hash chain, resolves every recorded package artifact, and fails if a receipt
+or referenced artifact was edited, removed, or moved silently.
 
 ## Gate Inputs
 
@@ -79,9 +87,9 @@ Paper gate additionally requires:
 - Paper-vs-backtest divergence policy.
 - Risk review checklist.
 
-Live approval pack additionally requires:
+Live decision pack additionally requires:
 
-- Explicit human approval.
+- An explicit pending human approval decision with a named owner. The pack cannot approve it.
 - Exact config hash.
 - Adapter and venue.
 - Credential boundary.

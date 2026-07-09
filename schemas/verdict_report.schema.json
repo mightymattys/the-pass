@@ -10,13 +10,53 @@
     "created_at": { "type": "string" },
     "owner": { "type": "string" },
     "verdict": { "type": "string", "enum": ["kill", "revise", "paper_candidate", "blocked"] },
-    "summary": { "type": "string" },
-    "gate_results": { "type": "object" },
-    "evidence": { "type": "object" },
-    "risks": { "type": "object" },
-    "next_action": { "type": "string" },
+    "summary": { "type": "string", "minLength": 1 },
+    "gate_results": {
+      "type": "object",
+      "required": ["universal_hard_gates", "asset_class_gates", "failed_gates"],
+      "properties": {
+        "universal_hard_gates": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "asset_class_gates": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "failed_gates": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "required": ["metrics_report", "cost_waterfall", "data_manifest", "source_notes"],
+      "properties": {
+        "metrics_report": { "type": "string", "minLength": 1 },
+        "cost_waterfall": { "type": "string", "minLength": 1 },
+        "data_manifest": { "type": "string", "minLength": 1 },
+        "source_notes": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+      }
+    },
+    "risks": {
+      "type": "object",
+      "required": ["statistical", "execution", "data", "operational"],
+      "properties": {
+        "statistical": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "execution": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "data": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "operational": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+      }
+    },
+    "next_action": { "type": "string", "minLength": 1 },
     "kill_reason": { "type": "string" },
     "review_required_by": { "type": "array", "items": { "type": "string" } }
   },
+  "allOf": [
+    {
+      "if": { "properties": { "verdict": { "const": "kill" } } },
+      "then": { "required": ["kill_reason"], "properties": { "kill_reason": { "minLength": 1 } } }
+    },
+    {
+      "if": { "properties": { "verdict": { "enum": ["blocked", "revise"] } } },
+      "then": { "properties": { "gate_results": { "properties": { "failed_gates": { "minItems": 1 } } } } }
+    },
+    {
+      "if": { "properties": { "verdict": { "const": "paper_candidate" } } },
+      "then": { "properties": { "gate_results": { "properties": { "failed_gates": { "maxItems": 0 } } } } }
+    }
+  ],
   "additionalProperties": true
 }

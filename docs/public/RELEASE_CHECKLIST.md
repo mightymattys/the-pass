@@ -16,6 +16,7 @@ Status: passed for `main` on 2026-07-09.
 
 - [x] `.codex-plugin/plugin.json` validates.
 - [x] Every skill has a clear trigger and safety boundary.
+- [x] Every skill passes the canonical skill validator and uses its folder name as frontmatter name.
 - [x] Skill implementation contracts are documented.
 - [x] README explains the product and live-trading boundary.
 - [x] ADRs for product scope, storage, engine, providers, risk, and public distribution are
@@ -23,9 +24,7 @@ Status: passed for `main` on 2026-07-09.
 
 ## Artifact Readiness
 
-- [x] Templates exist for source notes, StrategySpec, data manifests, run receipts, metrics,
-      cost waterfalls, and verdicts.
-- [x] Schemas exist for core artifacts and adapter descriptors.
+- [x] Templates and schemas exist for all 18 research, core, adapter, and slash-workflow artifacts.
 - [x] Artifact lifecycle is documented.
 - [x] Public examples are synthetic or public-safe.
 - [x] Synthetic golden path package is present and stays blocked from paper promotion.

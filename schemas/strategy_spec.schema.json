@@ -7,10 +7,7 @@
   "properties": {
     "id": { "type": "string", "minLength": 1 },
     "name": { "type": "string" },
-    "status": {
-      "type": "string",
-      "enum": ["draft", "research", "killed", "paper_candidate", "paper", "risk_review", "live_candidate"]
-    },
+    "status": { "enum": ["draft", "research", "killed", "paper_candidate", "paper", "risk_review", "live_candidate"] },
     "owner": { "type": "string" },
     "created_at": { "type": "string" },
     "market": {
@@ -18,22 +15,159 @@
       "required": ["asset_class", "venues", "instruments", "timeframes"],
       "properties": {
         "asset_class": { "type": "string" },
-        "venues": { "type": "array", "items": { "type": "string" } },
-        "instruments": { "type": "array", "items": { "type": "string" } },
-        "timeframes": { "type": "array", "items": { "type": "string" } }
-      },
-      "additionalProperties": true
+        "venues": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "instruments": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "timeframes": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+      }
     },
-    "edge": { "type": "object" },
-    "data": { "type": "object" },
-    "signal": { "type": "object" },
-    "execution": { "type": "object" },
-    "risk": { "type": "object" },
-    "validation": { "type": "object" },
-    "gates": { "type": "object" },
-    "done_when": { "type": "array", "items": { "type": "string" } },
-    "kill_when": { "type": "array", "items": { "type": "string" } },
+    "edge": {
+      "type": "object",
+      "required": ["primary_family", "secondary_tags", "thesis", "why_now", "expected_failure_modes"],
+      "properties": {
+        "primary_family": { "type": "string" },
+        "secondary_tags": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "thesis": { "type": "string" },
+        "why_now": { "type": "string" },
+        "expected_failure_modes": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+      }
+    },
+    "data": {
+      "type": "object",
+      "required": ["required_sources", "required_fields", "minimum_history", "manifest_path"],
+      "properties": {
+        "required_sources": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "required_fields": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "minimum_history": { "type": "string" },
+        "manifest_path": { "type": "string" }
+      }
+    },
+    "signal": {
+      "type": "object",
+      "required": ["inputs", "transforms", "decision_time_policy", "lookahead_controls"],
+      "properties": {
+        "inputs": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "transforms": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "decision_time_policy": { "type": "string" },
+        "lookahead_controls": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+      }
+    },
+    "execution": {
+      "type": "object",
+      "required": ["order_type", "fill_model", "latency_assumption_ms", "fee_model", "slippage_model"],
+      "properties": {
+        "order_type": { "enum": ["diagnostic_only", "market", "limit", "paper_only"] },
+        "fill_model": { "type": "string" },
+        "latency_assumption_ms": { "type": ["number", "null"], "minimum": 0 },
+        "fee_model": { "type": "string" },
+        "slippage_model": { "type": "string" }
+      }
+    },
+    "risk": {
+      "type": "object",
+      "required": ["sizing_rule", "max_exposure", "max_drawdown", "kill_switches"],
+      "properties": {
+        "sizing_rule": { "type": "string" },
+        "max_exposure": { "type": "string" },
+        "max_drawdown": { "type": "string" },
+        "kill_switches": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+      }
+    },
+    "validation": {
+      "type": "object",
+      "required": ["train_test_split", "holdout_policy", "null_baselines", "parameter_sweeps", "required_metrics"],
+      "properties": {
+        "train_test_split": { "type": "string" },
+        "holdout_policy": { "type": "string" },
+        "null_baselines": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "parameter_sweeps": { "type": "array" },
+        "required_metrics": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+      }
+    },
+    "gates": {
+      "type": "object",
+      "required": ["research_gate", "paper_gate", "live_gate"],
+      "properties": {
+        "research_gate": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "paper_gate": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "live_gate": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+      }
+    },
+    "done_when": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+    "kill_when": { "type": "array", "items": { "type": "string", "minLength": 1 } },
     "notes": { "type": "string" }
   },
+  "allOf": [
+    {
+      "if": { "properties": { "status": { "enum": ["research", "paper_candidate", "paper", "risk_review", "live_candidate"] } } },
+      "then": {
+        "properties": {
+          "name": { "minLength": 1 },
+          "market": {
+            "properties": {
+              "asset_class": { "minLength": 1 },
+              "venues": { "minItems": 1 },
+              "instruments": { "minItems": 1 },
+              "timeframes": { "minItems": 1 }
+            }
+          },
+          "edge": {
+            "properties": {
+              "primary_family": { "minLength": 1 },
+              "thesis": { "minLength": 1 },
+              "expected_failure_modes": { "minItems": 1 }
+            }
+          },
+          "data": {
+            "properties": {
+              "required_sources": { "minItems": 1 },
+              "required_fields": { "minItems": 1 },
+              "minimum_history": { "minLength": 1 }
+            }
+          },
+          "signal": {
+            "properties": {
+              "inputs": { "minItems": 1 },
+              "transforms": { "minItems": 1 },
+              "decision_time_policy": { "minLength": 1 },
+              "lookahead_controls": { "minItems": 1 }
+            }
+          },
+          "execution": {
+            "properties": {
+              "fill_model": { "minLength": 1 },
+              "latency_assumption_ms": { "type": "number" },
+              "fee_model": { "minLength": 1 },
+              "slippage_model": { "minLength": 1 }
+            }
+          },
+          "risk": {
+            "properties": {
+              "sizing_rule": { "minLength": 1 },
+              "max_exposure": { "minLength": 1 },
+              "max_drawdown": { "minLength": 1 },
+              "kill_switches": { "minItems": 1 }
+            }
+          },
+          "validation": {
+            "properties": {
+              "train_test_split": { "minLength": 1 },
+              "holdout_policy": { "minLength": 1 },
+              "null_baselines": { "minItems": 1 },
+              "required_metrics": { "minItems": 1 }
+            }
+          },
+          "gates": {
+            "properties": {
+              "research_gate": { "minItems": 1 },
+              "paper_gate": { "minItems": 1 },
+              "live_gate": { "minItems": 1 }
+            }
+          },
+          "done_when": { "minItems": 1 },
+          "kill_when": { "minItems": 1 }
+        }
+      }
+    }
+  ],
   "additionalProperties": true
 }

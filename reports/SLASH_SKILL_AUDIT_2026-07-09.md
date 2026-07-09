@@ -3,6 +3,11 @@
 Date: 2026-07-09.
 Scope: `/the-pass:*` skills and their command contracts.
 
+This initial audit is superseded by
+[SYSTEM_HARDENING_AUDIT_2026-07-09.md](SYSTEM_HARDENING_AUDIT_2026-07-09.md). Its
+textual consistency checks passed, but it did not run the canonical per-skill validator or
+verify that every promised output had a registered schema.
+
 ## Verdict
 
 `pass after fixes`.

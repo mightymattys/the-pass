@@ -1,5 +1,5 @@
 ---
-name: "the-pass:refire"
+name: refire
 description: "Fix confirmed The Pass review findings without expanding scope or changing the strategy thesis."
 ---
 
@@ -50,6 +50,7 @@ Use this skill after `taste` confirms actionable issues.
 Run the command named by the finding. For package issues, default to:
 
 ```bash
+the-pass validate <refire-ticket> --type refire_ticket
 the-pass validate-package <package-dir>
 the-pass receipts add <package-dir> --gate <gate-name>
 the-pass receipts verify

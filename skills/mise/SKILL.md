@@ -1,5 +1,5 @@
 ---
-name: "the-pass:mise"
+name: mise
 description: "Set up or audit a repository for The Pass workflow: ADRs, templates, artifact folders, public safety, and no-live-trading boundaries."
 ---
 

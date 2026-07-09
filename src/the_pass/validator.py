@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import math
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -16,12 +17,22 @@ from .adapter_contract import validate_adapter_contract
 ARTIFACT_TYPES = {
     "adapter": "adapter.schema.json",
     "source_note": "source_note.schema.json",
+    "hypothesis": "hypothesis.schema.json",
     "strategy_spec": "strategy_spec.schema.json",
     "data_manifest": "data_manifest.schema.json",
     "run_receipt": "run_receipt.schema.json",
     "metrics_report": "metrics_report.schema.json",
     "cost_waterfall": "cost_waterfall.schema.json",
     "verdict_report": "verdict_report.schema.json",
+    "screen_report": "screen_report.schema.json",
+    "findings": "findings.schema.json",
+    "refire_ticket": "refire_ticket.schema.json",
+    "simmer_laps": "simmer_laps.schema.json",
+    "paper_plan": "paper_plan.schema.json",
+    "observation_manifest": "observation_manifest.schema.json",
+    "divergence_report": "divergence_report.schema.json",
+    "approval_pack": "approval_pack.schema.json",
+    "receipt_summary": "receipt_summary.schema.json",
 }
 
 PACKAGE_CORE_ARTIFACTS = (
@@ -33,7 +44,7 @@ PACKAGE_CORE_ARTIFACTS = (
     "verdict_report",
 )
 
-PACKAGE_OPTIONAL_ARTIFACTS = ("adapter", "source_note")
+PACKAGE_OPTIONAL_ARTIFACTS = ("adapter", "source_note", "findings")
 ARTIFACT_EXTENSIONS = (".json", ".yaml", ".yml")
 
 
@@ -134,6 +145,8 @@ def detect_artifact_type(path: Path, document: Any) -> str | None:
         return "adapter"
     if {"type", "priority", "status", "claim", "evidence", "required_tests"} <= keys:
         return "source_note"
+    if {"status", "proposed_name", "source_notes", "edge", "market", "test", "risks", "kill_when", "blockers"} <= keys:
+        return "hypothesis"
     if {"market", "edge", "data", "signal", "execution", "risk", "validation", "gates"} <= keys:
         return "strategy_spec"
     if {"dataset_name", "source", "coverage", "schema", "quality", "fingerprint"} <= keys:
@@ -146,7 +159,88 @@ def detect_artifact_type(path: Path, document: Any) -> str | None:
         return "cost_waterfall"
     if {"verdict", "gate_results", "evidence", "risks", "next_action"} <= keys:
         return "verdict_report"
+    if {"strategy_spec", "mode", "sample", "variants", "baseline", "costs", "results", "decision", "safety"} <= keys:
+        return "screen_report"
+    if {"package", "reviewer", "target_gate", "findings", "summary"} <= keys:
+        return "findings"
+    if {"source_finding", "package", "target_gate", "scope", "fix_plan", "result"} <= keys:
+        return "refire_ticket"
+    if {"target_gate", "package", "budget", "laps", "final"} <= keys:
+        return "simmer_laps"
+    if {"source_package", "strategy_spec", "adapter", "config_hash", "observation", "decision_logic", "divergence_policy", "safety", "status"} <= keys:
+        return "paper_plan"
+    if {"paper_plan", "source_package", "data_capture", "signals", "simulated_orders", "quality"} <= keys:
+        return "observation_manifest"
+    if {"paper_plan", "observation_manifest", "sample", "comparisons", "breaches", "decision"} <= keys:
+        return "divergence_report"
+    if {"strategy_id", "requested_gate", "config_hash", "adapter", "evidence", "risk_limits", "operations", "human_decisions_required", "status"} <= keys:
+        return "approval_pack"
+    if {"ledger", "filters", "summary", "packages", "status"} <= keys:
+        return "receipt_summary"
     return None
+
+
+def validate_workflow_artifact(artifact_type: str, document: dict[str, Any]) -> list[ValidationIssue]:
+    """Check workflow invariants that are awkward or unclear in JSON Schema."""
+
+    issues: list[ValidationIssue] = []
+
+    if artifact_type == "screen_report":
+        decision = document["decision"]
+        if decision["status"] == "backtest_candidate" and not document["variants"]["tried"]:
+            issues.append(ValidationIssue("$.variants.tried", "must record at least one tried variant"))
+
+    if artifact_type == "findings":
+        summary = document["summary"]
+        blocking = [
+            finding
+            for finding in document["findings"]
+            if finding["blocks_promotion"] and finding["status"] in {"open", "confirmed"}
+        ]
+        if summary["gate_result"] == "pass" and blocking:
+            issues.append(ValidationIssue("$.summary.gate_result", "cannot pass with unresolved blocking findings"))
+
+    if artifact_type == "simmer_laps":
+        if len(document["laps"]) > document["budget"]["max_laps"]:
+            issues.append(ValidationIssue("$.laps", "cannot exceed budget.max_laps"))
+        lap_numbers = [lap["lap"] for lap in document["laps"]]
+        if lap_numbers != list(range(1, len(lap_numbers) + 1)):
+            issues.append(ValidationIssue("$.laps", "lap numbers must be contiguous and start at 1"))
+        movement = [lap["moved_gate"] for lap in document["laps"]]
+        if document["final"]["status"] == "passed" and not any(movement):
+            issues.append(ValidationIssue("$.final.status", "cannot pass when no lap moved the target gate"))
+        if any(not movement[index] and not movement[index + 1] for index in range(len(movement) - 2)):
+            issues.append(ValidationIssue("$.laps", "must stop after two consecutive no-progress laps"))
+
+    if artifact_type == "paper_plan":
+        decision_logic = document["decision_logic"]
+        if not decision_logic["same_as_backtest"] and not decision_logic["differences"]:
+            issues.append(
+                ValidationIssue(
+                    "$.decision_logic.differences",
+                    "must document differences when paper logic differs from backtest",
+                )
+            )
+
+    if artifact_type == "divergence_report":
+        blocking_breaches = [breach for breach in document["breaches"] if breach["blocks_promotion"]]
+        if document["decision"]["status"] == "risk_review_candidate" and blocking_breaches:
+            issues.append(
+                ValidationIssue(
+                    "$.decision.status",
+                    "cannot be risk_review_candidate while a blocking divergence breach exists",
+                )
+            )
+
+    if artifact_type == "receipt_summary":
+        if document["summary"]["entries"] != len(document["packages"]):
+            issues.append(ValidationIssue("$.summary.entries", "must equal the number of package rows"))
+
+    return issues
+
+
+def is_finite_number(value: Any) -> bool:
+    return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
 
 
 def schema_path(error: ValidationError) -> str:
@@ -207,9 +301,22 @@ def validate_artifact(
     for error in sorted(validator.iter_errors(document), key=lambda item: list(item.absolute_path)):
         issues.append(ValidationIssue(schema_path(error), error.message))
 
-    if detected_type == "adapter" and not issues:
-        for issue in validate_adapter_contract(document):
-            issues.append(ValidationIssue(issue.path, issue.message, issue.severity))
+    if not issues:
+        if detected_type == "adapter":
+            for issue in validate_adapter_contract(document):
+                issues.append(ValidationIssue(issue.path, issue.message, issue.severity))
+        elif detected_type in {
+            "screen_report",
+            "findings",
+            "refire_ticket",
+            "simmer_laps",
+            "paper_plan",
+            "observation_manifest",
+            "divergence_report",
+            "approval_pack",
+            "receipt_summary",
+        }:
+            issues.extend(validate_workflow_artifact(detected_type, document))
 
     schema_id = schema.get("$id")
     return ValidationResult(not issues, issues, detected_type, schema_id if isinstance(schema_id, str) else None)
@@ -240,6 +347,18 @@ def link_exists(package_dir: Path, value: Any) -> bool:
     return resolved.exists()
 
 
+def require_exact_artifact_link(
+    package_dir: Path,
+    value: Any,
+    expected_path: Path,
+    issue_path: str,
+    issues: list[ValidationIssue],
+) -> None:
+    resolved = resolve_package_link(package_dir, value)
+    if resolved is None or resolved != expected_path.resolve():
+        issues.append(ValidationIssue(issue_path, f"must reference {expected_path.name}"))
+
+
 def require_false_flag(document: dict[str, Any], section: str, field: str, issues: list[ValidationIssue]) -> None:
     section_value = document.get(section)
     if not isinstance(section_value, dict) or section_value.get(field) is not False:
@@ -256,9 +375,31 @@ def validate_package(package_dir: Path, *, schema_dir: Path | None = None) -> Va
 
     artifact_paths: dict[str, Path] = {}
     for artifact_type in (*PACKAGE_CORE_ARTIFACTS, *PACKAGE_OPTIONAL_ARTIFACTS):
-        path = find_artifact(package_dir, artifact_type)
-        if path is not None:
-            artifact_paths[artifact_type] = path
+        matches: list[Path] = []
+        for extension in ARTIFACT_EXTENSIONS:
+            candidate = package_dir / f"{artifact_type}{extension}"
+            if not candidate.exists():
+                continue
+            try:
+                candidate.resolve().relative_to(package_dir)
+            except ValueError:
+                issues.append(
+                    ValidationIssue(
+                        str(candidate),
+                        f"artifact {artifact_type} escapes package directory",
+                    )
+                )
+                continue
+            matches.append(candidate)
+        if len(matches) > 1:
+            issues.append(
+                ValidationIssue(
+                    str(package_dir),
+                    f"ambiguous artifact {artifact_type}: " + ", ".join(path.name for path in matches),
+                )
+            )
+        if matches:
+            artifact_paths[artifact_type] = matches[0]
 
     for artifact_type in PACKAGE_CORE_ARTIFACTS:
         if artifact_type not in artifact_paths:
@@ -282,32 +423,39 @@ def validate_package(package_dir: Path, *, schema_dir: Path | None = None) -> Va
         return ValidationResult(False, issues, "package")
 
     receipt = documents["run_receipt"]
+    strategy_spec = documents["strategy_spec"]
     metrics = documents["metrics_report"]
     costs = documents["cost_waterfall"]
+    data_manifest = documents["data_manifest"]
     verdict = documents["verdict_report"]
 
-    if not link_exists(package_dir, receipt.get("strategy_spec")):
-        issues.append(ValidationIssue("$.run_receipt.strategy_spec", "linked StrategySpec does not exist"))
-    if not link_exists(package_dir, receipt.get("data_manifest")):
-        issues.append(ValidationIssue("$.run_receipt.data_manifest", "linked data manifest does not exist"))
+    require_exact_artifact_link(
+        package_dir,
+        receipt.get("strategy_spec"),
+        artifact_paths["strategy_spec"],
+        "$.run_receipt.strategy_spec",
+        issues,
+    )
+    require_exact_artifact_link(
+        package_dir,
+        receipt.get("data_manifest"),
+        artifact_paths["data_manifest"],
+        "$.run_receipt.data_manifest",
+        issues,
+    )
 
     outputs = receipt.get("outputs")
     if not isinstance(outputs, dict):
         issues.append(ValidationIssue("$.run_receipt.outputs", "must be an object"))
     else:
-        expected_outputs = {
-            "metrics_report": "metrics_report",
-            "cost_waterfall": "cost_waterfall",
-            "verdict_report": "verdict_report",
-        }
-        for output_field in expected_outputs:
-            if not link_exists(package_dir, outputs.get(output_field)):
-                issues.append(
-                    ValidationIssue(
-                        f"$.run_receipt.outputs.{output_field}",
-                        "linked output artifact does not exist",
-                    )
-                )
+        for output_field in ("metrics_report", "cost_waterfall", "verdict_report"):
+            require_exact_artifact_link(
+                package_dir,
+                outputs.get(output_field),
+                artifact_paths[output_field],
+                f"$.run_receipt.outputs.{output_field}",
+                issues,
+            )
 
     for field in ("live_trading_enabled", "real_order_path_available", "credentials_available"):
         require_false_flag(receipt, "safety", field, issues)
@@ -321,25 +469,45 @@ def validate_package(package_dir: Path, *, schema_dir: Path | None = None) -> Va
                 )
             )
 
+    linked_source_note_documents: list[dict[str, Any]] = []
     evidence = verdict.get("evidence")
     if not isinstance(evidence, dict):
         issues.append(ValidationIssue("$.verdict_report.evidence", "must be an object"))
     else:
         for field in ("metrics_report", "cost_waterfall", "data_manifest"):
-            if not link_exists(package_dir, evidence.get(field)):
-                issues.append(ValidationIssue(f"$.verdict_report.evidence.{field}", "linked evidence does not exist"))
+            require_exact_artifact_link(
+                package_dir,
+                evidence.get(field),
+                artifact_paths[field],
+                f"$.verdict_report.evidence.{field}",
+                issues,
+            )
         source_notes = evidence.get("source_notes", [])
         if not isinstance(source_notes, list):
             issues.append(ValidationIssue("$.verdict_report.evidence.source_notes", "must be an array"))
         else:
             for index, source_note in enumerate(source_notes):
-                if not link_exists(package_dir, source_note):
+                source_note_path = resolve_package_link(package_dir, source_note)
+                if source_note_path is None or not link_exists(package_dir, source_note):
                     issues.append(
                         ValidationIssue(
                             f"$.verdict_report.evidence.source_notes[{index}]",
                             "linked source note does not exist",
                         )
                     )
+                    continue
+                source_result = validate_artifact(source_note_path, schema_dir=schema_dir, artifact_type="source_note")
+                issues.extend(
+                    ValidationIssue(
+                        f"{source_note_path.name}:{issue.path}",
+                        issue.message,
+                    )
+                    for issue in source_result.issues
+                )
+                if source_result.ok:
+                    source_document = load_document(source_note_path)
+                    if isinstance(source_document, dict):
+                        linked_source_note_documents.append(source_document)
 
     adapter = documents.get("adapter")
     if adapter is not None:
@@ -358,5 +526,185 @@ def validate_package(package_dir: Path, *, schema_dir: Path | None = None) -> Va
                     "diagnostic adapters cannot produce paper_candidate verdicts",
                 )
             )
+
+    if verdict.get("verdict") == "paper_candidate":
+        if strategy_spec.get("status") not in {"research", "paper_candidate"}:
+            issues.append(
+                ValidationIssue(
+                    "$.strategy_spec.status",
+                    "paper_candidate requires a research-ready StrategySpec",
+                )
+            )
+        if not linked_source_note_documents:
+            issues.append(ValidationIssue("$.verdict_report.evidence.source_notes", "paper_candidate requires source notes"))
+        for index, source_note in enumerate(linked_source_note_documents):
+            if source_note.get("status") not in {"reviewed", "implemented"}:
+                issues.append(
+                    ValidationIssue(
+                        f"$.verdict_report.evidence.source_notes[{index}]",
+                        "paper_candidate requires reviewed or implemented source notes",
+                    )
+                )
+        findings = documents.get("findings")
+        if findings is None:
+            issues.append(
+                ValidationIssue(
+                    "$.findings",
+                    "paper_candidate requires independent findings with a passed research_gate",
+                )
+            )
+        else:
+            summary = findings["summary"]
+            if findings["target_gate"] != "research_gate":
+                issues.append(ValidationIssue("$.findings.target_gate", "must be research_gate for paper_candidate"))
+            if summary["gate_result"] != "pass":
+                issues.append(ValidationIssue("$.findings.summary.gate_result", "must be pass for paper_candidate"))
+            reviewer = findings["reviewer"]
+            owners = {owner for owner in (strategy_spec.get("owner"), receipt.get("owner")) if owner}
+            if reviewer in owners:
+                issues.append(ValidationIssue("$.findings.reviewer", "must be independent from strategy and run owners"))
+            if verdict.get("owner") != reviewer:
+                issues.append(ValidationIssue("$.verdict_report.owner", "must match the independent findings reviewer"))
+
+        failed_gates = verdict.get("gate_results", {}).get("failed_gates", [])
+        if failed_gates:
+            issues.append(ValidationIssue("$.verdict_report.gate_results.failed_gates", "must be empty for paper_candidate"))
+        if adapter is None or adapter.get("mode") not in {"research", "paper"}:
+            issues.append(ValidationIssue("$.adapter.mode", "paper_candidate requires a research or paper adapter"))
+        if not is_finite_number(costs.get("gross_pnl")) or not is_finite_number(costs.get("net_pnl")):
+            issues.append(ValidationIssue("$.cost_waterfall", "paper_candidate requires numeric gross_pnl and net_pnl"))
+        cost_components = costs.get("costs", {})
+        required_costs = ("fees", "spread", "slippage")
+        if not isinstance(cost_components, dict) or any(
+            not is_finite_number(cost_components.get(field)) or cost_components[field] < 0
+            for field in required_costs
+        ):
+            issues.append(
+                ValidationIssue(
+                    "$.cost_waterfall.costs",
+                    "paper_candidate requires non-negative numeric fees, spread, and slippage",
+                )
+            )
+        else:
+            numeric_costs = [value for value in cost_components.values() if is_finite_number(value)]
+            expected_net = costs["gross_pnl"] - sum(numeric_costs)
+            if not math.isclose(costs["net_pnl"], expected_net, rel_tol=1e-9, abs_tol=1e-12):
+                issues.append(
+                    ValidationIssue(
+                        "$.cost_waterfall.net_pnl",
+                        "must equal gross_pnl minus numeric cost components",
+                    )
+                )
+        cost_assumptions = costs.get("assumptions", {})
+        required_assumptions = ("fee_model", "fill_model", "latency_model", "depth_model")
+        if not isinstance(cost_assumptions, dict) or any(
+            not isinstance(cost_assumptions.get(field), str)
+            or not cost_assumptions[field].strip()
+            or cost_assumptions[field].strip().lower() in {"none", "n/a", "not applicable"}
+            for field in required_assumptions
+        ):
+            issues.append(
+                ValidationIssue(
+                    "$.cost_waterfall.assumptions",
+                    "paper_candidate requires explicit fee, fill, latency, and depth assumptions",
+                )
+            )
+        for metric_group in ("gross_metrics", "net_metrics"):
+            values = metrics.get(metric_group, {})
+            if not isinstance(values, dict) or not any(is_finite_number(value) for value in values.values()):
+                issues.append(
+                    ValidationIssue(
+                        f"$.metrics_report.{metric_group}",
+                        "paper_candidate requires at least one calculated metric",
+                    )
+                )
+        robustness = metrics.get("robustness", {})
+        baseline_result = robustness.get("null_baseline_result") if isinstance(robustness, dict) else None
+        if (
+            not isinstance(baseline_result, str)
+            or not baseline_result.strip()
+            or baseline_result.strip().lower().startswith(("not applicable", "n/a", "none"))
+        ):
+            issues.append(
+                ValidationIssue(
+                    "$.metrics_report.robustness.null_baseline_result",
+                    "paper_candidate requires a null or random baseline result",
+                )
+            )
+        sample = metrics.get("sample", {})
+        trades = sample.get("trades") if isinstance(sample, dict) else None
+        if not isinstance(trades, int) or isinstance(trades, bool) or trades < 1:
+            issues.append(ValidationIssue("$.metrics_report.sample.trades", "paper_candidate requires at least one trade"))
+        if (
+            not isinstance(sample, dict)
+            or sample.get("evaluation_scope") not in {"out_of_sample", "walk_forward"}
+            or not sample.get("holdout_start_time")
+            or not sample.get("holdout_end_time")
+        ):
+            issues.append(
+                ValidationIssue(
+                    "$.metrics_report.sample",
+                    "paper_candidate requires an explicit out-of-sample or walk-forward holdout window",
+                )
+            )
+        if not isinstance(robustness, dict) or not any(
+            is_finite_number(robustness.get(field)) for field in ("dsr_or_psr", "pbo")
+        ):
+            issues.append(
+                ValidationIssue(
+                    "$.metrics_report.robustness",
+                    "paper_candidate requires numeric DSR/PSR or PBO evidence",
+                )
+            )
+        if not isinstance(robustness, dict) or not robustness.get("stress_results"):
+            issues.append(
+                ValidationIssue(
+                    "$.metrics_report.robustness.stress_results",
+                    "paper_candidate requires stress-test results",
+                )
+            )
+        parameter_stability = robustness.get("parameter_stability") if isinstance(robustness, dict) else None
+        if (
+            not isinstance(parameter_stability, str)
+            or not parameter_stability.strip()
+            or parameter_stability.strip().lower().startswith(("not applicable", "n/a", "none"))
+        ):
+            issues.append(
+                ValidationIssue(
+                    "$.metrics_report.robustness.parameter_stability",
+                    "paper_candidate requires parameter-stability evidence",
+                )
+            )
+        execution = strategy_spec.get("execution", {})
+        required_execution = ("order_type", "fill_model", "latency_assumption_ms", "fee_model", "slippage_model")
+        if not isinstance(execution, dict) or any(
+            field not in execution or execution[field] in (None, "") for field in required_execution
+        ) or execution.get("order_type") == "diagnostic_only" or any(
+            isinstance(execution.get(field), str)
+            and execution[field].strip().lower() in {"none", "n/a", "not applicable"}
+            for field in ("fill_model", "fee_model", "slippage_model")
+        ):
+            issues.append(
+                ValidationIssue(
+                    "$.strategy_spec.execution",
+                    "paper_candidate requires explicit order, fill, latency, fee, and slippage assumptions",
+                )
+            )
+        validation_plan = strategy_spec.get("validation", {})
+        if not isinstance(validation_plan, dict) or any(
+            not isinstance(validation_plan.get(field), str)
+            or not validation_plan[field].strip()
+            or validation_plan[field].strip().lower().startswith(("not applicable", "n/a", "none"))
+            for field in ("train_test_split", "holdout_policy")
+        ):
+            issues.append(
+                ValidationIssue(
+                    "$.strategy_spec.validation",
+                    "paper_candidate requires explicit train/test split and holdout policy",
+                )
+            )
+        fingerprint = data_manifest.get("fingerprint", {})
+        if fingerprint.get("method") != "sha256" or not isinstance(fingerprint.get("value"), str):
+            issues.append(ValidationIssue("$.data_manifest.fingerprint", "paper_candidate requires a SHA-256 fingerprint"))
 
     return ValidationResult(not issues, issues, "package")

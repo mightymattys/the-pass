@@ -1,5 +1,5 @@
 ---
-name: "the-pass:plate"
+name: plate
 description: "Prepare the next-gate approval pack after a candidate has passed research, backtest, taste, and paper requirements."
 ---
 
@@ -41,6 +41,8 @@ packages evidence for the next human-controlled gate.
 - Live approval must be explicit, dated, and tied to an exact adapter and config hash.
 - Public packs must redact secrets, account identifiers, and proprietary data.
 - Package evidence; do not grant approval.
+- Keep every entry in `human_decisions_required` at `pending`. Preserve externally supplied
+  decisions as linked evidence; never manufacture or change human approval state.
 - Verify that every claimed passed gate points to a receipt and verdict.
 - List unresolved risks and required human decisions prominently.
 - If any approval-critical artifact is missing, return `blocked`.
@@ -48,6 +50,7 @@ packages evidence for the next human-controlled gate.
 ## Required Checks
 
 ```bash
+the-pass validate <approval-pack> --type approval_pack
 the-pass receipts verify
 the-pass receipts
 ```

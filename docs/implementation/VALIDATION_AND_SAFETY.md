@@ -45,10 +45,13 @@ Rules:
 
 - YAML and JSON inputs are accepted.
 - Every artifact declares or implies its schema.
+- Core run artifacts and all slash-workflow outputs have registered JSON Schemas.
 - Required fields must be present before gate use.
 - Validation errors must be actionable and point to fields.
 - Adapter artifacts receive additional contract checks for provider review, mode safety,
   timestamp, cost, fill, risk, and settlement policies.
+- Workflow artifacts receive state-dependent checks, such as blocking findings preventing
+  `pass` and blocking divergence breaches preventing `risk_review_candidate`.
 
 ## Package Validation
 
@@ -67,6 +70,25 @@ The receipt must link to the other artifacts and include safety flags:
 - `real_order_path_available: false`
 - `credentials_available: false`
 
+Links must point to the exact canonical artifact, not merely to any existing file. Multiple
+files for the same artifact type (for example both JSON and YAML) make the package ambiguous
+and invalid.
+
+A `paper_candidate` additionally requires schema-valid independent findings with a passed
+`research_gate`, a reviewer distinct from strategy/run ownership, a matching verdict owner,
+calculated gross and net evidence, a null/random baseline result, no failed gates, and a
+research- or paper-mode adapter. Calculated evidence means finite numeric values, at least one
+trade, and explicit order, fill, latency, fee, and slippage assumptions.
+The data manifest must also identify provider, license, time coverage, schema, quality policy,
+positive row count, and a 64-character SHA-256 fingerprint. Promotion cost waterfalls must
+contain numeric fee/spread/slippage components whose sum reconciles gross PnL to net PnL.
+Promotion also requires an explicit out-of-sample or walk-forward holdout window, numeric
+DSR/PSR or PBO evidence, stress-test results, parameter-stability evidence, and a predefined
+train/test plus holdout policy.
+Every source note used for promotion must contain the claim, evidence, limitations, market
+applicability, required tests, failure modes, and system requirements, and its status must be
+`reviewed` or `implemented`.
+
 ## Receipt Ledger Validation
 
 The receipt ledger is append-only JSONL. Each entry includes:
@@ -83,8 +105,9 @@ The receipt ledger is append-only JSONL. Each entry includes:
 - previous entry hash,
 - entry hash.
 
-`the-pass receipts add` refuses to append when the existing ledger hash chain is invalid.
-`the-pass receipts verify` recomputes the chain and fails if an entry was edited silently.
+`the-pass receipts add` refuses to append when the existing ledger or any referenced artifact
+is invalid. `the-pass receipts verify` recomputes the chain and artifact hashes and fails if
+an entry or recorded artifact was edited silently.
 
 ## Public Safety Blocks
 

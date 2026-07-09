@@ -8,10 +8,33 @@
     "id": { "type": "string", "minLength": 1 },
     "run_receipt": { "type": "string" },
     "created_at": { "type": "string" },
-    "sample": { "type": "object" },
-    "gross_metrics": { "type": "object" },
-    "net_metrics": { "type": "object" },
-    "robustness": { "type": "object" },
+    "sample": {
+      "type": "object",
+      "required": ["start_time", "end_time", "trades", "signals", "instruments"],
+      "properties": {
+        "start_time": { "type": "string", "minLength": 1 },
+        "end_time": { "type": "string", "minLength": 1 },
+        "evaluation_scope": { "enum": ["in_sample", "out_of_sample", "walk_forward", "diagnostic"] },
+        "holdout_start_time": { "type": "string" },
+        "holdout_end_time": { "type": "string" },
+        "trades": { "type": "integer", "minimum": 0 },
+        "signals": { "type": "integer", "minimum": 0 },
+        "instruments": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } }
+      }
+    },
+    "gross_metrics": { "type": "object", "minProperties": 1 },
+    "net_metrics": { "type": "object", "minProperties": 1 },
+    "robustness": {
+      "type": "object",
+      "required": ["null_baseline_result", "dsr_or_psr", "pbo", "stress_results", "parameter_stability"],
+      "properties": {
+        "null_baseline_result": { "type": "string" },
+        "dsr_or_psr": { "type": ["number", "null"] },
+        "pbo": { "type": ["number", "null"] },
+        "stress_results": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "parameter_stability": { "type": "string" }
+      }
+    },
     "limitations": { "type": "array", "items": { "type": "string" } }
   },
   "additionalProperties": true

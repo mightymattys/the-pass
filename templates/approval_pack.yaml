@@ -27,4 +27,9 @@ human_decisions_required:
     owner: ""
     status: pending
 
+safety:
+  grants_approval: false
+  live_trading_enabled: false
+  real_order_path_available: false
+
 status: blocked # packaged|blocked

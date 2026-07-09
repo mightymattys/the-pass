@@ -6,6 +6,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -17,7 +18,7 @@ from jsonschema.exceptions import SchemaError
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from the_pass.validator import validate_artifact, validate_package  # noqa: E402
+from the_pass.validator import ARTIFACT_TYPES, validate_artifact, validate_package  # noqa: E402
 
 PLACEHOLDER_MARKER = "[" + "TO" + "DO:"
 
@@ -64,25 +65,7 @@ EXAMPLE_PACKAGES = {
     "synthetic-breakout": {"verdict": "blocked", "adapter_mode": "diagnostic"},
     "synthetic-random-baseline": {"verdict": "kill", "adapter_mode": "diagnostic"},
 }
-REQUIRED_TEMPLATES = {
-    "adapter.yaml",
-    "source_note.yaml",
-    "strategy_spec.yaml",
-    "data_manifest.yaml",
-    "run_receipt.yaml",
-    "metrics_report.yaml",
-    "cost_waterfall.yaml",
-    "verdict_report.yaml",
-    "screen_report.yaml",
-    "findings.yaml",
-    "refire_ticket.yaml",
-    "simmer_laps.yaml",
-    "paper_plan.yaml",
-    "observation_manifest.yaml",
-    "divergence_report.yaml",
-    "approval_pack.yaml",
-    "receipt_summary.yaml",
-}
+REQUIRED_TEMPLATES = {f"{artifact_type}.yaml" for artifact_type in ARTIFACT_TYPES}
 REQUIRED_WORKFLOW_DIR_READMES = {
     "experiments/screens/README.md",
     "experiments/paper/README.md",
@@ -94,6 +77,29 @@ REQUIRED_WORKFLOW_DIR_READMES = {
     "reports/receipt_summaries/README.md",
     "reports/simmer/README.md",
 }
+SKILL_EXIT_STATES = {
+    "mise": ("ready", "repaired", "blocked"),
+    "research": ("reviewed", "rejected", "blocked"),
+    "spec": ("draft", "research_ready", "blocked"),
+    "screen": ("reject", "revise", "backtest_candidate", "blocked"),
+    "backtest": ("complete", "blocked"),
+    "taste": ("pass", "blocked", "revise", "kill"),
+    "refire": ("fixed", "still_blocked"),
+    "simmer": ("passed", "blocked", "killed"),
+    "paper": ("paper_ready", "blocked"),
+    "plate": ("packaged", "blocked"),
+    "receipts": ("summarized", "blocked"),
+}
+REQUIRED_SKILL_SECTIONS = (
+    "Inputs",
+    "Read First",
+    "Editable Paths",
+    "Blocked Paths",
+    "Procedure",
+    "Required Checks",
+    "Outputs",
+    "Exit States",
+)
 
 
 def fail(message: str) -> None:
@@ -102,8 +108,20 @@ def fail(message: str) -> None:
 
 
 def iter_files() -> list[Path]:
+    try:
+        result = subprocess.run(
+            ["git", "ls-files", "--cached", "--others", "--exclude-standard", "-z"],
+            cwd=ROOT,
+            check=True,
+            capture_output=True,
+        )
+    except (OSError, subprocess.CalledProcessError):
+        candidates = ROOT.rglob("*")
+    else:
+        candidates = (ROOT / relative for relative in result.stdout.decode("utf-8").split("\0") if relative)
+
     files: list[Path] = []
-    for path in ROOT.rglob("*"):
+    for path in candidates:
         if any(part in IGNORED_DIRS for part in path.parts):
             continue
         if any(part.endswith(".egg-info") for part in path.parts):
@@ -174,23 +192,14 @@ def validate_python_package() -> None:
 
 def validate_skills() -> None:
     skills_dir = ROOT / "skills"
-    expected = {
-        "mise",
-        "research",
-        "spec",
-        "screen",
-        "backtest",
-        "taste",
-        "refire",
-        "simmer",
-        "paper",
-        "plate",
-        "receipts",
-    }
+    expected = set(SKILL_EXIT_STATES)
     present = {path.name for path in skills_dir.iterdir() if path.is_dir()}
     missing = expected - present
     if missing:
         fail(f"missing skills: {', '.join(sorted(missing))}")
+    unexpected = present - expected
+    if unexpected:
+        fail(f"skills without registered command contracts: {', '.join(sorted(unexpected))}")
     for name in sorted(expected):
         skill_path = skills_dir / name / "SKILL.md"
         if not skill_path.exists():
@@ -198,26 +207,61 @@ def validate_skills() -> None:
         text = skill_path.read_text(encoding="utf-8")
         if not text.startswith("---\n"):
             fail(f"{skill_path.relative_to(ROOT)} missing front matter")
-        if f'name: "the-pass:{name}"' not in text and f"name: the-pass:{name}" not in text:
+        parts = text.split("---", 2)
+        if len(parts) != 3:
+            fail(f"{skill_path.relative_to(ROOT)} has malformed front matter")
+        try:
+            front_matter = yaml.safe_load(parts[1])
+        except yaml.YAMLError as exc:
+            fail(f"{skill_path.relative_to(ROOT)} has invalid front matter: {exc}")
+        if not isinstance(front_matter, dict):
+            fail(f"{skill_path.relative_to(ROOT)} front matter must be an object")
+        if front_matter.get("name") != name:
             fail(f"{skill_path.relative_to(ROOT)} has wrong skill name")
+        if set(front_matter) != {"name", "description"}:
+            fail(f"{skill_path.relative_to(ROOT)} front matter may contain only name and description")
+        description = front_matter.get("description")
+        if not isinstance(description, str) or not description.strip():
+            fail(f"{skill_path.relative_to(ROOT)} has no skill description")
+        for section in REQUIRED_SKILL_SECTIONS:
+            if f"## {section}\n" not in text:
+                fail(f"{skill_path.relative_to(ROOT)} missing section: {section}")
+        for artifact_type in re.findall(r"--type ([a-z_]+)", text):
+            if artifact_type not in ARTIFACT_TYPES:
+                fail(f"{skill_path.relative_to(ROOT)} references unknown artifact type: {artifact_type}")
+        for reference in re.findall(r"`((?:docs|schemas|templates)/[^`]+)`", text):
+            if not (ROOT / reference).exists():
+                fail(f"{skill_path.relative_to(ROOT)} references missing path: {reference}")
+        exit_section = text.split("## Exit States\n", 1)[1]
+        exit_states = tuple(re.findall(r"^- `([^`]+)`:", exit_section, flags=re.MULTILINE))
+        if exit_states != SKILL_EXIT_STATES[name]:
+            fail(
+                f"{skill_path.relative_to(ROOT)} exit states {exit_states} do not match "
+                f"{SKILL_EXIT_STATES[name]}"
+            )
+
+    command_docs = (ROOT / "docs" / "plugin" / "COMMANDS.md").read_text(encoding="utf-8")
+    documented: dict[str, tuple[str, ...]] = {}
+    for line in command_docs.splitlines():
+        match = re.match(r"\| `/the-pass:([a-z-]+)(?: [^`]*)?` \|", line)
+        if match is None:
+            continue
+        cells = [cell.strip() for cell in line.split("|")]
+        documented[match.group(1)] = tuple(state.strip() for state in cells[4].split(","))
+    if documented != SKILL_EXIT_STATES:
+        fail("docs/plugin/COMMANDS.md exit states do not match skill contracts")
 
 
 def validate_schemas() -> None:
-    required = {
-        "adapter.schema.json",
-        "source_note.schema.json",
-        "strategy_spec.schema.json",
-        "data_manifest.schema.json",
-        "run_receipt.schema.json",
-        "metrics_report.schema.json",
-        "cost_waterfall.schema.json",
-        "verdict_report.schema.json",
-    }
+    required = set(ARTIFACT_TYPES.values())
     schemas_dir = ROOT / "schemas"
     present = {path.name for path in schemas_dir.glob("*.json")}
     missing = required - present
     if missing:
         fail(f"missing schemas: {', '.join(sorted(missing))}")
+    unexpected = present - required
+    if unexpected:
+        fail(f"schemas without registered artifact types: {', '.join(sorted(unexpected))}")
     for path in schemas_dir.glob("*.json"):
         validate_json(path)
         schema = json.loads(path.read_text(encoding="utf-8"))
@@ -233,8 +277,14 @@ def validate_templates() -> None:
     missing = REQUIRED_TEMPLATES - present
     if missing:
         fail(f"missing templates: {', '.join(sorted(missing))}")
+    unexpected = present - REQUIRED_TEMPLATES
+    if unexpected:
+        fail(f"templates without registered artifact types: {', '.join(sorted(unexpected))}")
     for name in sorted(REQUIRED_TEMPLATES):
         validate_yaml(templates_dir / name)
+        artifact_type = Path(name).stem
+        if artifact_type not in ARTIFACT_TYPES:
+            fail(f"template has no registered artifact type: {name}")
 
 
 def validate_workflow_directories() -> None:

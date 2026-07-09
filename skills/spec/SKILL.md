@@ -1,5 +1,5 @@
 ---
-name: "the-pass:spec"
+name: spec
 description: "Turn a trading idea into a StrategySpec with edge thesis, data needs, execution assumptions, risks, done_when, and kill_when."
 ---
 
@@ -18,6 +18,8 @@ Use this skill when converting an idea, source claim, or existing strategy into 
 
 - `templates/strategy_spec.yaml`
 - `schemas/strategy_spec.schema.json`
+- `templates/hypothesis.yaml` and `schemas/hypothesis.schema.json` when the input is a
+  research hypothesis.
 - Relevant `source_note` artifacts in `research/` or the experiment package.
 - `docs/implementation/SKILL_CONTRACTS.md`
 - `docs/implementation/VALIDATION_AND_SAFETY.md`
@@ -44,6 +46,8 @@ Use this skill when converting an idea, source claim, or existing strategy into 
 - Separate thesis from implementation details: the thesis must be falsifiable before any backtest exists.
 - Add `done_when` and `kill_when` that can be checked by `taste`.
 - Keep status at `draft` or `research` unless existing artifacts justify a later state.
+- Use `research_ready` as the command exit state and `research` as the corresponding
+  `StrategySpec.status` value.
 - Record all unknowns under assumptions or blockers instead of filling them with optimistic defaults.
 
 ## Required Checks

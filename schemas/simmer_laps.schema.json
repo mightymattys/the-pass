@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://the-pass.dev/schemas/simmer_laps.schema.json",
+  "title": "SimmerLaps",
+  "type": "object",
+  "required": ["id", "created_at", "target_gate", "package", "budget", "laps", "final"],
+  "properties": {
+    "id": { "type": "string", "minLength": 1 },
+    "created_at": { "type": "string", "minLength": 1 },
+    "target_gate": { "type": "string", "pattern": "^[a-z][a-z0-9_]{1,63}$" },
+    "package": { "type": "string", "minLength": 1 },
+    "budget": {
+      "type": "object",
+      "required": ["max_laps", "stop_condition", "kill_condition"],
+      "properties": {
+        "max_laps": { "type": "integer", "minimum": 1 },
+        "stop_condition": { "type": "string", "minLength": 1 },
+        "kill_condition": { "type": "string", "minLength": 1 }
+      }
+    },
+    "laps": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["lap", "hypothesis", "intended_change", "files_touched", "command", "expected_signal", "observed_result", "moved_gate", "blockers"],
+        "properties": {
+          "lap": { "type": "integer", "minimum": 1 },
+          "hypothesis": { "type": "string", "minLength": 1 },
+          "intended_change": { "type": "string", "minLength": 1 },
+          "files_touched": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+          "command": { "type": "string", "minLength": 1 },
+          "expected_signal": { "type": "string", "minLength": 1 },
+          "observed_result": { "type": "string", "minLength": 1 },
+          "moved_gate": { "type": "boolean" },
+          "blockers": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+        }
+      }
+    },
+    "final": {
+      "type": "object",
+      "required": ["status", "reason", "next_action"],
+      "properties": {
+        "status": { "enum": ["passed", "blocked", "killed"] },
+        "reason": { "type": "string", "minLength": 1 },
+        "next_action": { "type": "string", "minLength": 1 }
+      }
+    }
+  },
+  "additionalProperties": true
+}

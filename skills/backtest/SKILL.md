@@ -1,5 +1,5 @@
 ---
-name: "the-pass:backtest"
+name: backtest
 description: "Design or run a reproducible backtest package with manifest, receipt, metrics, cost waterfall, and verdict artifacts."
 ---
 

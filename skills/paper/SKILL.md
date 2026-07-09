@@ -1,5 +1,5 @@
 ---
-name: "the-pass:paper"
+name: paper
 description: "Prepare or review paper/replay trading observation with the same decision code, cost assumptions, and risk gates as research."
 ---
 
@@ -50,6 +50,9 @@ Use this skill when a candidate is ready for paper/replay observation.
 
 ```bash
 the-pass validate-package <source-package>
+the-pass validate <paper-plan> --type paper_plan
+the-pass validate <observation-manifest> --type observation_manifest
+the-pass validate <divergence-report> --type divergence_report
 the-pass receipts verify
 ```
 

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -21,6 +22,7 @@ from .validator import (
 
 LEDGER_SCHEMA = "the-pass/receipt-ledger-entry/v1"
 DEFAULT_LEDGER_PATH = Path("experiments/ledger.jsonl")
+GATE_NAME = re.compile(r"^[a-z][a-z0-9_]{1,63}$")
 
 
 class LedgerError(Exception):
@@ -102,8 +104,55 @@ def verify_ledger_entries(entries: list[dict[str, Any]]) -> list[ValidationIssue
     return issues
 
 
+def verify_ledger_artifacts(entries: list[dict[str, Any]]) -> list[ValidationIssue]:
+    """Verify that artifacts referenced by receipts still exist and match their hashes."""
+
+    issues: list[ValidationIssue] = []
+    for entry_index, entry in enumerate(entries):
+        entry_path = f"entry[{entry_index}]"
+        package_value = entry.get("package_path")
+        if not isinstance(package_value, str) or not package_value:
+            issues.append(ValidationIssue(f"{entry_path}.package_path", "must be a non-empty path"))
+            continue
+
+        package_dir = Path(package_value).resolve()
+        if not package_dir.is_dir():
+            issues.append(ValidationIssue(f"{entry_path}.package_path", "package directory does not exist"))
+            continue
+
+        artifacts = entry.get("artifacts")
+        if not isinstance(artifacts, list) or not artifacts:
+            issues.append(ValidationIssue(f"{entry_path}.artifacts", "must contain artifact fingerprints"))
+            continue
+
+        for artifact_index, artifact in enumerate(artifacts):
+            artifact_path = f"{entry_path}.artifacts[{artifact_index}]"
+            if not isinstance(artifact, dict):
+                issues.append(ValidationIssue(artifact_path, "must be an object"))
+                continue
+            relative_value = artifact.get("path")
+            expected_hash = artifact.get("sha256")
+            if not isinstance(relative_value, str) or not relative_value:
+                issues.append(ValidationIssue(f"{artifact_path}.path", "must be a non-empty path"))
+                continue
+            candidate = (package_dir / relative_value).resolve()
+            try:
+                candidate.relative_to(package_dir)
+            except ValueError:
+                issues.append(ValidationIssue(f"{artifact_path}.path", "escapes package directory"))
+                continue
+            if not candidate.is_file():
+                issues.append(ValidationIssue(f"{artifact_path}.path", "referenced artifact does not exist"))
+                continue
+            if not isinstance(expected_hash, str) or sha256_file(candidate) != expected_hash:
+                issues.append(ValidationIssue(f"{artifact_path}.sha256", "does not match artifact contents"))
+
+    return issues
+
+
 def verify_ledger_file(ledger_path: Path) -> list[ValidationIssue]:
-    return verify_ledger_entries(read_ledger_entries(ledger_path))
+    entries = read_ledger_entries(ledger_path)
+    return [*verify_ledger_entries(entries), *verify_ledger_artifacts(entries)]
 
 
 def package_relative_path(package_dir: Path, path: Path) -> str:
@@ -191,6 +240,8 @@ def failed_gates(verdict: dict[str, Any]) -> list[str]:
 
 def build_ledger_entry(package_dir: Path, *, gate: str, recorded_at: str | None = None) -> dict[str, Any]:
     package_dir = package_dir.resolve()
+    if not GATE_NAME.fullmatch(gate):
+        raise LedgerError("gate must be lower snake_case, for example research_gate")
     result = validate_package(package_dir)
     if not result.ok:
         details = "; ".join(f"{issue.path}: {issue.message}" for issue in result.issues)
@@ -246,14 +297,14 @@ def build_ledger_entry(package_dir: Path, *, gate: str, recorded_at: str | None 
 def append_ledger_entry(ledger_path: Path, package_dir: Path, *, gate: str) -> LedgerAppendResult:
     ledger_path = ledger_path.resolve()
     entries = read_ledger_entries(ledger_path)
-    issues = verify_ledger_entries(entries)
+    issues = [*verify_ledger_entries(entries), *verify_ledger_artifacts(entries)]
     if issues:
         details = "; ".join(f"{issue.path}: {issue.message}" for issue in issues)
         raise LedgerError(f"refusing to append to invalid ledger: {details}")
 
     entry = build_ledger_entry(package_dir, gate=gate)
     for existing in entries:
-        if existing.get("package_id") == entry["package_id"]:
+        if existing.get("package_id") == entry["package_id"] and existing.get("gate") == gate:
             return LedgerAppendResult(existing, False, "package already recorded")
 
     entry["previous_hash"] = entries[-1]["entry_hash"] if entries else None

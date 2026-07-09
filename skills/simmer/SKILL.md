@@ -1,5 +1,5 @@
 ---
-name: "the-pass:simmer"
+name: simmer
 description: "Iterate on a specific measurable gate until it passes, is blocked, or hits a kill condition."
 ---
 
@@ -51,6 +51,7 @@ research gate" or "reduce reproducibility failures to zero".
 Run the target gate command every lap. For package gates:
 
 ```bash
+the-pass validate <simmer-laps> --type simmer_laps
 the-pass validate-package <package-dir>
 the-pass receipts add <package-dir> --gate <gate-name>
 the-pass receipts verify

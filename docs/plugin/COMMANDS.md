@@ -3,12 +3,15 @@
 The Pass uses kitchen-language commands because the product is a review station. Strategy
 ideas are recipes; evidence is the plate; gates decide whether anything leaves the line.
 
+The plugin manifest supplies the `the-pass` namespace. Each skill's internal name is the plain
+folder name (`mise`, `research`, and so on), which Codex exposes as `/the-pass:<skill>`.
+
 ## Commands
 
 | Command | Inputs | Required Output | Exit States |
 | --- | --- | --- | --- |
 | `/the-pass:mise` | repo path | setup audit or repaired scaffold | ready, repaired, blocked |
-| `/the-pass:research <topic>` | topic, URL, file, or source text | source notes and hypotheses | reviewed, rejected, blocked |
+| `/the-pass:research <topic>` | topic, URL, file, or source text | source notes and hypothesis artifacts | reviewed, rejected, blocked |
 | `/the-pass:spec <idea>` | idea or hypothesis | `StrategySpec` | draft, research_ready, blocked |
 | `/the-pass:screen <spec>` | StrategySpec and optional data manifest | diagnostic screen report | reject, revise, backtest_candidate, blocked |
 | `/the-pass:backtest <spec>` | StrategySpec, data manifest, runner config | run package | complete, blocked |
@@ -26,6 +29,15 @@ ideas are recipes; evidence is the plate; gates decide whether anything leaves t
 - Commands cannot hide missing evidence behind prose.
 - Commands must return `blocked` when required artifacts or safety evidence are missing.
 - Commands must preserve previous run packages instead of overwriting them silently.
+- Gate IDs use lower snake case. The canonical IDs are `research_gate`, `paper_gate`,
+  `risk_review`, and `live_gate`.
+
+`taste` uses `pass` as a command exit state. A passed `research_gate` writes
+`paper_candidate` to the core verdict artifact; later gates use their own schema-backed
+workflow artifacts. No core verdict means live approval.
+
+`spec` uses `research_ready` as a command exit state; its matching artifact state is
+`StrategySpec.status: research`.
 
 ## Live Boundary
 
@@ -48,5 +60,6 @@ the-pass receipts verify
 the-pass receipts
 ```
 
-They accept JSON or YAML, infer schema type where possible, and return non-zero on missing
-or weak evidence. Receipt commands maintain an append-only hash-chained JSONL ledger.
+They accept JSON or YAML, infer all core and workflow artifact types where possible, and
+return non-zero on missing or weak evidence. Receipt commands maintain an append-only,
+hash-chained JSONL ledger and verify referenced artifact fingerprints.

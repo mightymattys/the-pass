@@ -12,12 +12,13 @@ complete. It does not claim that any trading strategy has edge.
 | 0 Product Contract Freeze | implemented | ADRs in `docs/adr/`, plugin manifest, skills, schemas, templates, CI, public release checklist |
 | 1 Artifact Validator CLI | implemented | `the-pass validate`, `the-pass validate-package`, JSON/YAML tests, package validation in CI |
 | 2 Receipt Ledger | implemented | `the-pass receipts add/verify/summary`, hash-chain tests, ledger simulation in CI |
-| 3 Skill Implementation | implemented | all 11 skills define inputs, read paths, editable paths, blocked paths, checks, outputs, and exit states |
+| 3 Skill Implementation | implemented | all 11 valid skills define inputs, read paths, editable paths, blocked paths, checks, schema-backed outputs, and exit states |
 | 4 Synthetic Golden Path | implemented | `examples/synthetic-breakout` validates and stays `blocked`; `examples/synthetic-random-baseline` validates and stays `kill` |
 | 5 Adapter SDK | implemented | strict adapter schema, adapter contract checks, dummy adapter, non-compliant adapter unit test |
 | 6 First Real Adapter | implemented | diagnostic Binance spot klines adapter descriptor and source note; generic futures and prediction-market descriptors validate without core market logic |
 
-The latest tracked human-readable audit is [../../reports/AUDIT_2026-07-09.md](../../reports/AUDIT_2026-07-09.md).
+The latest tracked human-readable audit is
+[../../reports/SYSTEM_HARDENING_AUDIT_2026-07-09.md](../../reports/SYSTEM_HARDENING_AUDIT_2026-07-09.md).
 
 ## Local Completion Commands
 

@@ -35,4 +35,8 @@ paths as potentially handling real money.
 
 ## Default Commands
 
-No mandatory build/test command exists yet. Add commands here when code is introduced.
+- `python3 -m pip install -e .`
+- `python3 scripts/validate_public_repo.py`
+- `python3 -m unittest discover -s tests -v`
+- `the-pass validate-package examples/synthetic-breakout/package`
+- `the-pass validate-package examples/synthetic-random-baseline/package`

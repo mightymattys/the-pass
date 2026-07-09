@@ -1,0 +1,31 @@
+id: ""
+created_at: ""
+status: proposed # proposed|ready_for_spec|rejected|blocked
+proposed_name: ""
+source_notes: []
+
+edge:
+  primary_family: ""
+  thesis: ""
+  mechanism: ""
+
+market:
+  asset_classes: []
+  venues: []
+  instruments: []
+  timeframes: []
+
+test:
+  next_test: ""
+  required_data: []
+  null_or_random_baseline: ""
+  falsification_criteria: []
+
+risks:
+  costs: []
+  execution: []
+  data: []
+  regime: []
+
+kill_when: []
+blockers: []

@@ -3,7 +3,7 @@ created_at: ""
 target_gate: ""
 package: ""
 budget:
-  max_laps: null
+  max_laps: 3
   stop_condition: ""
   kill_condition: ""
 

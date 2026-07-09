@@ -63,15 +63,17 @@ See [docs/plugin/COMMANDS.md](docs/plugin/COMMANDS.md) for the full command cont
 
 ## Current State
 
-The repository is ready for implementation work:
+The public framework is operational and ready for real research packages:
 
 - Plugin manifest and skills are present.
 - Core ADRs are accepted.
-- Artifact templates and JSON Schemas exist.
+- All 18 artifact templates have JSON Schemas and CLI validation.
 - Public safety validation and CI are configured.
 - Synthetic golden path and killed baseline examples exercise the first end-to-end workflow target.
 - Adapter descriptors cover a dummy adapter, a concrete public crypto data adapter, and generic
   futures and prediction-market descriptors without core market-specific logic.
+- Package links must resolve to the exact canonical artifacts, and receipt verification checks
+  both the hash chain and the current artifact bytes.
 
 Run local validation:
 
