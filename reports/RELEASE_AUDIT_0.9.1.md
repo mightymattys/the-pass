@@ -4,9 +4,10 @@ Audit date: 2026-07-10
 
 Candidate verdict: **PASS FOR RELEASE UNDER EXPLICIT OWNER EXCEPTION**
 
-Publication state: release preparation is tracked in
-[PR #11](https://github.com/matk0shub/the-pass/pull/11). Its required CI result, merge commit, tag
-workflow, and downloaded assets will be recorded before completion.
+Publication state: [PR #11](https://github.com/matk0shub/the-pass/pull/11) passed both required
+contexts in [CI run 29111305599](https://github.com/matk0shub/the-pass/actions/runs/29111305599)
+and was administratively merged as `ff98ac4` under the documented owner exception. Publication
+still requires the annotated tag, release workflow, and downloaded-asset verification.
 
 ## Why A Patch Release Is Required
 
@@ -55,9 +56,9 @@ Python contexts and every technical release gate remain mandatory.
 ## Publication Gates
 
 - [x] Local release and installation matrix passes.
-- [ ] Release PR passes Python 3.9 and 3.12.
+- [x] Release PR passes Python 3.9 and 3.12.
 - [x] Administrative review exception is documented.
-- [ ] Release PR merge commit is recorded.
+- [x] Release PR is merged as `ff98ac4` and the commit is recorded.
 - [ ] Annotated `v0.9.1` tag triggers the release workflow.
 - [ ] Wheel, sdist, checksums, and audit are published.
 - [ ] Fresh downloads pass checksum and clean-install verification.
