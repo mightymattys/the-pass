@@ -2,8 +2,7 @@
 
 Use this before pushing or publishing The Pass.
 
-Status: `v0.8.0` passed local and GitHub CI and was merged to `main`. Tag validation and the
-release workflow remain before publication.
+Status: `v0.8.0` published and reverified from freshly downloaded release assets on 2026-07-10.
 
 ## Repository Safety
 
@@ -48,13 +47,14 @@ release workflow remain before publication.
 - [x] Release publication is gated by `.github/workflows/release.yml`.
 - [x] The repository owner explicitly authorized an administrative review exception for PR #6
       after both required CI contexts passed; no independent GitHub approval was recorded.
-- [ ] The audited main commit has been tagged `v0.8.0` and the release workflow has published
+- [x] The audited main commit was tagged `v0.8.0` and the release workflow published
       matching assets and checksums.
 
 Release evidence:
 
 - `https://github.com/matk0shub/the-pass/pull/6`
 - `reports/RELEASE_AUDIT_0.8.0.md`
+- `reports/POST_RELEASE_AUDIT_0.8.0.md`
 - `reports/SLASH_SKILL_CONSOLIDATION_AUDIT_2026-07-10.md`
 - `reports/benchmarks/baseline-v0.7.0.json`
 - `reports/network/public-adapter-smoke-v0.7.0.json`

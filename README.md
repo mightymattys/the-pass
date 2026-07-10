@@ -64,7 +64,8 @@ while candidate promotion remains deliberately separate.
 
 The source tree and Codex plugin are versioned `0.8.0`. The release badge above remains the
 authority for the latest published tag; source-version readiness is recorded in the
-[`v0.8.0` release audit](reports/RELEASE_AUDIT_0.8.0.md).
+[`v0.8.0` release audit](reports/RELEASE_AUDIT_0.8.0.md) and
+[post-release verification](reports/POST_RELEASE_AUDIT_0.8.0.md).
 
 | Area | Framework capability | Bundled candidate state |
 | --- | --- | --- |
@@ -340,6 +341,7 @@ Report vulnerabilities according to [SECURITY.md](SECURITY.md).
 - [CLI contract](docs/public/CLI_CONTRACT.md)
 - [Release process](docs/public/RELEASE_PROCESS.md)
 - [`v0.8.0` release audit](reports/RELEASE_AUDIT_0.8.0.md)
+- [`v0.8.0` post-release verification](reports/POST_RELEASE_AUDIT_0.8.0.md)
 - [Performance policy](docs/public/PERFORMANCE_POLICY.md)
 - [Outcome examples](examples/outcomes/README.md)
 - [Changelog](CHANGELOG.md)

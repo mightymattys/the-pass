@@ -42,6 +42,7 @@ Trading roadmap gate evidence is tracked separately:
 - [Slash-skill consolidation plan](SLASH_SKILL_CONSOLIDATION_PLAN.md)
 - [Slash-skill consolidation implementation audit](../../reports/SLASH_SKILL_CONSOLIDATION_AUDIT_2026-07-10.md)
 - [`v0.8.0` release audit](../../reports/RELEASE_AUDIT_0.8.0.md)
+- [`v0.8.0` post-release verification](../../reports/POST_RELEASE_AUDIT_0.8.0.md)
 - [Seven-skill machine policy](../../config/skill-pipeline.v1.yaml)
 - [Consolidated interface ADR](../adr/ADR-0009-consolidated-skill-interface.md)
 

@@ -2,6 +2,10 @@
 
 Audit date: 2026-07-10
 
+Post-publication note: the release completed successfully after this candidate audit was attached
+to the tag. Downloaded assets and checksums were reverified in
+[POST_RELEASE_AUDIT_0.8.0.md](POST_RELEASE_AUDIT_0.8.0.md).
+
 Candidate verdict: **PASS FOR RELEASE UNDER EXPLICIT OWNER EXCEPTION**
 
 Publication state: PR #6 was administratively squash-merged as commit `0944d60` after both
