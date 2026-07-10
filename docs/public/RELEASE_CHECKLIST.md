@@ -48,6 +48,8 @@ Status: release audit passed for `v0.7.0` on 2026-07-10.
 
 Release evidence:
 
+- `https://github.com/matk0shub/the-pass/pull/1`
+- `https://github.com/matk0shub/the-pass/actions/runs/29074681353`
 - `reports/RELEASE_AUDIT_0.7.0.md`
 - `reports/benchmarks/baseline-v0.7.0.json`
 - `reports/network/public-adapter-smoke-v0.7.0.json`
