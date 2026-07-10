@@ -49,6 +49,7 @@ Trading roadmap gate evidence is tracked separately:
 - [Capability-aware model routing ADR](../adr/ADR-0011-capability-aware-model-routing.md)
 - [`v0.9.0` cross-agent and model-routing audit](../../reports/CROSS_AGENT_ORCHESTRATION_AUDIT_0.9.0.md)
 - [Full repository stability audit](../../reports/FULL_REPOSITORY_STABILITY_AUDIT_2026-07-10.md)
+- [`v0.9.0` release audit](../../reports/RELEASE_AUDIT_0.9.0.md)
 
 ## Local Completion Commands
 
@@ -73,7 +74,8 @@ validator against the repo root from their local Codex install.
 The published `v0.8.0` cross-version matrix is recorded in its
 [release audit](../../reports/RELEASE_AUDIT_0.8.0.md). The current `0.9.0` source-tree matrix,
 including all 37 schema-valid templates, is recorded in the
-[full repository stability audit](../../reports/FULL_REPOSITORY_STABILITY_AUDIT_2026-07-10.md).
+[full repository stability audit](../../reports/FULL_REPOSITORY_STABILITY_AUDIT_2026-07-10.md)
+and [`v0.9.0` release audit](../../reports/RELEASE_AUDIT_0.9.0.md).
 
 ## Safety Result
 
