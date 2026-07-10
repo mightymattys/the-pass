@@ -33,7 +33,7 @@ jobs:
           path: reports/network/public-adapter-smoke.json
       - name: Open or update drift issue
         if: steps.smoke.outcome == 'failure'
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           script: |
             const title = "Public adapter contract drift";
