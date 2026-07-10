@@ -1,32 +1,32 @@
 schema_version: 2
-id: ""
-created_at: ""
+id: example-hypothesis-v1
+created_at: "2026-07-10T00:00:00Z"
 status: proposed # proposed|ready_for_spec|rejected|blocked
-proposed_name: ""
-source_notes: []
+proposed_name: Example testable hypothesis
+source_notes: [research/notes/example-source.yaml]
 
 edge:
-  primary_family: ""
-  thesis: ""
-  mechanism: ""
+  primary_family: null_control
+  thesis: A seeded random strategy should not retain positive net edge after costs.
+  mechanism: Negative control for the validation pipeline.
 
 market:
-  asset_classes: []
-  venues: []
-  instruments: []
-  timeframes: []
+  asset_classes: [crypto_spot]
+  venues: [synthetic]
+  instruments: [BTCUSDT]
+  timeframes: [5m]
 
 test:
-  next_test: ""
-  required_data: []
-  null_or_random_baseline: ""
-  falsification_criteria: []
+  next_test: Run a deterministic diagnostic screen.
+  required_data: [timestamped synthetic bars]
+  null_or_random_baseline: seeded random control
+  falsification_criteria: [Reject any claim of systematic positive net edge.]
 
 risks:
-  costs: []
-  execution: []
-  data: []
-  regime: []
+  costs: [Costs must be explicit.]
+  execution: [No promotion from diagnostic fills.]
+  data: [Synthetic data is not market evidence.]
+  regime: [No regime inference from fixture data.]
 
-kill_when: []
-blockers: []
+kill_when: [The control appears systematically profitable after conservative costs.]
+blockers: [Requires a real StrategySpec before execution.]

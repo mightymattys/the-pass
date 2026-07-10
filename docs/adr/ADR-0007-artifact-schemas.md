@@ -39,9 +39,12 @@ Core artifacts:
 
 ## Validation
 
-Schema files exist for the core artifacts or the templates are explicitly marked
-schema-ready until validators are introduced.
+The schema registry and production validator are implemented. Public repository validation now
+requires every registered schema to be valid, every packaged schema copy to match, and every
+latest-version template to pass the same artifact validator used by the CLI. Templates carry
+non-promoting example states and cannot serve as gate evidence without being instantiated and
+recorded through the normal package and ledger flow.
 
 ## Review Trigger
 
-Revisit when artifact schemas need versioning or backward compatibility rules.
+Revisit when artifact compatibility rules or the schema registry versioning policy changes.

@@ -1,8 +1,13 @@
 schema_version: 2
-id: ""
-created_at: ""
-dataset_id: ""
-checks: []
-summary: {events: 0, errors: 0, warnings: 0, status: fail}
+id: example-blocked-quality-report
+created_at: "2026-07-10T00:00:00Z"
+dataset_id: example-data-manifest
+checks:
+  - code: EXAMPLE_NOT_MEASURED
+    severity: error
+    count: 1
+    affected: [entire example dataset]
+    message: Replace this template with measured quality checks.
+summary: {events: 1, errors: 1, warnings: 0, status: fail}
 quarantine: true
 promotion_impact: blocked

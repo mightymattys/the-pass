@@ -1,26 +1,26 @@
 schema_version: 2
-id: ""
-created_at: ""
-source_package: ""
-strategy_spec: ""
-adapter: ""
-config_hash: ""
+id: example-paper-plan
+created_at: "2026-07-10T00:00:00Z"
+source_package: artifacts/example/package
+strategy_spec: example-strategy-v1
+adapter: example-diagnostic-adapter
+config_hash: "0000000000000000000000000000000000000000000000000000000000000000"
 
 observation:
-  start_after: ""
-  minimum_days: null
-  minimum_signals: null
-  instruments: []
+  start_after: "2026-07-11T00:00:00Z"
+  minimum_days: 30
+  minimum_signals: 500
+  instruments: [BTCUSDT]
 
 decision_logic:
   same_as_backtest: true
-  differences: []
+  differences: [Paper broker is isolated and cannot reach a live venue.]
 
 divergence_policy:
-  max_cost_divergence: ""
-  max_signal_divergence: ""
-  max_fill_divergence: ""
-  stop_conditions: []
+  max_cost_divergence: 25 percent of modeled costs
+  max_signal_divergence: zero unexplained signal changes
+  max_fill_divergence: venue-specific policy required
+  stop_conditions: [stale data, outage, clock skew, risk breach]
 
 safety:
   simulated_intents_only: true

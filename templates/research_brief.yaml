@@ -1,11 +1,11 @@
 schema_version: 2
-id: ""
-created_at: ""
-topic: ""
-owner: ""
-objective: ""
-sources: []
-hypotheses: []
-evidence_gaps: []
-next_tests: []
+id: example-research-brief
+created_at: "2026-07-10T00:00:00Z"
+topic: Seeded random negative control
+owner: example-owner
+objective: Verify that the research pipeline rejects a strategy without systematic edge.
+sources: [research/notes/example-source.yaml]
+hypotheses: [example-hypothesis-v1]
+evidence_gaps: [No real market evidence is attached to this example.]
+next_tests: [Create and validate a diagnostic StrategySpec.]
 status: draft # draft|ready|blocked|closed

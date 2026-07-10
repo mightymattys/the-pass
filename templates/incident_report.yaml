@@ -1,11 +1,11 @@
 schema_version: 2
-id: ""
+id: example-open-incident
 severity: P2
-detected_at: ""
-source: ""
-summary: ""
-timeline: []
-impact: {}
-evidence: []
-actions: []
+detected_at: "2026-07-10T00:00:00Z"
+source: example-data-health-job
+summary: Example incident; replace before operational use.
+timeline: [{at: "2026-07-10T00:00:00Z", event: Example incident detected.}]
+impact: {promotion: blocked, live_effect: none}
+evidence: [reports/example-data-health.json]
+actions: [{owner: example-owner, action: Investigate and preserve evidence., status: open}]
 status: open

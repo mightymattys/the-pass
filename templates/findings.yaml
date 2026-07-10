@@ -1,23 +1,23 @@
 schema_version: 2
-id: ""
-created_at: ""
-package: ""
-reviewer: ""
-target_gate: ""
+id: example-blocked-findings
+created_at: "2026-07-10T00:00:00Z"
+package: artifacts/example/package
+reviewer: example-independent-reviewer
+target_gate: research_gate
 
 findings:
-  - id: ""
+  - id: example-finding-1
     severity: P2 # P0|P1|P2|P3
-    status: open # open|confirmed|dismissed|fixed
-    title: ""
+    status: confirmed # open|confirmed|dismissed|fixed
+    title: Example evidence is incomplete
     evidence:
-      artifact: ""
-      path: ""
-      note: ""
+      artifact: run_receipt
+      path: artifacts/example/run_receipt.yaml
+      note: Example receipt is not real run evidence.
     blocks_promotion: true
-    recommendation: ""
+    recommendation: Replace example artifacts and rerun the independent audit.
 
 summary:
   gate_result: blocked # pass|blocked|revise|kill
-  unresolved_blockers: []
-  next_action: ""
+  unresolved_blockers: [example-finding-1]
+  next_action: Create a real immutable package before promotion.

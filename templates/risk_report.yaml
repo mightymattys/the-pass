@@ -1,16 +1,16 @@
 schema_version: 2
-id: ""
-created_at: ""
-package_id: ""
-policy_id: ""
-policy_hash: ""
-sizing: {}
-drawdown_distribution: {}
+id: example-blocked-risk-report
+created_at: "2026-07-10T00:00:00Z"
+package_id: pkg_000000000000000000000000
+policy_id: example-blocking-risk-policy
+policy_hash: "0000000000000000000000000000000000000000000000000000000000000000"
+sizing: {method: fixed_fraction, fraction: 0}
+drawdown_distribution: {observations: 0, status: not_measured}
 expected_shortfall: 0
 risk_of_ruin_proxy: 1
 worst_windows: []
 exposure_correlation: {}
-scenario_losses: []
-capacity: {}
-blockers: []
+scenario_losses: [{scenario: example, loss: 0}]
+capacity: {status: not_measured}
+blockers: [Example report contains no measured risk evidence.]
 verdict: blocked

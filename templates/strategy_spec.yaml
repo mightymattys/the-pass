@@ -1,67 +1,67 @@
 schema_version: 2
-id: ""
-name: ""
+id: example-strategy-v1
+name: Example seeded random control
 status: draft # draft|research|killed|paper_candidate|paper|risk_review|live_candidate
-owner: ""
-created_at: YYYY-MM-DD
+owner: example-owner
+created_at: "2026-07-10"
 
 market:
-  asset_class: "" # crypto_perp|futures|prediction_market|equity|option|fx|rates|credit|commodity|other
-  venues: []
-  instruments: []
-  timeframes: []
+  asset_class: other # crypto_perp|futures|prediction_market|equity|option|fx|rates|credit|commodity|other
+  venues: [synthetic]
+  instruments: [BTCUSDT]
+  timeframes: [5m]
 
 edge:
-  primary_family: ""
-  secondary_tags: []
-  thesis: ""
-  why_now: ""
-  expected_failure_modes: []
+  primary_family: null_control
+  secondary_tags: [seeded_random]
+  thesis: A random control should fail to retain positive net edge after costs.
+  why_now: It verifies that promotion controls reject noise.
+  expected_failure_modes: [False positive from leakage, optimistic costs, multiple testing]
 
 data:
-  required_sources: []
-  required_fields: []
-  minimum_history: ""
-  manifest_path: ""
+  required_sources: [example-fixture]
+  required_fields: [event_time_ns, receive_time_ns, close]
+  minimum_history: one day for diagnostic validation only
+  manifest_path: artifacts/example/data_manifest.yaml
 
 signal:
-  inputs: []
-  transforms: []
-  decision_time_policy: ""
-  lookahead_controls: []
+  inputs: [close]
+  transforms: [seeded random sign]
+  decision_time_policy: Decide only after receive_time is observable.
+  lookahead_controls: [receive_time must be less than or equal to decision_time]
 
 execution:
   order_type: diagnostic_only # diagnostic_only|market|limit|paper_only
-  fill_model: ""
+  fill_model: diagnostic only; no promotion claim
   latency_assumption_ms: 250
-  fee_model: ""
-  slippage_model: ""
+  fee_model: explicit diagnostic placeholder
+  slippage_model: explicit diagnostic placeholder
 
 risk:
-  sizing_rule: ""
-  max_exposure: ""
-  max_drawdown: ""
-  kill_switches: []
+  sizing_rule: zero exposure diagnostic
+  max_exposure: zero
+  max_drawdown: zero
+  kill_switches: [Any promotion attempt from this example.]
 
 validation:
-  train_test_split: ""
-  holdout_policy: ""
-  null_baselines: []
-  parameter_sweeps: []
-  required_metrics: []
+  train_test_split: non-overlapping chronological windows
+  holdout_policy: holdout remains untouched until final diagnostic
+  null_baselines: [seeded random]
+  parameter_sweeps: [seed fixed at zero]
+  required_metrics: [gross_pnl, net_pnl, sharpe, max_drawdown, turnover, expectancy, trade_count]
   windows:
-    train_start: ""
-    train_end: ""
-    validation_start: ""
-    validation_end: ""
-    holdout_start: ""
-    holdout_end: ""
+    train_start: "2026-01-01T00:00:00Z"
+    train_end: "2026-01-01T08:00:00Z"
+    validation_start: "2026-01-01T08:00:00Z"
+    validation_end: "2026-01-01T16:00:00Z"
+    holdout_start: "2026-01-01T16:00:00Z"
+    holdout_end: "2026-01-02T00:00:00Z"
 
 gates:
-  research_gate: []
-  paper_gate: []
-  live_gate: []
+  research_gate: [Valid diagnostic package and independent review.]
+  paper_gate: [Not available to an example control.]
+  live_gate: [Permanently blocked in public core.]
 
-done_when: []
-kill_when: []
-notes: ""
+done_when: [The pipeline deterministically rejects the null control.]
+kill_when: [The control appears systematically profitable after conservative costs.]
+notes: Example only; create a new immutable version before the first real run.

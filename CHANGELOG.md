@@ -23,6 +23,10 @@ and the Keep a Changelog structure.
 - Serialized external dispatches, terminated residual provider process groups, rechecked detached
   worktree symlinks, protected broker output paths, and made patch fingerprints semantically
   verifiable.
+- Converted all 37 artifact templates into schema-valid, deliberately non-promoting starters and
+  made their production-validator checks mandatory in public repository validation.
+- Refreshed installation, capability, completion, and audit documentation for the `0.9.0` source
+  tree.
 
 ## [0.8.0] - 2026-07-10
 

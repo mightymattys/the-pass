@@ -1,40 +1,40 @@
 schema_version: 2
-id: ""
-created_at: ""
-strategy_spec: ""
-data_manifest: ""
+id: example-blocked-screen
+created_at: "2026-07-10T00:00:00Z"
+strategy_spec: example-strategy-v1
+data_manifest: example-data-manifest
 mode: diagnostic
 
 sample:
-  start_time: ""
-  end_time: ""
-  instruments: []
-  observations: null
+  start_time: "2026-01-01T00:00:00Z"
+  end_time: "2026-01-02T00:00:00Z"
+  instruments: [BTCUSDT]
+  observations: 1
 
 variants:
-  tried: []
-  selected: ""
+  tried: [example-default]
+  selected: example-default
   rejected: []
 
 baseline:
   type: null_random
-  result: ""
+  result: No systematic net edge claim.
 
 costs:
-  fee_model: ""
-  spread_model: ""
-  slippage_model: ""
-  assumptions: []
+  fee_model: zero-cost diagnostic placeholder
+  spread_model: not measured
+  slippage_model: not measured
+  assumptions: [Example values cannot support promotion.]
 
 results:
-  gross_metrics: {}
-  net_metrics: {}
-  robustness_notes: []
+  gross_metrics: {pnl: 0}
+  net_metrics: {pnl: 0}
+  robustness_notes: [No robustness claim.]
 
 decision:
   status: blocked # reject|revise|backtest_candidate|blocked
-  reason: ""
-  next_action: ""
+  reason: Example screen has no real dataset or promotion evidence.
+  next_action: Instantiate the template and run against a valid dataset manifest.
 
 safety:
   promotion_claim: false

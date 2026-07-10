@@ -1,9 +1,9 @@
 schema_version: 2
-id: ""
-created_at: ""
-dataset_fingerprint: ""
-code_version: ""
-config_hash: ""
-features: []
-rows: 0
-output_fingerprint: ""
+id: example-feature-manifest
+created_at: "2026-07-10T00:00:00Z"
+dataset_fingerprint: "0000000000000000000000000000000000000000000000000000000000000000"
+code_version: example-uncommitted
+config_hash: "0000000000000000000000000000000000000000000000000000000000000000"
+features: [example_return_1]
+rows: 1
+output_fingerprint: "0000000000000000000000000000000000000000000000000000000000000000"

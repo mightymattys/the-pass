@@ -1,21 +1,21 @@
 schema_version: 2
-id: ""
-created_at: ""
-source_finding: ""
-package: ""
-target_gate: ""
+id: example-refire-ticket
+created_at: "2026-07-10T00:00:00Z"
+source_finding: example-finding-1
+package: artifacts/example/package
+target_gate: research_gate
 
 scope:
-  allowed_paths: []
+  allowed_paths: [artifacts/example]
   blocked_paths:
     - credentials
     - live_order_paths
     - unrelated_refactors
 
 fix_plan:
-  issue: ""
-  intended_change: ""
-  verification_commands: []
+  issue: Example package lacks real evidence.
+  intended_change: Replace placeholders with an immutable rerun package.
+  verification_commands: [the-pass validate artifact artifacts/example/run_receipt.yaml]
 
 result:
   status: still_blocked # fixed|still_blocked

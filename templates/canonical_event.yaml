@@ -1,12 +1,12 @@
 schema_version: 2
-source: ""
-venue: ""
-asset_class: ""
-instrument_id: ""
+source: example-fixture
+venue: synthetic
+asset_class: crypto_spot
+instrument_id: BTCUSDT
 event_type: bar
 event_time_ns: 0
 receive_time_ns: 0
 sequence: null
-ingest_id: ""
-raw_fingerprint: ""
-payload: {}
+ingest_id: example-ingest-0001
+raw_fingerprint: "0000000000000000000000000000000000000000000000000000000000000000"
+payload: {close: "100.00"}

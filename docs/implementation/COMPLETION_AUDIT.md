@@ -48,6 +48,7 @@ Trading roadmap gate evidence is tracked separately:
 - [Portable cross-agent orchestration ADR](../adr/ADR-0010-portable-agent-orchestration.md)
 - [Capability-aware model routing ADR](../adr/ADR-0011-capability-aware-model-routing.md)
 - [`v0.9.0` cross-agent and model-routing audit](../../reports/CROSS_AGENT_ORCHESTRATION_AUDIT_0.9.0.md)
+- [Full repository stability audit](../../reports/FULL_REPOSITORY_STABILITY_AUDIT_2026-07-10.md)
 
 ## Local Completion Commands
 
@@ -69,8 +70,10 @@ the-pass receipts verify --ledger /tmp/the-pass-ledger.jsonl
 Codex plugin developers should also run the bundled `plugin-creator/scripts/validate_plugin.py`
 validator against the repo root from their local Codex install.
 
-The current cross-version test count and complete verification matrix are recorded once in the
-[`v0.8.0` release audit](../../reports/RELEASE_AUDIT_0.8.0.md).
+The published `v0.8.0` cross-version matrix is recorded in its
+[release audit](../../reports/RELEASE_AUDIT_0.8.0.md). The current `0.9.0` source-tree matrix,
+including all 37 schema-valid templates, is recorded in the
+[full repository stability audit](../../reports/FULL_REPOSITORY_STABILITY_AUDIT_2026-07-10.md).
 
 ## Safety Result
 

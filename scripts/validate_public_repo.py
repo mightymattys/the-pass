@@ -406,6 +406,10 @@ def validate_templates() -> None:
         expected_version = max(ARTIFACT_SCHEMAS[artifact_type])
         if not isinstance(document, dict) or document.get("schema_version") != expected_version:
             fail(f"template {name} must use latest schema_version {expected_version}")
+        fail_validation_result(
+            f"templates/{name}",
+            validate_artifact(templates_dir / name, artifact_type=artifact_type),
+        )
 
 
 def validate_packaged_policy() -> None:

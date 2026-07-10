@@ -1,7 +1,7 @@
 schema_version: 2
-id: ""
-created_at: ""
-ledger: ""
+id: example-blocked-receipt-summary
+created_at: "2026-07-10T00:00:00Z"
+ledger: ledger/experiments.jsonl
 filters:
   strategy_id: ""
   gate: ""
@@ -14,13 +14,6 @@ summary:
   verdicts: {}
   open_blockers: []
 
-packages:
-  - package_id: ""
-    strategy_id: ""
-    run_id: ""
-    gate: ""
-    verdict: ""
-    package_path: ""
-    blockers: []
+packages: []
 
 status: blocked # summarized|blocked

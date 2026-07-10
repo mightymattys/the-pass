@@ -1,21 +1,21 @@
 schema_version: 2
-id: ""
-run_receipt: ""
-created_at: YYYY-MM-DDTHH:MM:SSZ
-owner: ""
+id: example-blocked-verdict
+run_receipt: example-run-receipt
+created_at: "2026-07-10T00:00:00Z"
+owner: example-owner
 
 verdict: blocked # kill|revise|paper_candidate|blocked
-summary: ""
+summary: Example package is blocked because it contains no measured evidence.
 
 gate_results:
-  universal_hard_gates: []
-  asset_class_gates: []
-  failed_gates: []
+  universal_hard_gates: [Artifact schema validation]
+  asset_class_gates: [No asset-specific promotion claim]
+  failed_gates: [Real data evidence is missing.]
 
 evidence:
-  metrics_report: ""
-  cost_waterfall: ""
-  data_manifest: ""
+  metrics_report: artifacts/example/metrics_report.yaml
+  cost_waterfall: artifacts/example/cost_waterfall.yaml
+  data_manifest: artifacts/example/data_manifest.yaml
   source_notes: []
 
 risks:
@@ -24,6 +24,6 @@ risks:
   data: []
   operational: []
 
-next_action: ""
+next_action: Instantiate real artifacts and rerun validation.
 kill_reason: ""
-review_required_by: []
+review_required_by: [example-independent-reviewer]

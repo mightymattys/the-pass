@@ -62,10 +62,12 @@ policy hash.
 The framework is operational. All capability milestones in the machine-readable roadmap pass,
 while candidate promotion remains deliberately separate.
 
-The source tree and Codex/Claude Code plugins are versioned `0.9.0`. The release badge above remains the
-authority for the latest published tag; source-version readiness is recorded in the
-[`v0.8.0` release audit](reports/RELEASE_AUDIT_0.8.0.md) and
-[post-release verification](reports/POST_RELEASE_AUDIT_0.8.0.md).
+The source tree and Codex/Claude Code plugins are versioned `0.9.0`. The release badge above remains
+the authority for the latest published tag. Source readiness is recorded in the
+[`v0.9.0` cross-agent audit](reports/CROSS_AGENT_ORCHESTRATION_AUDIT_0.9.0.md) and the
+[full repository stability audit](reports/FULL_REPOSITORY_STABILITY_AUDIT_2026-07-10.md); the latest
+published release is separately covered by the [`v0.8.0` release audit](reports/RELEASE_AUDIT_0.8.0.md)
+and [post-release verification](reports/POST_RELEASE_AUDIT_0.8.0.md).
 
 | Area | Framework capability | Bundled candidate state |
 | --- | --- | --- |
@@ -77,9 +79,10 @@ authority for the latest published tag; source-version readiness is recorded in 
 | Live execution | Contracts defined | Technically locked and forbidden |
 
 See the [machine-readable roadmap](docs/implementation/roadmap-status.yaml),
-[completion audit](docs/implementation/COMPLETION_AUDIT.md), and
-[slash-skill consolidation audit](reports/SLASH_SKILL_CONSOLIDATION_AUDIT_2026-07-10.md) for exact
-evidence paths.
+[completion audit](docs/implementation/COMPLETION_AUDIT.md),
+[slash-skill consolidation audit](reports/SLASH_SKILL_CONSOLIDATION_AUDIT_2026-07-10.md), and
+[full stability audit](reports/FULL_REPOSITORY_STABILITY_AUDIT_2026-07-10.md) for exact evidence
+paths and current verification results.
 
 ## Quick Start
 
@@ -244,6 +247,12 @@ Schemas are registered by `(artifact_type, schema_version)`. V1 evidence remains
 compatibility, but cannot be treated as a passed v2 gate. Strategy specifications are immutable
 after their first run; material changes create a new version and run.
 
+The repository ships one latest-version template for each of its 37 registered artifact types.
+Every template is validated in the public repository check through the production artifact
+validator. Starter values are deliberately `draft`, `diagnostic`, `blocked`, or otherwise
+non-promoting; they demonstrate a valid shape and must be replaced with measured evidence before
+any candidate gate can pass.
+
 Authoritative v2 lookups bind both the deterministic package ID and the resolved package path.
 A run must be recorded before its gate decision, package IDs cannot be reused across paths, and
 paper/risk progression uses `the-pass workflow supersede --ledger <ledger>` to prove exact
@@ -311,7 +320,7 @@ See [Paper, Automation, and Reporting](docs/implementation/PAPER_AUTOMATION_REPO
 | --- | --- |
 | [`src/the_pass/`](src/the_pass/) | CLI, validation, data, adapters, engine, statistics, risk, paper, automation, and reporting |
 | [`schemas/`](schemas/) | Public JSON Schemas and compatibility registry |
-| [`templates/`](templates/) | Valid starting points for structured artifacts |
+| [`templates/`](templates/) | Schema-valid, deliberately non-promoting starters for all 37 artifact types |
 | [`research/`](research/) | Source registry and reviewed research evidence |
 | [`examples/`](examples/) | Synthetic packages, adapters, baselines, and outcome examples |
 | [`automations/`](automations/) | Scheduler-neutral job specifications |
@@ -372,6 +381,7 @@ Report vulnerabilities according to [SECURITY.md](SECURITY.md).
 - [Portable orchestration ADR](docs/adr/ADR-0010-portable-agent-orchestration.md)
 - [Capability-aware model routing ADR](docs/adr/ADR-0011-capability-aware-model-routing.md)
 - [`v0.9.0` cross-agent audit](reports/CROSS_AGENT_ORCHESTRATION_AUDIT_0.9.0.md)
+- [Full repository stability audit](reports/FULL_REPOSITORY_STABILITY_AUDIT_2026-07-10.md)
 - [CLI contract](docs/public/CLI_CONTRACT.md)
 - [Release process](docs/public/RELEASE_PROCESS.md)
 - [`v0.8.0` release audit](reports/RELEASE_AUDIT_0.8.0.md)

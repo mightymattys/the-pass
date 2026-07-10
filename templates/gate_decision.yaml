@@ -1,16 +1,19 @@
 schema_version: 2
-id: ""
-created_at: ""
+id: example-blocked-gate-decision
+created_at: "2026-07-10T00:00:00Z"
 gate_id: research_gate # research_gate|paper_gate|risk_review|live_gate
 gate_result: blocked # pass|blocked|revise|kill
-policy_version: ""
-policy_hash: ""
-package_id: ""
+policy_version: example-policy-v1
+policy_hash: "0000000000000000000000000000000000000000000000000000000000000000"
+package_id: pkg_000000000000000000000000
 package_path: .
-reviewer: ""
-evidence: []
-blockers: []
-summary: ""
+reviewer: example-independent-reviewer
+evidence:
+  - type: run_receipt
+    path: artifacts/example/run_receipt.yaml
+    sha256: "0000000000000000000000000000000000000000000000000000000000000000"
+blockers: [Example artifacts are not promotion evidence.]
+summary: Example decision is intentionally blocked.
 safety:
   grants_live_approval: false
   live_trading_enabled: false

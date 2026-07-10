@@ -1,13 +1,13 @@
 schema_version: 2
-id: ""
-owner: ""
-trigger: {}
-command: ""
-inputs: {}
-allowed_writes: []
+id: example-static-report-job
+owner: example-owner
+trigger: {type: manual}
+command: the-pass report build --repo-root . --output-dir reports/example
+inputs: {repo_root: .}
+allowed_writes: [reports/example]
 forbidden_actions: [gate_decision, live_transaction, credential_access]
 timeout_seconds: 300
 retry_policy: {max_attempts: 1, idempotent_only: true}
 alert_sink: local_artifact
-freeze_procedure: ""
+freeze_procedure: Disable the external schedule and preserve the run receipt.
 enabled: false

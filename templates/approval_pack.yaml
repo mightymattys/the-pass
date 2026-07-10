@@ -1,31 +1,31 @@
 schema_version: 2
-id: ""
-created_at: ""
-strategy_id: ""
-requested_gate: ""
-config_hash: ""
-adapter: ""
+id: example-blocked-approval-pack
+created_at: "2026-07-10T00:00:00Z"
+strategy_id: example-strategy-v1
+requested_gate: risk_review
+config_hash: "0000000000000000000000000000000000000000000000000000000000000000"
+adapter: example-diagnostic-adapter
 
 evidence:
-  receipts: []
-  verdict_reports: []
-  paper_reports: []
-  risk_reports: []
+  receipts: [artifacts/example/run_receipt.yaml]
+  verdict_reports: [artifacts/example/verdict_report.yaml]
+  paper_reports: [artifacts/example/divergence_report.yaml]
+  risk_reports: [artifacts/example/risk_report.yaml]
 
 risk_limits:
-  max_notional: ""
-  max_daily_loss: ""
-  max_drawdown: ""
-  kill_switches: []
+  max_notional: disabled
+  max_daily_loss: zero
+  max_drawdown: zero
+  kill_switches: [Any unresolved blocker.]
 
 operations:
-  monitoring_plan: ""
-  rollback_plan: ""
-  incident_runbook: ""
+  monitoring_plan: reports/example-monitoring.md
+  rollback_plan: Freeze the paper process and preserve evidence.
+  incident_runbook: docs/operations/INCIDENT_RESPONSE.md
 
 human_decisions_required:
-  - decision: ""
-    owner: ""
+  - decision: Independent risk review required
+    owner: example-reviewer
     status: pending
 
 safety:

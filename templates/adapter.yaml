@@ -1,37 +1,37 @@
 schema_version: 2
-id: ""
-name: ""
+id: example-diagnostic-adapter
+name: Example diagnostic adapter
 mode: diagnostic # diagnostic|research|paper|live-capable
-asset_classes: []
-owner: ""
+asset_classes: [crypto_spot]
+owner: example-owner
 
 providers:
-  - id: ""
-    type: "" # examples: synthetic, exchange-public-market-data, licensed-vendor, venue-public-api
-    license: ""
-    url: ""
-    fields: []
-    limitations: []
+  - id: example-fixture
+    type: synthetic # examples: synthetic, exchange-public-market-data, licensed-vendor, venue-public-api
+    license: repository-fixture-only
+    url: https://example.invalid/market-data
+    fields: [event_time, receive_time, price, quantity]
+    limitations: [Example configuration; replace before use.]
 
 provider_review:
-  license: ""
-  redistribution: ""
-  authentication: ""
-  retention: ""
+  license: repository-fixture-only
+  redistribution: public-example-only
+  authentication: none
+  retention: immutable-local-fixture
   deterministic_replay: false
   limitations: []
 
 engine:
-  name: ""
-  role: "" # examples: data-only, fixture-only
-  limitations: []
+  name: built-in-diagnostic-replay
+  role: fixture-only # examples: data-only, fixture-only
+  limitations: [No promotion evidence.]
 
 policies:
-  timestamp: ""
-  cost_model: ""
-  fill_model: ""
-  risk_model: ""
-  settlement: ""
+  timestamp: UTC nanoseconds; receive_time must not exceed decision_time
+  cost_model: explicit zero-cost diagnostic placeholder
+  fill_model: diagnostic only; no executable fill claim
+  risk_model: no exposure; diagnostic only
+  settlement: not applicable to fixture
 
 safety:
   live_trading_enabled: false

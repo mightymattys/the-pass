@@ -1,25 +1,25 @@
 schema_version: 2
-id: ""
-created_at: ""
-paper_plan: ""
-source_package: ""
+id: example-observation-manifest
+created_at: "2026-07-10T00:00:00Z"
+paper_plan: example-paper-plan
+source_package: artifacts/example/package
 
 data_capture:
-  event_time_field: ""
-  receive_time_field: ""
-  decision_time_field: ""
-  storage_path: ""
+  event_time_field: event_time_ns
+  receive_time_field: receive_time_ns
+  decision_time_field: decision_time_ns
+  storage_path: observations/example
 
 signals:
-  format: ""
-  fields: []
+  format: JSONL
+  fields: [signal_id, decision_time_ns, side]
 
 simulated_orders:
-  format: ""
-  fields: []
+  format: JSONL
+  fields: [intent_id, decision_time_ns, side, quantity]
   cannot_reach_broker: true
 
 quality:
-  missing_data_policy: ""
-  outage_policy: ""
-  clock_skew_policy: ""
+  missing_data_policy: fail closed and record an incident
+  outage_policy: freeze simulated intents and preserve evidence
+  clock_skew_policy: block processing until clocks are within policy

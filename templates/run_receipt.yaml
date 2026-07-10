@@ -1,22 +1,22 @@
 schema_version: 2
-id: ""
-created_at: YYYY-MM-DDTHH:MM:SSZ
-owner: ""
-strategy_spec: ""
-code_version: ""
-data_manifest: ""
+id: example-run-receipt
+created_at: "2026-07-10T00:00:00Z"
+owner: example-owner
+strategy_spec: example-strategy-v1
+code_version: example-uncommitted
+data_manifest: example-data-manifest
 
-command: ""
-config_hash: ""
-random_seed: null
+command: the-pass screen run --strategy-spec artifacts/example/strategy_spec.yaml
+config_hash: "0000000000000000000000000000000000000000000000000000000000000000"
+random_seed: 0
 
 inputs:
-  artifacts: []
+  artifacts: [artifacts/example/strategy_spec.yaml, artifacts/example/data_manifest.yaml]
 
 outputs:
-  metrics_report: ""
-  cost_waterfall: ""
-  verdict_report: ""
+  metrics_report: artifacts/example/metrics_report.yaml
+  cost_waterfall: artifacts/example/cost_waterfall.yaml
+  verdict_report: artifacts/example/verdict_report.yaml
   logs: []
 
 safety:
@@ -24,4 +24,4 @@ safety:
   real_order_path_available: false
   credentials_available: false
 
-notes: ""
+notes: Example only; this is not an immutable experiment receipt.

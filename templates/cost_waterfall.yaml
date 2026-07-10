@@ -1,29 +1,29 @@
 schema_version: 2
-id: ""
-run_receipt: ""
-created_at: YYYY-MM-DDTHH:MM:SSZ
+id: example-cost-waterfall
+run_receipt: example-run-receipt
+created_at: "2026-07-10T00:00:00Z"
 
-gross_pnl: null
+gross_pnl: 0
 costs:
-  fees: null
-  spread: null
-  slippage: null
-  funding: null
-  borrow: null
-  roll: null
-  rejects_or_missed_fills: null
-net_pnl: null
+  fees: 0
+  spread: 0
+  slippage: 0
+  funding: 0
+  borrow: 0
+  roll: 0
+  rejects_or_missed_fills: 0
+net_pnl: 0
 
 assumptions:
-  fee_model: ""
-  fill_model: ""
-  latency_model: ""
-  depth_model: ""
+  fee_model: zero-cost diagnostic placeholder
+  fill_model: diagnostic only
+  latency_model: no latency claim
+  depth_model: no depth claim
 
 stress:
-  fees_x_1_5: null
-  slippage_x_2_0: null
-  latency_x_2_0: null
-  depth_x_0_5: null
+  fees_x_1_5: 0
+  slippage_x_2_0: 0
+  latency_x_2_0: 0
+  depth_x_0_5: 0
 
-limitations: []
+limitations: [Example only; replace assumptions before testing.]

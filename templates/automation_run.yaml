@@ -1,11 +1,11 @@
 schema_version: 2
-id: ""
-automation_spec: ""
-idempotency_key: ""
-started_at: ""
-finished_at: ""
+id: example-blocked-automation-run
+automation_spec: example-static-report-job
+idempotency_key: "0000000000000000000000000000000000000000000000000000000000000000"
+started_at: "2026-07-10T00:00:00Z"
+finished_at: "2026-07-10T00:00:00Z"
 attempts: 1
 status: blocked
 outputs: []
 errors: []
-receipt: {}
+receipt: {id: example-receipt}

@@ -1,65 +1,65 @@
 schema_version: 2
-id: ""
-run_receipt: ""
-created_at: YYYY-MM-DDTHH:MM:SSZ
+id: example-diagnostic-metrics
+run_receipt: example-run-receipt
+created_at: "2026-07-10T00:00:00Z"
 
 sample:
-  start_time: ""
-  end_time: ""
-  evaluation_scope: "" # in_sample|out_of_sample|walk_forward|diagnostic
-  holdout_start_time: ""
-  holdout_end_time: ""
+  start_time: "2026-01-01T00:00:00Z"
+  end_time: "2026-01-02T00:00:00Z"
+  evaluation_scope: diagnostic # in_sample|out_of_sample|walk_forward|diagnostic
+  holdout_start_time: "2026-01-01T12:00:00Z"
+  holdout_end_time: "2026-01-02T00:00:00Z"
   trades: 0
   signals: 0
-  instruments: []
+  instruments: [BTCUSDT]
 
 gross_metrics:
-  pnl: null
-  total_return: null
-  annualized_return: null
-  volatility: null
-  downside_volatility: null
-  sharpe: null
-  sortino: null
-  calmar: null
-  max_drawdown: null
-  average_drawdown: null
-  drawdown_duration: null
-  win_rate: null
-  payoff_ratio: null
-  expectancy: null
-  turnover: null
-  average_holding_period: null
-  expected_shortfall: null
-  capacity_estimate: null
+  pnl: 0
+  total_return: 0
+  annualized_return: 0
+  volatility: 0
+  downside_volatility: 0
+  sharpe: 0
+  sortino: 0
+  calmar: 0
+  max_drawdown: 0
+  average_drawdown: 0
+  drawdown_duration: 0
+  win_rate: 0
+  payoff_ratio: 0
+  expectancy: 0
+  turnover: 0
+  average_holding_period: 0
+  expected_shortfall: 0
+  capacity_estimate: 0
 
 net_metrics:
-  pnl: null
-  total_return: null
-  annualized_return: null
-  volatility: null
-  downside_volatility: null
-  sharpe: null
-  sortino: null
-  calmar: null
-  max_drawdown: null
-  average_drawdown: null
-  drawdown_duration: null
-  win_rate: null
-  payoff_ratio: null
-  expectancy: null
-  turnover: null
-  average_holding_period: null
-  expected_shortfall: null
-  capacity_estimate: null
+  pnl: 0
+  total_return: 0
+  annualized_return: 0
+  volatility: 0
+  downside_volatility: 0
+  sharpe: 0
+  sortino: 0
+  calmar: 0
+  max_drawdown: 0
+  average_drawdown: 0
+  drawdown_duration: 0
+  win_rate: 0
+  payoff_ratio: 0
+  expectancy: 0
+  turnover: 0
+  average_holding_period: 0
+  expected_shortfall: 0
+  capacity_estimate: 0
 
 not_applicable_reasons: {}
 
 robustness:
-  null_baseline_result: ""
-  dsr_or_psr: null
-  pbo: null
-  stress_results: []
-  parameter_stability: ""
+  null_baseline_result: Example diagnostic has no edge claim.
+  dsr_or_psr: 0
+  pbo: 0
+  stress_results: [No stress claim from the empty example run.]
+  parameter_stability: Not assessed in the example.
 
-limitations: []
+limitations: [Zero values are placeholders, not measured performance.]

@@ -1,9 +1,9 @@
 schema_version: 2
-id: ""
-created_at: ""
-target: ""
-reviewer: ""
+id: example-blocked-audit
+created_at: "2026-07-10T00:00:00Z"
+target: artifacts/example/package
+reviewer: example-independent-reviewer
 findings: []
 verdict: blocked # pass|blocked|revise|kill
-evidence: []
-limitations: []
+evidence: [artifacts/example/run_receipt.yaml]
+limitations: [Example only; no promotion evidence.]
