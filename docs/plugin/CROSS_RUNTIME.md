@@ -27,7 +27,7 @@ claude plugin validate . --strict
 
 ### Claude Code pinned release
 
-After `v0.9.0` is published:
+For the published `v0.9.0` release:
 
 ```text
 /plugin marketplace add matk0shub/the-pass

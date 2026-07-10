@@ -62,11 +62,12 @@ policy hash.
 The framework is operational. All capability milestones in the machine-readable roadmap pass,
 while candidate promotion remains deliberately separate.
 
-The source tree and Codex/Claude Code plugins are versioned `0.9.0`. The release badge above remains
-the authority for the latest published tag. Source readiness is recorded in the
+The source tree, latest published release, and Codex/Claude Code plugins are versioned `0.9.0`.
+The release badge above remains the authority for the latest published tag. Readiness is recorded in the
 [`v0.9.0` cross-agent audit](reports/CROSS_AGENT_ORCHESTRATION_AUDIT_0.9.0.md) and the
 [full repository stability audit](reports/FULL_REPOSITORY_STABILITY_AUDIT_2026-07-10.md). Versioned
-publication evidence is tracked in the [`v0.9.0` release audit](reports/RELEASE_AUDIT_0.9.0.md).
+publication evidence is tracked in the [`v0.9.0` release audit](reports/RELEASE_AUDIT_0.9.0.md) and
+[post-release verification](reports/POST_RELEASE_AUDIT_0.9.0.md).
 
 | Area | Framework capability | Bundled candidate state |
 | --- | --- | --- |
@@ -383,6 +384,7 @@ Report vulnerabilities according to [SECURITY.md](SECURITY.md).
 - [Full repository stability audit](reports/FULL_REPOSITORY_STABILITY_AUDIT_2026-07-10.md)
 - [`v0.9.0` release notes](docs/public/RELEASE_NOTES_v0.9.0.md)
 - [`v0.9.0` release audit](reports/RELEASE_AUDIT_0.9.0.md)
+- [`v0.9.0` post-release verification](reports/POST_RELEASE_AUDIT_0.9.0.md)
 - [CLI contract](docs/public/CLI_CONTRACT.md)
 - [Release process](docs/public/RELEASE_PROCESS.md)
 - [`v0.8.0` release audit](reports/RELEASE_AUDIT_0.8.0.md)

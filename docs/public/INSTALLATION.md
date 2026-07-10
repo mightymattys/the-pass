@@ -39,7 +39,7 @@ loaded directly:
 claude --plugin-dir /path/to/the-pass
 ```
 
-After the `v0.9.0` tag is published, the pinned marketplace manifest supports:
+The published `v0.9.0` pinned marketplace manifest supports:
 
 ```text
 /plugin marketplace add matk0shub/the-pass

@@ -50,6 +50,7 @@ Trading roadmap gate evidence is tracked separately:
 - [`v0.9.0` cross-agent and model-routing audit](../../reports/CROSS_AGENT_ORCHESTRATION_AUDIT_0.9.0.md)
 - [Full repository stability audit](../../reports/FULL_REPOSITORY_STABILITY_AUDIT_2026-07-10.md)
 - [`v0.9.0` release audit](../../reports/RELEASE_AUDIT_0.9.0.md)
+- [`v0.9.0` post-release verification](../../reports/POST_RELEASE_AUDIT_0.9.0.md)
 
 ## Local Completion Commands
 
@@ -76,6 +77,8 @@ The published `v0.8.0` cross-version matrix is recorded in its
 including all 37 schema-valid templates, is recorded in the
 [full repository stability audit](../../reports/FULL_REPOSITORY_STABILITY_AUDIT_2026-07-10.md)
 and [`v0.9.0` release audit](../../reports/RELEASE_AUDIT_0.9.0.md).
+Published asset and clean-install evidence is recorded in the
+[`v0.9.0` post-release audit](../../reports/POST_RELEASE_AUDIT_0.9.0.md).
 
 ## Safety Result
 
