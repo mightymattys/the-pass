@@ -5,6 +5,25 @@ and the Keep a Changelog structure.
 
 ## [Unreleased]
 
+### Added
+
+- A Claude Code plugin manifest and four bounded native agents backed by the same seven public
+  workflow skills as Codex.
+- Provider-neutral `agent_task`, `agent_result`, and `agent_run` artifacts plus `the-pass agents`
+  doctor, inspect, and explicit dispatch commands.
+- Depth-one, no-retry cross-provider orchestration with read-only delegation, isolated worktree
+  patches, protected authority paths, create-only receipts, and no automatic patch application.
+- Capability-aware `economy`, `balanced`, and `deep` model routing with deterministic workload and
+  safety floors, inspect-time previews, and receipt-level model/effort evidence.
+
+### Changed
+
+- Hardened delegated provider processes by excluding user/project MCP, connector, plugin, hook,
+  rule, and native multi-agent configuration.
+- Serialized external dispatches, terminated residual provider process groups, rechecked detached
+  worktree symlinks, protected broker output paths, and made patch fingerprints semantically
+  verifiable.
+
 ## [0.8.0] - 2026-07-10
 
 ### Added

@@ -1,0 +1,206 @@
+schema_version: 1
+interface_version: 0.9.0
+
+limits:
+  max_cross_provider_depth: 1
+  max_timeout_seconds: 1800
+  max_output_bytes: 4194304
+  max_budget_usd: 5.0
+  attempts: 1
+  max_concurrent_external_dispatches: 1
+
+model_routing:
+  catalog_reviewed_at: "2026-07-10"
+  profile_order: [economy, balanced, deep]
+  default_profile: auto
+  default_workload_class: auto
+  automatic_workload_class: standard
+  workload_profiles:
+    routine: economy
+    standard: balanced
+    complex: deep
+    critical: deep
+  role_minimum_profiles:
+    researcher: economy
+    implementer: balanced
+    reviewer: economy
+  worktree_minimum_profile: balanced
+  native_subagents_minimum_profile: balanced
+  required_capabilities:
+    researcher: [structured_output, repository_read, research]
+    implementer: [structured_output, repository_read, repository_write, coding]
+    reviewer: [structured_output, repository_read, review]
+  providers:
+    codex:
+      economy:
+        model: gpt-5.6-luna
+        effort: low
+        critical_effort: xhigh
+        capabilities: [structured_output, repository_read, repository_write, coding, research, review]
+      balanced:
+        model: gpt-5.6-terra
+        effort: medium
+        critical_effort: xhigh
+        capabilities: [structured_output, repository_read, repository_write, coding, research, review]
+      deep:
+        model: gpt-5.6-sol
+        effort: high
+        critical_effort: xhigh
+        capabilities: [structured_output, repository_read, repository_write, coding, research, review]
+    claude:
+      economy:
+        model: haiku
+        effort: null
+        critical_effort: null
+        capabilities: [structured_output, repository_read, repository_write, coding, research, review]
+      balanced:
+        model: sonnet
+        effort: medium
+        critical_effort: high
+        capabilities: [structured_output, repository_read, repository_write, coding, research, review, native_subagents]
+      deep:
+        model: opus
+        effort: high
+        critical_effort: xhigh
+        capabilities: [structured_output, repository_read, repository_write, coding, research, review, native_subagents]
+
+providers:
+  codex:
+    binary: codex
+    version_args: [--version]
+    allowed_env_names: [PATH, HOME, USER, TMPDIR, LANG, LC_ALL, CODEX_HOME]
+    forbidden_flags:
+      - --dangerously-bypass-approvals-and-sandbox
+      - --dangerously-bypass-hook-trust
+      - --add-dir
+      - --resume
+  claude:
+    binary: claude
+    version_args: [--version]
+    allowed_env_names: [PATH, HOME, USER, TMPDIR, LANG, LC_ALL, CLAUDE_CONFIG_DIR]
+    forbidden_flags:
+      - --dangerously-skip-permissions
+      - --allow-dangerously-skip-permissions
+      - --add-dir
+      - --resume
+      - --continue
+      - --remote-control
+
+roles:
+  researcher:
+    modes: [read_only]
+    native_subagents: [claude]
+  implementer:
+    modes: [worktree_patch]
+    native_subagents: []
+  reviewer:
+    modes: [read_only]
+    native_subagents: [claude]
+
+required_forbidden_actions:
+  - gate_decision
+  - live_transaction
+  - credential_access
+  - permission_bypass
+  - recursive_cross_provider
+  - apply_patch
+  - git_commit
+  - git_push
+
+forbidden_objective_patterns:
+  - "\\b(place|submit|send|create)\\s+(a\\s+)?(live\\s+|real\\s+)?order\\b"
+  - "\\b(load|read|print|expose|steal)\\s+(api[-_ ]?key|private[-_ ]?key|credential|seed phrase|wallet key)"
+  - "\\b(pass|approve|grant)\\s+(the\\s+)?(research_gate|paper_gate|risk_review|live_gate|gate)\\b"
+  - "dangerously[-_ ]?(skip|bypass)"
+  - "\\bdelegate\\s+back\\b"
+  - "\\brecursive\\s+(agent|delegation)\\b"
+
+protected_paths:
+  - .git
+  - .github
+  - .codex-plugin
+  - .claude-plugin
+  - SECURITY.md
+  - agents
+  - config
+  - pyproject.toml
+  - uv.lock
+  - scripts/validate_distribution.py
+  - scripts/validate_public_repo.py
+  - skills
+  - schemas/agent_run.schema.json
+  - schemas/agent_result.provider.schema.json
+  - schemas/agent_result.schema.json
+  - schemas/agent_task.schema.json
+  - schemas/approval_pack.schema.json
+  - schemas/approval_pack.v2.schema.json
+  - schemas/audit_report.v2.schema.json
+  - schemas/gate_decision.v2.schema.json
+  - schemas/human_decision.v2.schema.json
+  - schemas/live_risk_contract.v2.schema.json
+  - schemas/run_receipt.schema.json
+  - schemas/run_receipt.v2.schema.json
+  - src/the_pass/agent_orchestration.py
+  - src/the_pass/cli.py
+  - src/the_pass/gates.py
+  - src/the_pass/ledger.py
+  - src/the_pass/live_boundary.py
+  - src/the_pass/orchestration.py
+  - src/the_pass/policies
+  - src/the_pass/schemas/agent_result.provider.schema.json
+  - src/the_pass/schemas/agent_result.schema.json
+  - src/the_pass/schemas/agent_run.schema.json
+  - src/the_pass/schemas/agent_task.schema.json
+  - src/the_pass/validator.py
+
+critical_authority_paths:
+  - .github/workflows/ci.yml
+  - .github/workflows/release.yml
+  - .codex-plugin/plugin.json
+  - .claude-plugin/plugin.json
+  - SECURITY.md
+  - agents/coordinator.md
+  - agents/implementer.md
+  - agents/researcher.md
+  - agents/reviewer.md
+  - config/agent-orchestration.v1.yaml
+  - config/gate-policies.v1.yaml
+  - config/risk-policies.v1.yaml
+  - config/skill-pipeline.v1.yaml
+  - pyproject.toml
+  - uv.lock
+  - scripts/validate_distribution.py
+  - scripts/validate_public_repo.py
+  - skills
+  - schemas/agent_result.provider.schema.json
+  - schemas/agent_result.schema.json
+  - schemas/agent_run.schema.json
+  - schemas/agent_task.schema.json
+  - schemas/approval_pack.v2.schema.json
+  - schemas/audit_report.v2.schema.json
+  - schemas/gate_decision.v2.schema.json
+  - schemas/human_decision.v2.schema.json
+  - schemas/live_risk_contract.v2.schema.json
+  - schemas/run_receipt.v2.schema.json
+  - src/the_pass/agent_orchestration.py
+  - src/the_pass/cli.py
+  - src/the_pass/gates.py
+  - src/the_pass/ledger.py
+  - src/the_pass/live_boundary.py
+  - src/the_pass/orchestration.py
+  - src/the_pass/schemas/agent_result.provider.schema.json
+  - src/the_pass/schemas/agent_result.schema.json
+  - src/the_pass/schemas/agent_run.schema.json
+  - src/the_pass/schemas/agent_task.schema.json
+  - src/the_pass/validator.py
+
+safety:
+  exclusive_external_dispatch: true
+  provider_user_config_allowed: false
+  provider_mcp_allowed: false
+  provider_retryable: false
+  auto_apply_patch: false
+  gate_decision_write_allowed: false
+  live_code_write_allowed: false
+  shell_execution_allowed: false
+  task_text_scanner_is_authoritative: false

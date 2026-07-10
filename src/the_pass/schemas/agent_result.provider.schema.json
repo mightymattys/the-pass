@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": [
+    "schema_version", "task_id", "status", "summary", "findings", "changed_paths",
+    "next_actions", "assumptions", "issues"
+  ],
+  "properties": {
+    "schema_version": { "type": "integer", "enum": [1] },
+    "task_id": { "type": "string" },
+    "status": { "type": "string", "enum": ["complete", "blocked", "failed"] },
+    "summary": { "type": "string" },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["severity", "title", "evidence_paths", "recommendation"],
+        "properties": {
+          "severity": { "type": "string", "enum": ["P0", "P1", "P2", "P3", "info"] },
+          "title": { "type": "string" },
+          "evidence_paths": { "type": "array", "items": { "type": "string" } },
+          "recommendation": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "changed_paths": { "type": "array", "items": { "type": "string" } },
+    "next_actions": { "type": "array", "items": { "type": "string" } },
+    "assumptions": { "type": "array", "items": { "type": "string" } },
+    "issues": { "type": "array", "items": { "type": "string" } }
+  },
+  "additionalProperties": false
+}

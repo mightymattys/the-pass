@@ -45,6 +45,21 @@ window, a missing independent reviewer, a kill condition, or another hard blocke
   real order code.
 - `live_gate` as a target, transition, simulated result, or approval claim.
 
+## Agent Delegation
+
+- Read `docs/plugin/CROSS_RUNTIME.md` before delegating. Prefer a bounded native subagent for a
+  single-runtime task; use a validated `agent_task` and explicit `the-pass agents dispatch
+  --execute` only when the other provider adds a distinct capability or independent perspective.
+- Delegation depth is one. A delegated task cannot invoke another agent, decide a gate, modify the
+  workflow ledger, or count as the independent human reviewer.
+- Only one external provider dispatch may be active per local user. Use bounded native subagents
+  for parallel research/review; do not queue or retry a second external call.
+- Classify delegated work as routine, standard, complex, or critical and inspect the resolved
+  `economy|balanced|deep` model profile before execution. Never inject a provider model ID into the
+  task objective.
+- Implementation delegates return an unapplied worktree patch. Review the patch, apply it in the
+  caller workspace, and run all required checks before recording progress.
+
 ## Procedure
 
 ### 1. Start or resume

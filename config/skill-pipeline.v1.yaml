@@ -1,5 +1,5 @@
 schema_version: 1
-interface_version: 0.8.0
+interface_version: 0.9.0
 public_skills:
   run: [complete, waiting, blocked, killed]
   research: [research_ready, rejected, blocked]
@@ -141,27 +141,42 @@ cli_contracts:
     accepted_exit_codes: [0, 1]
     outputs: [superseding_package]
     capability: immutable_source_package
+  agents_doctor:
+    argv: [agents, doctor, --provider, all, --format, json]
+    accepted_exit_codes: [0, 1]
+    outputs: [provider_capabilities]
+    capability: local_provider_binaries
+  agents_inspect:
+    argv: [agents, inspect, agent-task.yaml, --format, json]
+    accepted_exit_codes: [0, 1, 3]
+    outputs: [agent_invocation_preview]
+    capability: valid_agent_task
+  agents_dispatch:
+    argv: [agents, dispatch, agent-task.yaml, --output-dir, reports/agents, --execute, --format, json]
+    accepted_exit_codes: [0, 1, 2, 3]
+    outputs: [agent_run, optional_patch]
+    capability: explicit_bounded_external_delegation
 
 stages:
   preflight:
     role: orchestrator
     skill: run
-    cli_contracts: [workflow_start, receipts_verify]
+    cli_contracts: [workflow_start, receipts_verify, agents_doctor]
     transitions: [research, screen, backtest, robustness, review_research, research_gate, paper_prepare, paper_observe, review_paper, paper_gate, risk_prepare, plate, review_risk, risk_review]
   research:
     role: researcher
     skill: research
-    cli_contracts: [validate_artifact]
+    cli_contracts: [validate_artifact, agents_inspect, agents_dispatch]
     transitions: [screen, remediation]
   screen:
     role: implementer
     skill: test
-    cli_contracts: [data_quality, features_build, screen_run]
+    cli_contracts: [data_quality, features_build, screen_run, agents_inspect, agents_dispatch]
     transitions: [backtest, remediation]
   backtest:
     role: implementer
     skill: test
-    cli_contracts: [backtest_baseline, validate_package, receipts_add, receipts_verify]
+    cli_contracts: [backtest_baseline, validate_package, receipts_add, receipts_verify, agents_inspect, agents_dispatch]
     transitions: [robustness, remediation]
   robustness:
     role: stats_auditor
@@ -172,7 +187,7 @@ stages:
     role: independent_reviewer
     reviewer_required: true
     skill: review
-    cli_contracts: [validate_package]
+    cli_contracts: [validate_package, agents_inspect, agents_dispatch]
     transitions: [research_gate, remediation]
   research_gate:
     role: independent_reviewer
@@ -194,7 +209,7 @@ stages:
     role: independent_reviewer
     reviewer_required: true
     skill: review
-    cli_contracts: [validate_artifact]
+    cli_contracts: [validate_artifact, agents_inspect, agents_dispatch]
     transitions: [paper_gate, remediation]
   paper_gate:
     role: independent_reviewer
@@ -216,7 +231,7 @@ stages:
     role: independent_reviewer
     reviewer_required: true
     skill: review
-    cli_contracts: [validate_artifact]
+    cli_contracts: [validate_artifact, agents_inspect, agents_dispatch]
     transitions: [risk_review, remediation]
   risk_review:
     role: independent_reviewer
@@ -242,3 +257,9 @@ safety:
   real_order_transport_allowed: false
   credentials_allowed: false
   paper_process_isolated: true
+  cross_provider_depth: 1
+  max_concurrent_external_dispatches: 1
+  provider_user_config_allowed: false
+  provider_mcp_allowed: false
+  external_agent_retryable: false
+  external_agent_auto_apply: false

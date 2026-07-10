@@ -36,6 +36,15 @@ evidence. It replaces `taste` and routes checks by the actual target gate.
 - Any package already fingerprinted by a receipt. Create a successor before adding review artifacts.
 - Existing receipts or decisions. Reviewer and implementer roles must not be combined.
 
+## Agent Delegation
+
+- A fresh read-only native or cross-provider `reviewer` may provide an adversarial second pass
+  according to `docs/plugin/CROSS_RUNTIME.md`.
+- Preserve reviewer identity and the exact evidence fingerprint in the audit trail. Provider
+  separation improves independence but does not by itself satisfy gate reviewer requirements.
+- Agent findings remain evidence inputs. Only the gate CLI operating on a valid exact package and
+  eligible reviewer may create a gate decision.
+
 ## Procedure
 
 ### Independence preflight

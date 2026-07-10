@@ -43,6 +43,15 @@ immutable backtest package.
 - StrategySpec thesis, kill conditions, or preregistered search space after results are visible.
 - Promotion gate decisions; `/the-pass:review` owns them.
 
+## Agent Delegation
+
+- A native implementer or cross-provider `implementer` may prepare a scoped change in an isolated
+  worktree under `docs/plugin/CROSS_RUNTIME.md`.
+- The result must be an unapplied patch limited to the task allowlist. The caller inspects it and
+  reruns data, package, lint, and test checks after application.
+- Do not delegate edits to gate policy, ledgers, orchestration policy, live paths, or immutable
+  evidence. A delegate cannot promote its own test result.
+
 ## Procedure
 
 ### Shared preflight

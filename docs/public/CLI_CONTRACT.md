@@ -47,6 +47,8 @@ declined promotion.
 - `receipts`: append-only run and gate-decision ledger operations.
 - `workflow`: validated local run state, evidence resume checks, package fingerprinting, and
   immutable successor creation.
+- `agents`: provider discovery, non-executing task inspection, and explicit bounded delegation to
+  Codex or Claude Code.
 
 ## Compatibility
 
@@ -79,3 +81,26 @@ v2 ledger evidence bound to the exact package ID and resolved path. A v1 row, pr
 verdict string, copied directory, out-of-order gate row, or duplicate package ID cannot replace a
 valid gate decision. Exhausted transition/remediation/no-progress budgets are terminal for that
 workflow ID.
+
+## Agent Delegation Authority
+
+The additive agent commands are:
+
+```text
+the-pass agents doctor
+the-pass agents inspect <agent-task>
+the-pass agents dispatch <agent-task> --output-dir <dir> --execute
+```
+
+`doctor` checks local executable/version availability and lists policy model profiles without
+testing authentication, account entitlement, or making a model call. `inspect` validates the task,
+resolves its capability-aware model/effort profile, and prints a secret-free execution preview.
+`dispatch` requires the explicit `--execute` flag and writes a create-only `agent_run` receipt.
+
+Delegation is depth one. A delegated task cannot dispatch another agent, retry itself, approve a
+gate, alter governance or live-safety files, or apply its own patch. Read-only tasks return
+structured findings; implementation tasks run in a disposable worktree and return an unapplied
+patch. External provider calls are serialized per local user, while bounded native subagents may
+parallelize work inside one call. Provider user settings, MCP servers, connectors, unrelated
+plugins, and hooks are excluded. The caller remains responsible for reviewing, applying, testing,
+and recording any change.

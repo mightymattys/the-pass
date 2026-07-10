@@ -36,6 +36,14 @@ Use this skill only after an exact package has a recorded passed `research_gate`
   real order clients, live configs, and approval state.
 - Paper start without exact research-gate membership for the successor evidence chain.
 
+## Agent Delegation
+
+- Do not delegate the paper observer, simulated broker, risk monitor, or incident authority.
+- A read-only native or cross-provider reviewer may audit completed divergence evidence under
+  `docs/plugin/CROSS_RUNTIME.md`, but it cannot alter observations, incidents, limits, or gates.
+- No delegated process receives credentials, authenticated channels, network write access, or a
+  writable paper package.
+
 ## Procedure
 
 - Verify source package and shared ledger before creating paper state.
