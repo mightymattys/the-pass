@@ -702,6 +702,112 @@ def validate_agent_run_artifact(
                 "$.execution.exit_code", "must be zero for complete or blocked runs"
             )
         )
+    selection = document["model_selection"]
+    current_policy_path = Path(__file__).resolve().parent / "policies" / "agent-orchestration.v1.yaml"
+    if current_policy_path.is_file():
+        current_policy = yaml.safe_load(current_policy_path.read_text(encoding="utf-8"))
+        current_policy_sha256 = hashlib.sha256(
+            json.dumps(
+                current_policy,
+                sort_keys=True,
+                separators=(",", ":"),
+                ensure_ascii=True,
+            ).encode("utf-8")
+        ).hexdigest()
+        if document["policy"]["sha256"] == current_policy_sha256:
+            routing = current_policy["model_routing"]
+            routing_sha256 = hashlib.sha256(
+                json.dumps(
+                    routing,
+                    sort_keys=True,
+                    separators=(",", ":"),
+                    ensure_ascii=True,
+                ).encode("utf-8")
+            ).hexdigest()
+            if selection["routing_policy_sha256"] != routing_sha256:
+                issues.append(
+                    ValidationIssue(
+                        "$.model_selection.routing_policy_sha256",
+                        "must fingerprint the routing section of the recorded policy",
+                    )
+                )
+            entry = routing["providers"][document["target_provider"]][
+                selection["resolved_profile"]
+            ]
+            expected_effort = (
+                entry["critical_effort"]
+                if selection["resolved_workload_class"] == "critical"
+                else entry["effort"]
+            )
+            expected_capabilities = sorted(set(entry["capabilities"]))
+            if selection["requested_model"] != entry["model"]:
+                issues.append(
+                    ValidationIssue(
+                        "$.model_selection.requested_model",
+                        "must match the recorded policy profile",
+                    )
+                )
+            if selection["reasoning_effort"] != expected_effort:
+                issues.append(
+                    ValidationIssue(
+                        "$.model_selection.reasoning_effort",
+                        "must match the recorded policy profile",
+                    )
+                )
+            if selection["capabilities"] != expected_capabilities:
+                issues.append(
+                    ValidationIssue(
+                        "$.model_selection.capabilities",
+                        "must match the recorded policy profile",
+                    )
+                )
+    argv = document["execution"]["sanitized_argv"]
+    model_positions = [index for index, value in enumerate(argv) if value == "--model"]
+    valid_model_position = (
+        len(model_positions) == 1 and model_positions[0] + 1 < len(argv)
+    )
+    provider_started = document["execution"]["exit_code"] is not None
+    if provider_started and not valid_model_position:
+        issues.append(
+            ValidationIssue("$.execution.sanitized_argv", "must contain one model selection")
+        )
+    elif valid_model_position and argv[model_positions[0] + 1] != selection["requested_model"]:
+        issues.append(
+            ValidationIssue(
+                "$.model_selection.requested_model",
+                "must match the model in sanitized_argv",
+            )
+        )
+    effort = selection["reasoning_effort"]
+    if valid_model_position and document["target_provider"] == "claude":
+        effort_positions = [index for index, value in enumerate(argv) if value == "--effort"]
+        if effort is None and effort_positions:
+            issues.append(
+                ValidationIssue(
+                    "$.model_selection.reasoning_effort",
+                    "must be null when Claude argv has no effort override",
+                )
+            )
+        elif effort is not None and (
+            len(effort_positions) != 1
+            or effort_positions[0] + 1 >= len(argv)
+            or argv[effort_positions[0] + 1] != effort
+        ):
+            issues.append(
+                ValidationIssue(
+                    "$.model_selection.reasoning_effort",
+                    "must match the Claude effort in sanitized_argv",
+                )
+            )
+    elif valid_model_position:
+        expected_effort = f'model_reasoning_effort="{effort}"'
+        if effort is None or expected_effort not in argv:
+            issues.append(
+                ValidationIssue(
+                    "$.model_selection.reasoning_effort",
+                    "must match the Codex reasoning config in sanitized_argv",
+                )
+            )
     result = document["result"]
     fingerprint = document["result_fingerprint"]
     if result is None:

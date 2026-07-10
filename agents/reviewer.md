@@ -4,7 +4,6 @@ description: Perform a fresh adversarial read-only review of The Pass code or ev
 tools: Read, Glob, Grep
 disallowedTools: Write, Edit, Bash, Agent
 model: inherit
-effort: high
 maxTurns: 16
 ---
 

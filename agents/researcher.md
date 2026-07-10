@@ -4,7 +4,6 @@ description: Collect source and repository evidence for a bounded The Pass resea
 tools: Read, Glob, Grep, WebSearch, WebFetch
 disallowedTools: Write, Edit, Bash, Agent
 model: inherit
-effort: medium
 maxTurns: 12
 ---
 

@@ -65,8 +65,31 @@ the-pass agents inspect path/to/agent-task.yaml --format json
 ```
 
 `doctor` runs only each binary's `--version`; it does not check authentication or contact a
-model. `inspect` validates limits, paths, roles, objective screening, and sanitized argv without
-execution.
+model. It reports the versioned model profiles but does not claim account access. `inspect`
+validates limits, paths, roles, objective screening, capability routing, and sanitized argv
+without execution.
+
+## Model Routing
+
+`AgentTask` accepts `workload_class: auto|routine|standard|complex|critical` and
+`model_profile: auto|economy|balanced|deep`. Both default to `auto`; automatic workload is
+conservatively `standard`. The profile is a minimum rather than an override.
+
+| Resolved profile | Codex request | Claude request |
+| --- | --- | --- |
+| `economy` | `gpt-5.6-luna`, low effort | `haiku`, default effort |
+| `balanced` | `gpt-5.6-terra`, medium effort | `sonnet`, medium effort |
+| `deep` | `gpt-5.6-sol`, high effort | `opus`, high effort |
+
+`critical` raises the selected deep model to its critical effort. A worktree task or native
+subagent call cannot resolve below `balanced`. Role capability requirements are checked before
+process creation. Claude agents inherit the broker-selected model and effort; no agent frontmatter
+may override them.
+
+The catalog lives in the packaged orchestration policy. Tasks cannot supply arbitrary model IDs.
+`inspect` and every `agent_run` expose the requested model, effort, resolved profile, capabilities,
+rationale, and routing-policy fingerprint. The receipt describes the requested provider model;
+`doctor` and offline CI do not test account entitlement or provider alias resolution.
 
 Explicit execution:
 

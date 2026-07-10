@@ -216,6 +216,11 @@ the-pass agents dispatch templates/agent_task.yaml --output-dir reports/agents \
   --execute --format json
 ```
 
+`AgentTask` selects a structured workload and minimum profile. The broker resolves `economy`,
+`balanced`, or `deep` against the target provider's versioned capability catalog, applies role and
+write-mode floors, and shows the exact requested model and effort in `agents inspect` before any
+paid call. Arbitrary model IDs are not accepted from tasks.
+
 Read-only tasks cannot write. Implementation tasks run in a disposable Git worktree and return an
 unapplied patch for the caller to review. Agents cannot apply patches, write protected governance
 paths, decide gates, approve live trading, recursively delegate, or retry a failed model call.
@@ -310,7 +315,7 @@ See [Paper, Automation, and Reporting](docs/implementation/PAPER_AUTOMATION_REPO
 | [`research/`](research/) | Source registry and reviewed research evidence |
 | [`examples/`](examples/) | Synthetic packages, adapters, baselines, and outcome examples |
 | [`automations/`](automations/) | Scheduler-neutral job specifications |
-| [`config/`](config/) | Versioned gate and risk policies |
+| [`config/`](config/) | Versioned gate, risk, skill-pipeline, and agent/model-routing policies |
 | [`docs/`](docs/) | Architecture, ADRs, contracts, plans, and public documentation |
 | [`reports/`](reports/) | Capability gates, audits, benchmark evidence, and generated reports |
 | [`tests/`](tests/) | Unit, contract, mutation, safety, and end-to-end tests |
@@ -365,6 +370,7 @@ Report vulnerabilities according to [SECURITY.md](SECURITY.md).
 - [Cross-runtime orchestration](docs/plugin/CROSS_RUNTIME.md)
 - [Cross-agent implementation plan](docs/implementation/CROSS_AGENT_ORCHESTRATION_PLAN.md)
 - [Portable orchestration ADR](docs/adr/ADR-0010-portable-agent-orchestration.md)
+- [Capability-aware model routing ADR](docs/adr/ADR-0011-capability-aware-model-routing.md)
 - [`v0.9.0` cross-agent audit](reports/CROSS_AGENT_ORCHESTRATION_AUDIT_0.9.0.md)
 - [CLI contract](docs/public/CLI_CONTRACT.md)
 - [Release process](docs/public/RELEASE_PROCESS.md)

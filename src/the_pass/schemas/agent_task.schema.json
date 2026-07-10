@@ -37,6 +37,8 @@
     "timeout_seconds": { "type": "integer", "minimum": 1 },
     "max_output_bytes": { "type": "integer", "minimum": 1024 },
     "max_budget_usd": { "type": "number", "exclusiveMinimum": 0 },
+    "model_profile": { "enum": ["auto", "economy", "balanced", "deep"] },
+    "workload_class": { "enum": ["auto", "routine", "standard", "complex", "critical"] },
     "allow_native_subagents": { "type": "boolean" },
     "forbidden_actions": {
       "type": "array",

@@ -92,9 +92,10 @@ the-pass agents inspect <agent-task>
 the-pass agents dispatch <agent-task> --output-dir <dir> --execute
 ```
 
-`doctor` checks local executable/version availability without testing authentication or making a
-model call. `inspect` validates the task and prints a secret-free execution preview. `dispatch`
-requires the explicit `--execute` flag and writes a create-only `agent_run` receipt.
+`doctor` checks local executable/version availability and lists policy model profiles without
+testing authentication, account entitlement, or making a model call. `inspect` validates the task,
+resolves its capability-aware model/effort profile, and prints a secret-free execution preview.
+`dispatch` requires the explicit `--execute` flag and writes a create-only `agent_run` receipt.
 
 Delegation is depth one. A delegated task cannot dispatch another agent, retry itself, approve a
 gate, alter governance or live-safety files, or apply its own patch. Read-only tasks return

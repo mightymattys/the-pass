@@ -151,6 +151,8 @@ Required fields:
 - `mode`: `read_only|worktree_patch`;
 - `allowed_write_paths` for `worktree_patch`;
 - `timeout_seconds`, `max_output_bytes`, and optional `max_budget_usd`;
+- optional `model_profile: auto|economy|balanced|deep` and
+  `workload_class: auto|routine|standard|complex|critical`, both defaulting to `auto`;
 - `allow_native_subagents`;
 - `forbidden_actions` including gate mutation, credential access, live code, and recursive
   cross-provider calls.
@@ -164,6 +166,8 @@ Validation rules:
 - write paths must be relative, normalized, non-empty, and inside the repository;
 - input paths must exist and resolve inside the repository;
 - timeout/output/budget values must remain within policy maxima;
+- model routing uses only the structured task fields and versioned capability catalog; arbitrary
+  model IDs and free-text complexity classification are forbidden;
 - a normalized semantic scanner rejects obvious requests for real orders, credentials, gate
   approval, permission bypass, or recursive delegation. This scanner is defense-in-depth, not the
   security boundary: sandbox/tool restrictions, worktree isolation, protected paths, result
@@ -190,6 +194,8 @@ Create-only receipt written by the broker:
 - run/task IDs and task fingerprint;
 - caller and target providers;
 - provider binary path and version;
+- requested/resolved model profile, workload class, requested model, reasoning effort,
+  capabilities, rationale, and routing-policy fingerprint;
 - exact orchestration policy schema/interface version and fingerprint;
 - role, mode, working-directory strategy, and effective limits;
 - sanitized argv, start/end timestamps, duration, and exit code;
@@ -484,14 +490,15 @@ non-promotion code; worktree names are unique; packaged policy is runtime-author
 are create-only but not claimed to be cryptographically immutable; and `matk0shub/the-pass` was
 confirmed from the configured git remote.
 
-No implementation decision is left as `TBD`. Provider model choice remains a user configuration,
-not a repository default, because aliases and availability change independently of this contract.
+No implementation decision is left as `TBD`. Provider choice is policy-driven through versioned
+`economy`, `balanced`, and `deep` profiles. Claude rolling aliases and provider account access are
+explicit runtime boundaries; the requested model and routing hash remain auditable.
 
 ## 17. Implementation Evidence
 
 The implementation completed on 2026-07-10 with:
 
-- 168 repository tests passing in the final complete matrix recorded in
+- 172 repository tests passing in the final complete matrix recorded in
   `reports/CROSS_AGENT_ORCHESTRATION_AUDIT_0.9.0.md`;
 - all seven Codex skill validators, the Codex plugin validator, and both strict Claude plugin
   validators passing;
@@ -503,7 +510,9 @@ The implementation completed on 2026-07-10 with:
 - authenticated read-only smoke dispatches completing in both real provider directions with
   create-only receipts and no workspace writes;
 - an authenticated broker-managed Claude coordinator smoke completing through its scoped reviewer
-  subagent while the coordinator had no direct file or shell tools.
+  subagent while the coordinator had no direct file or shell tools;
+- authenticated `sonnet/medium` and `gpt-5.6-luna/low` routing smokes completing with the requested
+  model and effort recorded in valid receipts.
 
 The authenticated smoke exposed provider-specific output differences that fixture-only testing
 could not reveal. Those findings were fixed before completion: Claude may return one fenced JSON

@@ -8,18 +8,21 @@ import sys
 import tempfile
 import time
 import unittest
+from copy import deepcopy
 from pathlib import Path
 
 import yaml
 
 from the_pass.agent_orchestration import (
     AgentSafetyError,
+    _build_prompt,
     _exclusive_dispatch_lock,
     _write_create_only,
     build_provider_argv,
     critical_paths_are_protected,
     dispatch_agent_task,
     inspect_agent_task,
+    select_model,
     validate_agent_task_file,
 )
 from the_pass.validator import validate_artifact
@@ -51,6 +54,8 @@ class AgentOrchestrationTests(unittest.TestCase):
         allowed: list[str] | None = None,
         timeout: int = 5,
         output_bytes: int = 65536,
+        model_profile: str = "auto",
+        workload_class: str = "auto",
     ) -> dict:
         return {
             "schema_version": 1,
@@ -68,6 +73,8 @@ class AgentOrchestrationTests(unittest.TestCase):
             "timeout_seconds": timeout,
             "max_output_bytes": output_bytes,
             "max_budget_usd": 1.0,
+            "model_profile": model_profile,
+            "workload_class": workload_class,
             "allow_native_subagents": False,
             "forbidden_actions": REQUIRED_FORBIDDEN,
         }
@@ -139,16 +146,87 @@ class AgentOrchestrationTests(unittest.TestCase):
                     self.assertNotIn("--add-dir", argv)
                     self.assertIn("read-only" if target == "codex" else "plan", argv)
                     if target == "codex":
+                        self.assertIn("gpt-5.6-terra", argv)
+                        self.assertIn('model_reasoning_effort="medium"', argv)
                         self.assertIn("--ignore-user-config", argv)
                         self.assertIn("--ignore-rules", argv)
                         self.assertIn("mcp_servers={}", argv)
                         self.assertIn("project_doc_max_bytes=0", argv)
                         self.assertIn("plugins", argv)
                     else:
+                        self.assertIn("sonnet", argv)
+                        self.assertIn("--effort", argv)
+                        self.assertIn("medium", argv)
                         self.assertIn("--strict-mcp-config", argv)
                         self.assertIn('{"mcpServers":{}}', argv)
                         self.assertIn("--setting-sources", argv)
                         self.assertIn("--disable-slash-commands", argv)
+
+    def test_capability_aware_model_router_uses_profiles_and_safety_floors(self) -> None:
+        cases = [
+            ("claude", "researcher", "read_only", "routine", "auto", False, "economy", "haiku", None),
+            ("claude", "reviewer", "read_only", "standard", "auto", False, "balanced", "sonnet", "medium"),
+            ("codex", "reviewer", "read_only", "complex", "auto", False, "deep", "gpt-5.6-sol", "high"),
+            ("codex", "reviewer", "read_only", "critical", "auto", False, "deep", "gpt-5.6-sol", "xhigh"),
+            ("codex", "implementer", "worktree_patch", "routine", "economy", False, "balanced", "gpt-5.6-terra", "medium"),
+            ("claude", "researcher", "read_only", "routine", "auto", True, "balanced", "sonnet", "medium"),
+            ("claude", "researcher", "read_only", "routine", "deep", False, "deep", "opus", "high"),
+        ]
+        for target, role, mode, workload, profile, native, resolved, model, effort in cases:
+            with self.subTest(target=target, role=role, workload=workload, profile=profile):
+                with tempfile.TemporaryDirectory() as tmp:
+                    root = Path(tmp)
+                    (root / "README.md").write_text("fixture\n", encoding="utf-8")
+                    caller = "claude" if target == "codex" else "codex"
+                    document = self.task_document(
+                        caller=caller,
+                        target=target,
+                        role=role,
+                        mode=mode,
+                        allowed=["generated"] if mode == "worktree_patch" else None,
+                        model_profile=profile,
+                        workload_class=workload,
+                    )
+                    document["allow_native_subagents"] = native
+                    context = validate_agent_task_file(self.write_task(root, document))
+                    selection = select_model(context)
+                    self.assertEqual(selection.resolved_profile, resolved)
+                    self.assertEqual(selection.requested_model, model)
+                    self.assertEqual(selection.reasoning_effort, effort)
+                    inspection = inspect_agent_task(self.write_task(root, document))
+                    self.assertEqual(inspection["model_selection"]["requested_model"], model)
+
+    def test_model_router_rejects_catalog_without_required_capability(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "README.md").write_text("fixture\n", encoding="utf-8")
+            context = validate_agent_task_file(
+                self.write_task(root, self.task_document(role="reviewer"))
+            )
+            policy = deepcopy(context.policy)
+            policy["model_routing"]["providers"]["claude"]["balanced"][
+                "capabilities"
+            ].remove("review")
+            broken = type(context)(
+                task=context.task,
+                workspace_root=context.workspace_root,
+                input_paths=context.input_paths,
+                allowed_write_paths=context.allowed_write_paths,
+                runtime_depth=context.runtime_depth,
+                policy=policy,
+            )
+            with self.assertRaisesRegex(AgentSafetyError, "required capabilities"):
+                select_model(broken)
+
+    def test_provider_prompt_defines_structured_finding_items(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "README.md").write_text("fixture\n", encoding="utf-8")
+            context = validate_agent_task_file(self.write_task(root, self.task_document()))
+            prompt = _build_prompt(context)
+            self.assertIn('"evidence_paths": [', prompt)
+            self.assertIn('"recommendation": "concrete recommendation"', prompt)
+            self.assertIn("Use an empty findings array", prompt)
 
     def test_cross_provider_native_subagents_are_read_only_specialists(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -619,6 +697,40 @@ class AgentOrchestrationTests(unittest.TestCase):
             self.assertFalse(validation.ok)
             self.assertTrue(
                 any(issue.path == "$.result_fingerprint" for issue in validation.issues)
+            )
+
+    def test_agent_run_model_selection_must_match_provider_argv(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "README.md").write_text("fixture\n", encoding="utf-8")
+            task_path = self.write_task(root, self.task_document())
+            run, run_path, exit_code = dispatch_agent_task(
+                task_path,
+                output_dir=root / "runs",
+                execute=True,
+                provider_commands=self.fixture_commands(),
+            )
+            self.assertEqual(exit_code, 0)
+            run["model_selection"]["requested_model"] = "opus"
+            run_path.write_text(json.dumps(run), encoding="utf-8")
+            validation = validate_artifact(run_path, artifact_type="agent_run")
+            self.assertFalse(validation.ok)
+            self.assertTrue(
+                any(
+                    issue.path == "$.model_selection.requested_model"
+                    for issue in validation.issues
+                )
+            )
+            run["model_selection"]["requested_model"] = "sonnet"
+            run["model_selection"]["routing_policy_sha256"] = "0" * 64
+            run_path.write_text(json.dumps(run), encoding="utf-8")
+            validation = validate_artifact(run_path, artifact_type="agent_run")
+            self.assertFalse(validation.ok)
+            self.assertTrue(
+                any(
+                    issue.path == "$.model_selection.routing_policy_sha256"
+                    for issue in validation.issues
+                )
             )
 
     def test_agent_run_validation_detects_patch_tampering(self) -> None:

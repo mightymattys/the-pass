@@ -70,6 +70,9 @@ are separate append-only governance attachments and cannot be overwritten or ret
   subagents inside the active provider call.
 - Broker-managed providers run without user/project MCP servers, connectors, unrelated plugins,
   hooks, rules, or provider-native multi-agent features.
+- Cross-provider tasks use structured workload/model profiles. The policy may raise a requested
+  profile to satisfy role, write-mode, or native-subagent capability floors; task text cannot name
+  an arbitrary model.
 - Read-only delegates return evidence only. Write delegates return an unapplied worktree patch; the
   caller reviews and applies it.
 - No agent may write gate decisions, approval state, ledgers, orchestration policy, protected safety

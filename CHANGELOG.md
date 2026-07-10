@@ -13,6 +13,8 @@ and the Keep a Changelog structure.
   doctor, inspect, and explicit dispatch commands.
 - Depth-one, no-retry cross-provider orchestration with read-only delegation, isolated worktree
   patches, protected authority paths, create-only receipts, and no automatic patch application.
+- Capability-aware `economy`, `balanced`, and `deep` model routing with deterministic workload and
+  safety floors, inspect-time previews, and receipt-level model/effort evidence.
 
 ### Changed
 

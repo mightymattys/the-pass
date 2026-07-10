@@ -217,6 +217,8 @@ def validate_plugin_manifest() -> None:
         metadata = yaml.safe_load(parts[1])
         if not isinstance(metadata, dict) or metadata.get("name") != name:
             fail(f"Claude agent name is invalid: {name}")
+        if metadata.get("model") != "inherit" or "effort" in metadata:
+            fail(f"Claude {name} must inherit the broker-selected model and effort")
         if not isinstance(metadata.get("maxTurns"), int) or metadata["maxTurns"] < 1:
             fail(f"Claude agent must have finite maxTurns: {name}")
         tools = str(metadata.get("tools", ""))
@@ -439,6 +441,30 @@ def validate_packaged_policy() -> None:
         or agent_policy["safety"].get("exclusive_external_dispatch") is not True
     ):
         fail("agent policy must serialize external provider dispatches")
+    routing = agent_policy.get("model_routing", {})
+    profiles = routing.get("profile_order")
+    if profiles != ["economy", "balanced", "deep"]:
+        fail("agent model routing must expose economy, balanced, and deep profiles")
+    if routing.get("catalog_reviewed_at") != "2026-07-10":
+        fail("agent model catalog review date must match the release audit")
+    deprecated = {"gpt-5.2", "gpt-5.3-codex"}
+    for provider in ("codex", "claude"):
+        catalog = routing.get("providers", {}).get(provider, {})
+        if set(catalog) != set(profiles):
+            fail(f"agent model catalog is incomplete for {provider}")
+        models = [entry.get("model") for entry in catalog.values()]
+        if len(set(models)) != len(profiles) or deprecated.intersection(models):
+            fail(f"agent model catalog contains duplicate or deprecated models for {provider}")
+        for profile, entry in catalog.items():
+            capabilities = set(entry.get("capabilities", []))
+            if not {"structured_output", "repository_read"} <= capabilities:
+                fail(f"agent model profile lacks base capabilities: {provider}/{profile}")
+    if "native_subagents" not in set(
+        routing["providers"]["claude"][routing["native_subagents_minimum_profile"]][
+            "capabilities"
+        ]
+    ):
+        fail("Claude native-subagent model floor lacks native_subagents capability")
     validate_skill_pipeline()
 
 

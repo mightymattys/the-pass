@@ -60,6 +60,22 @@ resolution. The following additional findings were confirmed and fixed:
 No second-pass P0 finding was found. All second-pass P1 findings are closed by code and regression
 tests before the final verdict.
 
+## Capability-Routing Audit
+
+A third pass reviewed model capability, cost, latency, effort, provider drift, task-controlled
+overrides, native-agent inheritance, and receipt traceability. It produced these resolved findings:
+
+| Severity | Finding | Resolution |
+| --- | --- | --- |
+| P1 | Provider defaults made model capability and cost dependent on untracked local/account settings. | A versioned policy now resolves structured workloads to explicit `economy`, `balanced`, or `deep` provider profiles. |
+| P1 | Claude agent frontmatter could override a broker-selected reasoning effort. | All four agents now inherit model and effort; public validation rejects local agent overrides. |
+| P1 | A receipt could state a model different from provider argv or the recorded policy profile. | Semantic validation checks model, effort, capabilities, routing hash, and sanitized argv against the current recorded policy. |
+| P2 | Nested `findings` shape was not explicit enough for an older Claude CLI despite JSON Schema. | The exact four-key finding object is included in the prompt; strict post-validation remains authoritative. |
+
+The catalog was checked against official Codex and Claude Code model/configuration documentation
+on 2026-07-10. Tasks cannot supply arbitrary model IDs, and the broker does not silently retry or
+fall back to another profile.
+
 ## Verification
 
 The final audit matrix requires all of the following to pass:
@@ -76,7 +92,7 @@ uv run python scripts/validate_distribution.py <wheel>
 ```
 
 All seven `skills/*/SKILL.md` files also pass the official Codex skill validator, and the repository
-passes the official Codex plugin validator. The final offline suite contains 168 passing tests.
+passes the official Codex plugin validator. The final offline suite contains 172 passing tests.
 
 Authenticated read-only smoke results:
 
@@ -85,6 +101,8 @@ Authenticated read-only smoke results:
 | Codex caller to Claude target | complete | none | Valid strict result; reported Claude cost was USD 0.1181065. |
 | Claude caller to Codex target | complete | none | Valid strict result; Codex CLI does not report a cost field. |
 | Codex caller to Claude reviewer subagent | complete | none | Scoped coordinator had no direct file/shell tools; reviewer returned `# The Pass`; reported Claude cost was USD 0.009881. |
+| Codex caller to Claude balanced profile | complete | none | Requested `sonnet` with medium effort; strict result passed; reported Claude cost was USD 0.03095135. |
+| Claude caller to Codex economy profile | complete | none | Requested `gpt-5.6-luna` with low effort; strict result passed. |
 
 Smoke receipts were intentionally written under a temporary directory and are not committed as
 portable project evidence. The stable evidence is the fixture-backed regression suite and this
@@ -94,18 +112,20 @@ sanitized audit record.
 
 | Control | Evidence |
 | --- | --- |
-| Policy invariants, runtime depth, and exclusive dispatch lock | `src/the_pass/agent_orchestration.py:100`, `src/the_pass/agent_orchestration.py:178`, `src/the_pass/agent_orchestration.py:194` |
-| Provider config isolation and scoped native-agent allowlist | `src/the_pass/agent_orchestration.py:417`, `src/the_pass/agent_orchestration.py:464`, `src/the_pass/agent_orchestration.py:486` |
-| Bounded process groups and strict provider-result parsing | `src/the_pass/agent_orchestration.py:599`, `src/the_pass/agent_orchestration.py:613`, `src/the_pass/agent_orchestration.py:786` |
-| Protected output path and serialized dispatch | `src/the_pass/agent_orchestration.py:1142` |
-| Receipt chronology, identity, and current patch-byte verification | `src/the_pass/validator.py:664` |
-| Plugin topology and policy-copy checks | `scripts/validate_public_repo.py:207`, `scripts/validate_public_repo.py:426` |
+| Policy, catalog, and capability-aware selection | `src/the_pass/agent_orchestration.py:125`, `src/the_pass/agent_orchestration.py:165`, `src/the_pass/agent_orchestration.py:237` |
+| Provider config isolation, explicit model/effort, and scoped native-agent allowlist | `src/the_pass/agent_orchestration.py:564` |
+| Bounded process groups and strict provider-result parsing | `src/the_pass/agent_orchestration.py:776`, `src/the_pass/agent_orchestration.py:790`, `src/the_pass/agent_orchestration.py:955` |
+| Protected output path and serialized dispatch | `src/the_pass/agent_orchestration.py:1331` |
+| Receipt chronology, model-policy consistency, and current patch-byte verification | `src/the_pass/validator.py:664` |
+| Plugin topology, model inheritance, and policy-copy checks | `scripts/validate_public_repo.py:207`, `scripts/validate_public_repo.py:428` |
 | Agent-only coordinator contract | `agents/coordinator.md:1` |
 
 ## Residual Boundaries
 
 - Cross-provider execution depends on locally installed and authenticated CLIs and may incur cost.
 - Provider versions can drift; `agents doctor` reports versions but does not contact a model.
+- Claude aliases are rolling provider aliases, and account-level model entitlement is not verified
+  offline. Receipts record the requested model, not an unverifiable claim about alias resolution.
 - Read-only isolation relies on Codex sandbox enforcement or Claude tool denial; no credentials are
   loaded by The Pass, but users remain responsible for provider CLI configuration.
 - Agent output is an evidence input only. It cannot append a gate decision, satisfy human approval,

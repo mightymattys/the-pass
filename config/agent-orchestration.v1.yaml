@@ -9,6 +9,61 @@ limits:
   attempts: 1
   max_concurrent_external_dispatches: 1
 
+model_routing:
+  catalog_reviewed_at: "2026-07-10"
+  profile_order: [economy, balanced, deep]
+  default_profile: auto
+  default_workload_class: auto
+  automatic_workload_class: standard
+  workload_profiles:
+    routine: economy
+    standard: balanced
+    complex: deep
+    critical: deep
+  role_minimum_profiles:
+    researcher: economy
+    implementer: balanced
+    reviewer: economy
+  worktree_minimum_profile: balanced
+  native_subagents_minimum_profile: balanced
+  required_capabilities:
+    researcher: [structured_output, repository_read, research]
+    implementer: [structured_output, repository_read, repository_write, coding]
+    reviewer: [structured_output, repository_read, review]
+  providers:
+    codex:
+      economy:
+        model: gpt-5.6-luna
+        effort: low
+        critical_effort: xhigh
+        capabilities: [structured_output, repository_read, repository_write, coding, research, review]
+      balanced:
+        model: gpt-5.6-terra
+        effort: medium
+        critical_effort: xhigh
+        capabilities: [structured_output, repository_read, repository_write, coding, research, review]
+      deep:
+        model: gpt-5.6-sol
+        effort: high
+        critical_effort: xhigh
+        capabilities: [structured_output, repository_read, repository_write, coding, research, review]
+    claude:
+      economy:
+        model: haiku
+        effort: null
+        critical_effort: null
+        capabilities: [structured_output, repository_read, repository_write, coding, research, review]
+      balanced:
+        model: sonnet
+        effort: medium
+        critical_effort: high
+        capabilities: [structured_output, repository_read, repository_write, coding, research, review, native_subagents]
+      deep:
+        model: opus
+        effort: high
+        critical_effort: xhigh
+        capabilities: [structured_output, repository_read, repository_write, coding, research, review, native_subagents]
+
 providers:
   codex:
     binary: codex

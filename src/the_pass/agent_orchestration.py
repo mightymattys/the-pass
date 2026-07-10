@@ -63,6 +63,32 @@ class ProcessOutcome:
     duration_ms: int
 
 
+@dataclass(frozen=True)
+class ModelSelection:
+    requested_profile: str
+    requested_workload_class: str
+    resolved_workload_class: str
+    resolved_profile: str
+    requested_model: str
+    reasoning_effort: str | None
+    capabilities: tuple[str, ...]
+    rationale: tuple[str, ...]
+    routing_policy_sha256: str
+
+    def as_document(self) -> dict[str, Any]:
+        return {
+            "requested_profile": self.requested_profile,
+            "requested_workload_class": self.requested_workload_class,
+            "resolved_workload_class": self.resolved_workload_class,
+            "resolved_profile": self.resolved_profile,
+            "requested_model": self.requested_model,
+            "reasoning_effort": self.reasoning_effort,
+            "capabilities": list(self.capabilities),
+            "rationale": list(self.rationale),
+            "routing_policy_sha256": self.routing_policy_sha256,
+        }
+
+
 def _utc_now() -> str:
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
@@ -98,6 +124,7 @@ def load_agent_policy() -> dict[str, Any]:
         "schema_version",
         "interface_version",
         "limits",
+        "model_routing",
         "providers",
         "roles",
         "required_forbidden_actions",
@@ -131,7 +158,139 @@ def load_agent_policy() -> dict[str, Any]:
         raise AgentSafetyError("agent orchestration safety flags must remain false")
     if safety.get("exclusive_external_dispatch") is not True:
         raise AgentSafetyError("external provider dispatch lock must remain enabled")
+    _validate_model_routing_policy(policy["model_routing"])
     return policy
+
+
+def _validate_model_routing_policy(routing: Any) -> None:
+    if not isinstance(routing, dict):
+        raise AgentOrchestrationError("model routing policy must be an object")
+    profiles = routing.get("profile_order")
+    if profiles != ["economy", "balanced", "deep"]:
+        raise AgentSafetyError("model profile order must remain economy, balanced, deep")
+    workloads = routing.get("workload_profiles")
+    if not isinstance(workloads, dict) or set(workloads) != {
+        "routine",
+        "standard",
+        "complex",
+        "critical",
+    }:
+        raise AgentOrchestrationError("model workload profile mapping is incomplete")
+    if any(value not in profiles for value in workloads.values()):
+        raise AgentOrchestrationError("model workload mapping references an unknown profile")
+    role_minimums = routing.get("role_minimum_profiles")
+    requirements = routing.get("required_capabilities")
+    if not isinstance(role_minimums, dict) or set(role_minimums) != {
+        "researcher",
+        "implementer",
+        "reviewer",
+    }:
+        raise AgentOrchestrationError("model role minimum mapping is incomplete")
+    if not isinstance(requirements, dict) or set(requirements) != set(role_minimums):
+        raise AgentOrchestrationError("model capability requirements are incomplete")
+    if any(value not in profiles for value in role_minimums.values()):
+        raise AgentOrchestrationError("model role minimum references an unknown profile")
+    for name in ("worktree_minimum_profile", "native_subagents_minimum_profile"):
+        if routing.get(name) not in profiles:
+            raise AgentOrchestrationError(f"{name} references an unknown model profile")
+    if routing.get("automatic_workload_class") not in workloads:
+        raise AgentOrchestrationError("automatic workload class is invalid")
+    if any(not isinstance(values, list) or not values for values in requirements.values()):
+        raise AgentOrchestrationError("model role capability requirements cannot be empty")
+    providers = routing.get("providers")
+    if not isinstance(providers, dict) or set(providers) != {"codex", "claude"}:
+        raise AgentOrchestrationError("model catalog must define codex and claude")
+    allowed_efforts = {None, "low", "medium", "high", "xhigh"}
+    for provider, catalog in providers.items():
+        if not isinstance(catalog, dict) or set(catalog) != set(profiles):
+            raise AgentOrchestrationError(
+                f"model catalog for {provider} must define every profile"
+            )
+        for profile, entry in catalog.items():
+            if not isinstance(entry, dict) or not isinstance(entry.get("model"), str):
+                raise AgentOrchestrationError(
+                    f"model catalog entry is invalid: {provider}/{profile}"
+                )
+            if entry.get("effort") not in allowed_efforts or entry.get(
+                "critical_effort"
+            ) not in allowed_efforts:
+                raise AgentOrchestrationError(
+                    f"model effort is invalid: {provider}/{profile}"
+                )
+            if provider == "codex" and (
+                entry.get("effort") is None or entry.get("critical_effort") is None
+            ):
+                raise AgentOrchestrationError(
+                    f"Codex model effort cannot be null: {provider}/{profile}"
+                )
+            capabilities = entry.get("capabilities")
+            if not isinstance(capabilities, list) or not capabilities:
+                raise AgentOrchestrationError(
+                    f"model capabilities are missing: {provider}/{profile}"
+                )
+    if routing.get("default_profile") != "auto" or routing.get(
+        "default_workload_class"
+    ) != "auto":
+        raise AgentSafetyError("model routing defaults must remain automatic")
+
+
+def select_model(context: TaskContext) -> ModelSelection:
+    """Resolve a capability-checked provider model without free-text classification."""
+
+    routing = context.policy["model_routing"]
+    profiles = list(routing["profile_order"])
+    requested_profile = str(
+        context.task.get("model_profile", routing["default_profile"])
+    )
+    requested_workload = str(
+        context.task.get("workload_class", routing["default_workload_class"])
+    )
+    workload = (
+        str(routing["automatic_workload_class"])
+        if requested_workload == "auto"
+        else requested_workload
+    )
+    workload_profile = str(routing["workload_profiles"][workload])
+    candidates = [workload_profile]
+    rationale = [f"workload:{requested_workload}->{workload}:{workload_profile}"]
+    if requested_profile != "auto":
+        candidates.append(requested_profile)
+        rationale.append(f"requested-minimum:{requested_profile}")
+    role_floor = str(routing["role_minimum_profiles"][context.task["role"]])
+    candidates.append(role_floor)
+    rationale.append(f"role-minimum:{context.task['role']}:{role_floor}")
+    if context.task["mode"] == "worktree_patch":
+        floor = str(routing["worktree_minimum_profile"])
+        candidates.append(floor)
+        rationale.append(f"worktree-minimum:{floor}")
+    if context.task["allow_native_subagents"]:
+        floor = str(routing["native_subagents_minimum_profile"])
+        candidates.append(floor)
+        rationale.append(f"native-subagents-minimum:{floor}")
+    resolved_profile = max(candidates, key=profiles.index)
+    provider = context.task["target_provider"]
+    entry = routing["providers"][provider][resolved_profile]
+    capabilities = tuple(sorted(set(str(value) for value in entry["capabilities"])))
+    required = set(str(value) for value in routing["required_capabilities"][context.task["role"]])
+    if context.task["allow_native_subagents"]:
+        required.add("native_subagents")
+    missing = sorted(required - set(capabilities))
+    if missing:
+        raise AgentSafetyError(
+            f"selected model lacks required capabilities: {', '.join(missing)}"
+        )
+    effort = entry["critical_effort"] if workload == "critical" else entry["effort"]
+    return ModelSelection(
+        requested_profile=requested_profile,
+        requested_workload_class=requested_workload,
+        resolved_workload_class=workload,
+        resolved_profile=resolved_profile,
+        requested_model=str(entry["model"]),
+        reasoning_effort=str(effort) if effort is not None else None,
+        capabilities=capabilities,
+        rationale=tuple(rationale),
+        routing_policy_sha256=_fingerprint(routing),
+    )
 
 
 def _relative_path(value: str, *, label: str) -> str:
@@ -413,6 +572,7 @@ def build_provider_argv(
 
     task = context.task
     provider = task["target_provider"]
+    selection = select_model(context)
     prefix = _provider_prefix(provider, context.policy, provider_commands)
     if provider == "codex":
         sandbox = "read-only" if task["mode"] == "read_only" else "workspace-write"
@@ -420,6 +580,10 @@ def build_provider_argv(
             *prefix,
             "exec",
             "--ephemeral",
+            "--model",
+            selection.requested_model,
+            "--config",
+            f'model_reasoning_effort="{selection.reasoning_effort}"',
             "--ignore-user-config",
             "--ignore-rules",
             "--json",
@@ -468,6 +632,8 @@ def build_provider_argv(
             "--output-format",
             "json",
             "--no-session-persistence",
+            "--model",
+            selection.requested_model,
             "--json-schema",
             json.dumps(_result_schema(), sort_keys=True, separators=(",", ":")),
             "--max-budget-usd",
@@ -480,6 +646,8 @@ def build_provider_argv(
             "--no-chrome",
             "--disable-slash-commands",
         ]
+        if selection.reasoning_effort is not None:
+            argv.extend(["--effort", selection.reasoning_effort])
         plugin_root = _plugin_root(context.workspace_root)
         if plugin_root is not None:
             argv.extend(["--plugin-dir", str(plugin_root)])
@@ -547,7 +715,14 @@ def _build_prompt(context: TaskContext) -> str:
         "task_id": context.task["task_id"],
         "status": "complete|blocked|failed",
         "summary": "concise result",
-        "findings": [],
+        "findings": [
+            {
+                "severity": "P0|P1|P2|P3|info",
+                "title": "concrete finding",
+                "evidence_paths": ["repository/relative/path"],
+                "recommendation": "concrete recommendation",
+            }
+        ],
         "changed_paths": [],
         "next_actions": [],
         "assumptions": [],
@@ -557,7 +732,9 @@ def _build_prompt(context: TaskContext) -> str:
         "Execute exactly one bounded The Pass agent task. Return only a JSON object matching "
         "AgentResult v1. The object must contain exactly these top-level keys and no others:\n"
         + json.dumps(result_shape, indent=2, sort_keys=True)
-        + "\nDo not return AgentTask, AgentRun, provider, budget, timing, or caller metadata. "
+        + "\nUse an empty findings array when there is no finding; every non-empty findings "
+        "item must be an object with exactly the four keys shown. Do not return AgentTask, "
+        "AgentRun, provider, budget, timing, or caller metadata. "
         "Do not invoke another external AI provider, access credentials, change "
         "gate decisions, approve live trading, commit, push, or apply a patch. Respect the role, "
         "mode, input paths, and acceptance criteria. Evidence paths and changed paths must be "
@@ -917,6 +1094,14 @@ def doctor_agents(provider: str = "all") -> dict[str, Any]:
             ),
             "authentication_checked": False,
             "network_contacted": False,
+            "model_access_checked": False,
+            "model_profiles": {
+                profile: {
+                    "requested_model": entry["model"],
+                    "reasoning_effort": entry["effort"],
+                }
+                for profile, entry in policy["model_routing"]["providers"][name].items()
+            },
         }
     return {"status": "complete", "providers": providers}
 
@@ -937,12 +1122,14 @@ def inspect_agent_task(
         result_path=placeholder,
         provider_commands={provider: [context.policy["providers"][provider]["binary"]]},
     )
+    selection = select_model(context)
     return {
         "status": "complete",
         "task_id": context.task["task_id"],
         "target_provider": provider,
         "runtime_depth": context.runtime_depth,
         "would_execute": False,
+        "model_selection": selection.as_document(),
         "sanitized_argv": _sanitize_argv(argv),
         "cwd_strategy": (
             "source_read_only" if context.task["mode"] == "read_only" else "detached_worktree"
@@ -992,6 +1179,7 @@ def _dispatch_agent_task_locked(
     result_temp = output_dir / f".{run_id}.provider-result.json"
     patch_path = output_dir / f"agent-patch-{run_id}.patch"
     provider = context.task["target_provider"]
+    model_selection = select_model(context)
     prefix = _provider_prefix(provider, context.policy, provider_commands)
     provider_version = _provider_version(prefix, provider, context.policy)
     started_at = _utc_now()
@@ -1100,6 +1288,7 @@ def _dispatch_agent_task_locked(
         "caller_provider": context.task["caller_provider"],
         "target_provider": provider,
         "provider": {"binary": prefix[0], "version": provider_version},
+        "model_selection": model_selection.as_document(),
         "policy": {
             "schema_version": int(context.policy["schema_version"]),
             "interface_version": str(context.policy["interface_version"]),

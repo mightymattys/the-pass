@@ -13,6 +13,8 @@ allowed_write_paths: []
 timeout_seconds: 300
 max_output_bytes: 1048576
 max_budget_usd: 1.0
+model_profile: auto
+workload_class: auto
 allow_native_subagents: false
 forbidden_actions:
   - gate_decision

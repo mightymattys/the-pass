@@ -44,6 +44,8 @@ trading, load credentials, commit, push, or apply a returned patch.
   exercised by default CI.
 - Proposed writes require a separate validation and acceptance step.
 - Provider CLI drift is isolated in two command builders and fixture-tested offline.
+- Model choice and effort are governed separately by
+  [ADR-0011](ADR-0011-capability-aware-model-routing.md).
 
 ## Alternatives Rejected
 

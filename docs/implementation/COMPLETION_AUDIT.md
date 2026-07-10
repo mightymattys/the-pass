@@ -45,6 +45,9 @@ Trading roadmap gate evidence is tracked separately:
 - [`v0.8.0` post-release verification](../../reports/POST_RELEASE_AUDIT_0.8.0.md)
 - [Seven-skill machine policy](../../config/skill-pipeline.v1.yaml)
 - [Consolidated interface ADR](../adr/ADR-0009-consolidated-skill-interface.md)
+- [Portable cross-agent orchestration ADR](../adr/ADR-0010-portable-agent-orchestration.md)
+- [Capability-aware model routing ADR](../adr/ADR-0011-capability-aware-model-routing.md)
+- [`v0.9.0` cross-agent and model-routing audit](../../reports/CROSS_AGENT_ORCHESTRATION_AUDIT_0.9.0.md)
 
 ## Local Completion Commands
 

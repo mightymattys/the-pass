@@ -5,7 +5,7 @@
   "type": "object",
   "required": [
     "schema_version", "run_id", "task_id", "task_fingerprint", "caller_provider",
-    "target_provider", "provider", "policy", "role", "mode", "runtime_depth", "limits", "execution",
+    "target_provider", "provider", "model_selection", "policy", "role", "mode", "runtime_depth", "limits", "execution",
     "streams", "result", "result_fingerprint", "patch", "status", "issues", "metadata"
   ],
   "properties": {
@@ -21,6 +21,35 @@
       "properties": {
         "binary": { "type": "string", "minLength": 1 },
         "version": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+    "model_selection": {
+      "type": "object",
+      "required": [
+        "requested_profile", "requested_workload_class", "resolved_workload_class",
+        "resolved_profile", "requested_model", "reasoning_effort", "capabilities",
+        "rationale", "routing_policy_sha256"
+      ],
+      "properties": {
+        "requested_profile": { "enum": ["auto", "economy", "balanced", "deep"] },
+        "requested_workload_class": { "enum": ["auto", "routine", "standard", "complex", "critical"] },
+        "resolved_workload_class": { "enum": ["routine", "standard", "complex", "critical"] },
+        "resolved_profile": { "enum": ["economy", "balanced", "deep"] },
+        "requested_model": { "type": "string", "minLength": 1 },
+        "reasoning_effort": { "type": ["string", "null"], "enum": ["low", "medium", "high", "xhigh", null] },
+        "capabilities": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "rationale": {
+          "type": "array",
+          "minItems": 2,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "routing_policy_sha256": { "$ref": "#/$defs/sha256" }
       },
       "additionalProperties": false
     },

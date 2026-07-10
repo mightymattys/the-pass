@@ -3,7 +3,6 @@ name: coordinator
 description: Use only as the main Claude session agent to coordinate one bounded The Pass task across the researcher, implementer, and reviewer specialists; never invoke this agent as a subagent.
 tools: Agent(the-pass:researcher, the-pass:implementer, the-pass:reviewer)
 model: inherit
-effort: medium
 maxTurns: 12
 ---
 

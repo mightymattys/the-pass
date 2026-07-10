@@ -4,7 +4,6 @@ description: Implement one tightly scoped The Pass change in an isolated worktre
 tools: Read, Glob, Grep, Edit, Write
 disallowedTools: Bash, Agent
 model: inherit
-effort: high
 maxTurns: 20
 isolation: worktree
 ---
