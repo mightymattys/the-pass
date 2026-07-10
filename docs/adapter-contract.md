@@ -32,7 +32,7 @@ artifacts.
 | Mode | Meaning | Promotion |
 | --- | --- | --- |
 | diagnostic | Useful for exploration only. | Cannot promote to paper |
-| research | Can support backtest research. | Can enter `taste` |
+| research | Can support backtest research. | Can enter independent `review` |
 | paper | Can support paper/replay observation. | Can recommend risk review |
 | live-capable | Has separate live ADR, dry-run, risk, and credential boundary. | Human approval only |
 

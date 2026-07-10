@@ -113,7 +113,10 @@ never proves gate passage. Legacy v1 entries remain verifiable but cannot prove 
 
 `the-pass receipts add` and `the-pass receipts add-decision` refuse to append when the
 existing ledger or any referenced artifact is invalid. `the-pass receipts verify` recomputes
-the chain and artifact hashes and fails if an entry or recorded artifact was edited silently.
+the chain and artifact hashes, rebuilds every v2 run, and replays every v2 gate decision in order
+against the bundled policy. A gate can satisfy a prerequisite only after that semantic replay.
+This fails closed for handwritten decisions, forged hash-consistent entries, stale policies, and
+silently edited evidence.
 
 ## Public Safety Blocks
 

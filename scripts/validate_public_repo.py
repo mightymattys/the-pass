@@ -19,6 +19,8 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
 from the_pass.validator import ARTIFACT_SCHEMAS, ARTIFACT_TYPES, validate_artifact, validate_package  # noqa: E402
+from the_pass.cli import build_parser  # noqa: E402
+from the_pass.orchestration import load_pipeline_policy  # noqa: E402
 
 PLACEHOLDER_MARKER = "[" + "TO" + "DO:"
 
@@ -79,18 +81,15 @@ REQUIRED_WORKFLOW_DIR_READMES = {
     "reports/simmer/README.md",
 }
 SKILL_EXIT_STATES = {
-    "mise": ("ready", "repaired", "blocked"),
-    "research": ("reviewed", "rejected", "blocked"),
-    "spec": ("draft", "research_ready", "blocked"),
-    "screen": ("reject", "revise", "backtest_candidate", "blocked"),
-    "backtest": ("complete", "blocked"),
-    "taste": ("paper_candidate", "blocked", "revise", "kill"),
-    "refire": ("fixed", "still_blocked"),
-    "simmer": ("passed", "blocked", "killed"),
-    "paper": ("paper_ready", "blocked"),
-    "plate": ("packaged", "blocked"),
-    "receipts": ("summarized", "blocked"),
+    "run": ("complete", "waiting", "blocked", "killed"),
+    "research": ("research_ready", "rejected", "blocked"),
+    "test": ("complete", "rejected", "revise", "blocked"),
+    "review": ("passed", "blocked", "revise", "kill", "forbidden"),
+    "paper": ("paper_ready", "waiting", "blocked", "frozen"),
+    "plate": ("packaged", "blocked", "forbidden"),
+    "status": ("summarized", "blocked"),
 }
+REMOVED_PUBLIC_SKILLS = {"mise", "spec", "screen", "backtest", "taste", "refire", "simmer", "receipts"}
 REQUIRED_SKILL_SECTIONS = (
     "Inputs",
     "Read First",
@@ -165,6 +164,8 @@ def validate_plugin_manifest() -> None:
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     if manifest.get("name") != "the-pass":
         fail("plugin name must be the-pass")
+    if manifest.get("version") != "0.8.0":
+        fail("plugin version must be 0.8.0")
     if manifest.get("skills") != "./skills/":
         fail("plugin must point skills to ./skills/")
     interface = manifest.get("interface") or {}
@@ -194,7 +195,7 @@ def validate_python_package() -> None:
 def validate_skills() -> None:
     skills_dir = ROOT / "skills"
     expected = set(SKILL_EXIT_STATES)
-    present = {path.name for path in skills_dir.iterdir() if path.is_dir()}
+    present = {path.name for path in skills_dir.iterdir() if path.is_dir() and (path / "SKILL.md").is_file()}
     missing = expected - present
     if missing:
         fail(f"missing skills: {', '.join(sorted(missing))}")
@@ -230,7 +231,7 @@ def validate_skills() -> None:
         for artifact_type in re.findall(r"--type ([a-z_]+)", text):
             if artifact_type not in ARTIFACT_TYPES:
                 fail(f"{skill_path.relative_to(ROOT)} references unknown artifact type: {artifact_type}")
-        for reference in re.findall(r"`((?:docs|schemas|templates)/[^`]+)`", text):
+        for reference in re.findall(r"`((?:config|docs|schemas|skills|templates)/[^`]+)`", text):
             if not (ROOT / reference).exists():
                 fail(f"{skill_path.relative_to(ROOT)} references missing path: {reference}")
         exit_section = text.split("## Exit States\n", 1)[1]
@@ -251,6 +252,35 @@ def validate_skills() -> None:
         documented[match.group(1)] = tuple(state.strip() for state in cells[4].split(","))
     if documented != SKILL_EXIT_STATES:
         fail("docs/plugin/COMMANDS.md exit states do not match skill contracts")
+
+
+def validate_skill_pipeline() -> None:
+    root_policy = ROOT / "config" / "skill-pipeline.v1.yaml"
+    packaged_policy = ROOT / "src" / "the_pass" / "policies" / "skill-pipeline.v1.yaml"
+    if not root_policy.is_file() or not packaged_policy.is_file():
+        fail("skill pipeline policy must exist in config and packaged policy directories")
+    validate_yaml(root_policy)
+    validate_yaml(packaged_policy)
+    if root_policy.read_bytes() != packaged_policy.read_bytes():
+        fail("packaged skill pipeline differs from config/skill-pipeline.v1.yaml")
+    try:
+        policy = load_pipeline_policy(root_policy)
+    except Exception as exc:
+        fail(f"invalid skill pipeline policy: {exc}")
+    if {name: tuple(states) for name, states in policy["public_skills"].items()} != SKILL_EXIT_STATES:
+        fail("skill pipeline public skills differ from validator contracts")
+    parser = build_parser()
+    for name, contract in policy["cli_contracts"].items():
+        try:
+            parser.parse_args([str(value) for value in contract["argv"]])
+        except SystemExit as exc:
+            fail(f"skill pipeline CLI contract does not parse: {name} (exit {exc.code})")
+
+    for relative in ("README.md", "docs/plugin/COMMANDS.md"):
+        text = (ROOT / relative).read_text(encoding="utf-8")
+        for removed in REMOVED_PUBLIC_SKILLS:
+            if f"/the-pass:{removed}" in text:
+                fail(f"removed public skill remains documented in {relative}: {removed}")
 
 
 def validate_schemas() -> None:
@@ -324,6 +354,7 @@ def validate_packaged_policy() -> None:
     validate_yaml(packaged_risk_policy)
     if root_risk_policy.read_bytes() != packaged_risk_policy.read_bytes():
         fail("packaged risk policy differs from config/risk-policies.v1.yaml")
+    validate_skill_pipeline()
 
 
 def validate_workflow_directories() -> None:

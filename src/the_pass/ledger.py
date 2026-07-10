@@ -16,6 +16,7 @@ from .validator import (
     ValidationIssue,
     find_artifact,
     load_document,
+    package_evidence_paths,
     validate_package,
     validate_artifact,
 )
@@ -62,7 +63,12 @@ def hash_entry(entry: dict[str, Any]) -> str:
 
 
 def utc_now_iso() -> str:
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    return (
+        datetime.now(timezone.utc)
+        .replace(microsecond=0)
+        .isoformat()
+        .replace("+00:00", "Z")
+    )
 
 
 def read_ledger_entries(ledger_path: Path) -> list[dict[str, Any]]:
@@ -78,9 +84,13 @@ def read_ledger_entries(ledger_path: Path) -> list[dict[str, Any]]:
             try:
                 entry = json.loads(stripped)
             except json.JSONDecodeError as exc:
-                raise LedgerError(f"{ledger_path}:{line_number}: invalid JSON: {exc}") from exc
+                raise LedgerError(
+                    f"{ledger_path}:{line_number}: invalid JSON: {exc}"
+                ) from exc
             if not isinstance(entry, dict):
-                raise LedgerError(f"{ledger_path}:{line_number}: ledger entry must be an object")
+                raise LedgerError(
+                    f"{ledger_path}:{line_number}: ledger entry must be an object"
+                )
             entries.append(entry)
     return entries
 
@@ -93,18 +103,39 @@ def verify_ledger_entries(entries: list[dict[str, Any]]) -> list[ValidationIssue
         path = f"entry[{index}]"
         schema = entry.get("schema")
         if schema not in {LEDGER_SCHEMA_V1, LEDGER_SCHEMA_V2}:
-            issues.append(ValidationIssue(f"{path}.schema", "must be a supported receipt-ledger entry schema"))
-        if schema == LEDGER_SCHEMA_V2 and entry.get("entry_kind") not in {"run", "gate_decision"}:
-            issues.append(ValidationIssue(f"{path}.entry_kind", "must be run or gate_decision for v2 entries"))
+            issues.append(
+                ValidationIssue(
+                    f"{path}.schema", "must be a supported receipt-ledger entry schema"
+                )
+            )
+        if schema == LEDGER_SCHEMA_V2 and entry.get("entry_kind") not in {
+            "run",
+            "gate_decision",
+        }:
+            issues.append(
+                ValidationIssue(
+                    f"{path}.entry_kind", "must be run or gate_decision for v2 entries"
+                )
+            )
 
         if entry.get("previous_hash") != previous_hash:
-            issues.append(ValidationIssue(f"{path}.previous_hash", "does not match previous entry hash"))
+            issues.append(
+                ValidationIssue(
+                    f"{path}.previous_hash", "does not match previous entry hash"
+                )
+            )
 
         expected_hash = hash_entry(entry)
         if entry.get("entry_hash") != expected_hash:
-            issues.append(ValidationIssue(f"{path}.entry_hash", "does not match entry contents"))
+            issues.append(
+                ValidationIssue(f"{path}.entry_hash", "does not match entry contents")
+            )
 
-        previous_hash = entry.get("entry_hash") if isinstance(entry.get("entry_hash"), str) else None
+        previous_hash = (
+            entry.get("entry_hash")
+            if isinstance(entry.get("entry_hash"), str)
+            else None
+        )
 
     return issues
 
@@ -116,22 +147,38 @@ def verify_ledger_artifacts(
     """Verify that artifacts referenced by receipts still exist and match their hashes."""
 
     issues: list[ValidationIssue] = []
-    ledger_parent = ledger_path.resolve().parent if ledger_path is not None else Path.cwd().resolve()
+    ledger_parent = (
+        ledger_path.resolve().parent
+        if ledger_path is not None
+        else Path.cwd().resolve()
+    )
     for entry_index, entry in enumerate(entries):
         entry_path = f"entry[{entry_index}]"
         package_value = entry.get("package_path")
         if not isinstance(package_value, str) or not package_value:
-            issues.append(ValidationIssue(f"{entry_path}.package_path", "must be a non-empty path"))
+            issues.append(
+                ValidationIssue(
+                    f"{entry_path}.package_path", "must be a non-empty path"
+                )
+            )
             continue
 
         package_dir = (ledger_parent / package_value).resolve()
         if not package_dir.is_dir():
-            issues.append(ValidationIssue(f"{entry_path}.package_path", "package directory does not exist"))
+            issues.append(
+                ValidationIssue(
+                    f"{entry_path}.package_path", "package directory does not exist"
+                )
+            )
             continue
 
         artifacts = entry.get("artifacts")
         if not isinstance(artifacts, list) or not artifacts:
-            issues.append(ValidationIssue(f"{entry_path}.artifacts", "must contain artifact fingerprints"))
+            issues.append(
+                ValidationIssue(
+                    f"{entry_path}.artifacts", "must contain artifact fingerprints"
+                )
+            )
             continue
 
         for artifact_index, artifact in enumerate(artifacts):
@@ -142,43 +189,196 @@ def verify_ledger_artifacts(
             relative_value = artifact.get("path")
             expected_hash = artifact.get("sha256")
             if not isinstance(relative_value, str) or not relative_value:
-                issues.append(ValidationIssue(f"{artifact_path}.path", "must be a non-empty path"))
+                issues.append(
+                    ValidationIssue(f"{artifact_path}.path", "must be a non-empty path")
+                )
                 continue
             candidate = (package_dir / relative_value).resolve()
             try:
                 candidate.relative_to(package_dir)
             except ValueError:
-                issues.append(ValidationIssue(f"{artifact_path}.path", "escapes package directory"))
+                issues.append(
+                    ValidationIssue(
+                        f"{artifact_path}.path", "escapes package directory"
+                    )
+                )
                 continue
             if not candidate.is_file():
-                issues.append(ValidationIssue(f"{artifact_path}.path", "referenced artifact does not exist"))
+                issues.append(
+                    ValidationIssue(
+                        f"{artifact_path}.path", "referenced artifact does not exist"
+                    )
+                )
                 continue
-            if not isinstance(expected_hash, str) or sha256_file(candidate) != expected_hash:
-                issues.append(ValidationIssue(f"{artifact_path}.sha256", "does not match artifact contents"))
+            if (
+                not isinstance(expected_hash, str)
+                or sha256_file(candidate) != expected_hash
+            ):
+                issues.append(
+                    ValidationIssue(
+                        f"{artifact_path}.sha256", "does not match artifact contents"
+                    )
+                )
 
     return issues
 
 
 def verify_ledger_file(ledger_path: Path) -> list[ValidationIssue]:
+    ledger_path = ledger_path.resolve()
     if not ledger_path.exists():
         return [ValidationIssue(str(ledger_path), "ledger file does not exist")]
     entries = read_ledger_entries(ledger_path)
-    return [*verify_ledger_entries(entries), *verify_ledger_artifacts(entries, ledger_path)]
+    structural_issues = [
+        *verify_ledger_entries(entries),
+        *verify_ledger_artifacts(entries, ledger_path),
+    ]
+    if structural_issues:
+        return structural_issues
+    return verify_ledger_semantics(entries, ledger_path)
+
+
+def verify_ledger_semantics(
+    entries: list[dict[str, Any]], ledger_path: Path
+) -> list[ValidationIssue]:
+    """Rebuild v2 runs and replay gate decisions in trusted ledger order."""
+
+    from .gates import DEFAULT_POLICY_PATH, GateEvaluationError, evaluate_gate
+
+    ledger_path = ledger_path.resolve()
+    issues: list[ValidationIssue] = []
+    trusted_entries: list[dict[str, Any]] = []
+    ledger_parent = ledger_path.resolve().parent
+    for index, entry in enumerate(entries):
+        if entry.get("schema") != LEDGER_SCHEMA_V2:
+            continue
+        entry_path = f"entry[{index}]"
+        package_dir = (ledger_parent / str(entry.get("package_path", ""))).resolve()
+        if entry.get("entry_kind") == "run":
+            try:
+                expected = build_run_entry(
+                    package_dir,
+                    recorded_at=entry.get("recorded_at"),
+                    ledger_path=ledger_path,
+                )
+            except LedgerError as exc:
+                issues.append(
+                    ValidationIssue(entry_path, f"run cannot be reproduced: {exc}")
+                )
+                continue
+            expected["previous_hash"] = entry.get("previous_hash")
+            observed = {
+                key: value for key, value in entry.items() if key != "entry_hash"
+            }
+            if canonical_json(expected) != canonical_json(observed):
+                issues.append(
+                    ValidationIssue(
+                        entry_path, "run entry does not match current package evidence"
+                    )
+                )
+                continue
+            trusted_entries.append(entry)
+            continue
+
+        decision_artifacts = [
+            item
+            for item in entry.get("artifacts", [])
+            if isinstance(item, dict) and item.get("type") == "gate_decision"
+        ]
+        if len(decision_artifacts) != 1:
+            issues.append(
+                ValidationIssue(
+                    entry_path, "gate entry requires exactly one gate_decision artifact"
+                )
+            )
+            continue
+        decision_path = (
+            package_dir / str(decision_artifacts[0].get("path", ""))
+        ).resolve()
+        decision = load_document(decision_path)
+        if not isinstance(decision, dict):
+            issues.append(
+                ValidationIssue(entry_path, "gate decision must be an object")
+            )
+            continue
+        try:
+            expected_decision = evaluate_gate(
+                package_dir,
+                gate=str(decision.get("gate_id", "")),
+                reviewer=str(decision.get("reviewer", "")),
+                policy_path=DEFAULT_POLICY_PATH,
+                ledger_path=ledger_path,
+                trusted_entries=trusted_entries,
+            ).decision
+        except GateEvaluationError as exc:
+            issues.append(
+                ValidationIssue(
+                    entry_path, f"gate decision cannot be reproduced: {exc}"
+                )
+            )
+            continue
+        expected_decision["created_at"] = decision.get("created_at")
+        if canonical_json(expected_decision) != canonical_json(decision):
+            issues.append(
+                ValidationIssue(
+                    entry_path, "gate decision differs from authoritative evaluation"
+                )
+            )
+            continue
+        run_entry = build_run_entry(package_dir, ledger_path=ledger_path)
+        expected_entry = build_gate_ledger_entry(
+            decision,
+            decision_path,
+            package_dir,
+            run_entry,
+            ledger_path,
+            recorded_at=entry.get("recorded_at"),
+        )
+        expected_entry["previous_hash"] = entry.get("previous_hash")
+        observed = {key: value for key, value in entry.items() if key != "entry_hash"}
+        if canonical_json(expected_entry) != canonical_json(observed):
+            issues.append(
+                ValidationIssue(
+                    entry_path, "gate ledger entry differs from its decision artifact"
+                )
+            )
+            continue
+        trusted_entries.append(entry)
+    return issues
 
 
 def package_relative_path(package_dir: Path, path: Path) -> str:
     return path.resolve().relative_to(package_dir.resolve()).as_posix()
 
 
-def artifact_summary(package_dir: Path, artifact_type: str, path: Path) -> dict[str, Any]:
+def artifact_summary(
+    package_dir: Path, artifact_type: str, path: Path
+) -> dict[str, Any]:
     document = load_document(path)
     artifact_id = document.get("id") if isinstance(document, dict) else None
-    return {
+    summary = {
         "type": artifact_type,
         "path": package_relative_path(package_dir, path),
         "id": artifact_id if isinstance(artifact_id, str) else "",
         "sha256": sha256_file(path),
     }
+    identity_hash = artifact_identity_sha256(artifact_type, path, document=document)
+    if identity_hash != summary["sha256"]:
+        summary["identity_sha256"] = identity_hash
+    return summary
+
+
+def artifact_identity_sha256(
+    artifact_type: str,
+    path: Path,
+    *,
+    document: Any | None = None,
+) -> str:
+    document = load_document(path) if document is None else document
+    if artifact_type in {"risk_report", "audit_report"} and isinstance(document, dict):
+        identity_document = dict(document)
+        identity_document.pop("package_id", None)
+        return sha256_text(canonical_json(identity_document))
+    return sha256_file(path)
 
 
 def linked_source_notes(package_dir: Path, verdict: dict[str, Any]) -> list[Path]:
@@ -216,6 +416,12 @@ def collect_artifact_summaries(package_dir: Path) -> list[dict[str, Any]]:
         summaries.append(artifact_summary(package_dir, artifact_type, resolved))
         seen.add(resolved)
 
+    for artifact_type, path in package_evidence_paths(package_dir):
+        if path in seen:
+            continue
+        summaries.append(artifact_summary(package_dir, artifact_type, path))
+        seen.add(path)
+
     verdict_path = find_artifact(package_dir, "verdict_report")
     if verdict_path is not None:
         verdict = load_document(verdict_path)
@@ -223,16 +429,24 @@ def collect_artifact_summaries(package_dir: Path) -> list[dict[str, Any]]:
             for source_path in linked_source_notes(package_dir, verdict):
                 if source_path in seen:
                     continue
-                summaries.append(artifact_summary(package_dir, "source_note", source_path))
+                summaries.append(
+                    artifact_summary(package_dir, "source_note", source_path)
+                )
                 seen.add(source_path)
 
     return sorted(summaries, key=lambda item: (item["type"], item["path"]))
 
 
-def deterministic_package_id(artifact_summaries: list[dict[str, Any]], run_id: str, strategy_id: str) -> str:
+def deterministic_package_id(
+    artifact_summaries: list[dict[str, Any]], run_id: str, strategy_id: str
+) -> str:
     package_fingerprint = {
         "artifacts": [
-            {"path": item["path"], "sha256": item["sha256"], "type": item["type"]}
+            {
+                "path": item["path"],
+                "sha256": item.get("identity_sha256", item["sha256"]),
+                "type": item["type"],
+            }
             for item in artifact_summaries
         ],
         "run_id": run_id,
@@ -246,7 +460,11 @@ def failed_gates(verdict: dict[str, Any]) -> list[str]:
     if not isinstance(gate_results, dict):
         return []
     value = gate_results.get("failed_gates", [])
-    return [item for item in value if isinstance(item, str)] if isinstance(value, list) else []
+    return (
+        [item for item in value if isinstance(item, str)]
+        if isinstance(value, list)
+        else []
+    )
 
 
 def build_run_entry(
@@ -269,34 +487,57 @@ def build_run_entry(
     cost_waterfall_path = find_artifact(package_dir, "cost_waterfall")
     verdict_report_path = find_artifact(package_dir, "verdict_report")
     if not all(
-        (strategy_spec_path, run_receipt_path, data_manifest_path, metrics_report_path, cost_waterfall_path, verdict_report_path)
+        (
+            strategy_spec_path,
+            run_receipt_path,
+            data_manifest_path,
+            metrics_report_path,
+            cost_waterfall_path,
+            verdict_report_path,
+        )
     ):
         raise LedgerError("validated package unexpectedly missed a core artifact")
 
     strategy_spec = load_document(strategy_spec_path)  # type: ignore[arg-type]
     run_receipt = load_document(run_receipt_path)  # type: ignore[arg-type]
     verdict = load_document(verdict_report_path)  # type: ignore[arg-type]
-    if not isinstance(strategy_spec, dict) or not isinstance(run_receipt, dict) or not isinstance(verdict, dict):
+    if (
+        not isinstance(strategy_spec, dict)
+        or not isinstance(run_receipt, dict)
+        or not isinstance(verdict, dict)
+    ):
         raise LedgerError("core artifacts must be objects")
 
     artifact_summaries = collect_artifact_summaries(package_dir)
     strategy_id = str(strategy_spec.get("id", ""))
     run_id = str(run_receipt.get("id", ""))
-    package_id = deterministic_package_id(artifact_summaries, run_id=run_id, strategy_id=strategy_id)
+    package_id = deterministic_package_id(
+        artifact_summaries, run_id=run_id, strategy_id=strategy_id
+    )
 
     entry = {
         "schema": LEDGER_SCHEMA_V2,
         "entry_kind": "run",
         "recorded_at": recorded_at or utc_now_iso(),
         "package_id": package_id,
-        "package_path": Path(os.path.relpath(package_dir, ledger_path.parent)).as_posix(),
+        "package_path": Path(
+            os.path.relpath(package_dir, ledger_path.parent)
+        ).as_posix(),
         "strategy_id": strategy_id,
         "run_id": run_id,
         "verdict": str(verdict.get("verdict", "")),
-        "data_manifest": artifact_summary(package_dir, "data_manifest", data_manifest_path),  # type: ignore[arg-type]
-        "metrics_report": artifact_summary(package_dir, "metrics_report", metrics_report_path),  # type: ignore[arg-type]
-        "cost_waterfall": artifact_summary(package_dir, "cost_waterfall", cost_waterfall_path),  # type: ignore[arg-type]
-        "verdict_report": artifact_summary(package_dir, "verdict_report", verdict_report_path),  # type: ignore[arg-type]
+        "data_manifest": artifact_summary(
+            package_dir, "data_manifest", data_manifest_path
+        ),  # type: ignore[arg-type]
+        "metrics_report": artifact_summary(
+            package_dir, "metrics_report", metrics_report_path
+        ),  # type: ignore[arg-type]
+        "cost_waterfall": artifact_summary(
+            package_dir, "cost_waterfall", cost_waterfall_path
+        ),  # type: ignore[arg-type]
+        "verdict_report": artifact_summary(
+            package_dir, "verdict_report", verdict_report_path
+        ),  # type: ignore[arg-type]
         "source_notes": [
             item for item in artifact_summaries if item["type"] == "source_note"
         ],
@@ -309,17 +550,29 @@ def build_run_entry(
     return entry
 
 
-def append_ledger_entry(ledger_path: Path, package_dir: Path) -> LedgerAppendResult:
+def append_ledger_entry(
+    ledger_path: Path,
+    package_dir: Path,
+    *,
+    recorded_at: str | None = None,
+) -> LedgerAppendResult:
     ledger_path = ledger_path.resolve()
     entries = read_ledger_entries(ledger_path)
-    issues = [*verify_ledger_entries(entries), *verify_ledger_artifacts(entries, ledger_path)]
+    issues = verify_ledger_file(ledger_path) if ledger_path.exists() else []
     if issues:
         details = "; ".join(f"{issue.path}: {issue.message}" for issue in issues)
         raise LedgerError(f"refusing to append to invalid ledger: {details}")
 
-    entry = build_run_entry(package_dir, ledger_path=ledger_path)
+    entry = build_run_entry(
+        package_dir,
+        recorded_at=recorded_at,
+        ledger_path=ledger_path,
+    )
     for existing in entries:
-        if existing.get("package_id") == entry["package_id"] and existing.get("entry_kind") == "run":
+        if (
+            existing.get("package_id") == entry["package_id"]
+            and existing.get("entry_kind") == "run"
+        ):
             return LedgerAppendResult(existing, False, "package already recorded")
 
     entry["previous_hash"] = entries[-1]["entry_hash"] if entries else None
@@ -332,24 +585,78 @@ def append_ledger_entry(ledger_path: Path, package_dir: Path) -> LedgerAppendRes
     return LedgerAppendResult(entry, True, "receipt appended")
 
 
+def build_gate_ledger_entry(
+    decision: dict[str, Any],
+    decision_path: Path,
+    package_dir: Path,
+    run_entry: dict[str, Any],
+    ledger_path: Path,
+    *,
+    recorded_at: str | None = None,
+) -> dict[str, Any]:
+    evidence = decision.get("evidence", [])
+    return {
+        "schema": LEDGER_SCHEMA_V2,
+        "entry_kind": "gate_decision",
+        "recorded_at": recorded_at or utc_now_iso(),
+        "decision_id": decision["id"],
+        "package_id": decision["package_id"],
+        "package_path": Path(
+            os.path.relpath(package_dir, ledger_path.parent)
+        ).as_posix(),
+        "strategy_id": run_entry["strategy_id"],
+        "run_id": run_entry["run_id"],
+        "gate": decision["gate_id"],
+        "gate_result": decision["gate_result"],
+        "policy_version": decision["policy_version"],
+        "policy_hash": decision["policy_hash"],
+        "reviewer": decision["reviewer"],
+        "verdict": run_entry["verdict"],
+        "artifacts": [
+            *evidence,
+            artifact_summary(package_dir, "gate_decision", decision_path),
+        ],
+        "open_blockers": decision["blockers"],
+        "next_action": decision["summary"],
+        "safety": decision["safety"],
+        "previous_hash": None,
+    }
+
+
 def append_gate_decision(ledger_path: Path, decision_path: Path) -> LedgerAppendResult:
     ledger_path = ledger_path.resolve()
     decision_path = decision_path.resolve()
     entries = read_ledger_entries(ledger_path)
-    issues = [*verify_ledger_entries(entries), *verify_ledger_artifacts(entries, ledger_path)]
+    issues = verify_ledger_file(ledger_path) if ledger_path.exists() else []
     if issues:
         details = "; ".join(f"{issue.path}: {issue.message}" for issue in issues)
         raise LedgerError(f"refusing to append to invalid ledger: {details}")
 
     validation = validate_artifact(decision_path, artifact_type="gate_decision")
     if not validation.ok:
-        details = "; ".join(f"{issue.path}: {issue.message}" for issue in validation.issues)
+        details = "; ".join(
+            f"{issue.path}: {issue.message}" for issue in validation.issues
+        )
         raise LedgerError(f"cannot add invalid gate decision: {details}")
     decision = load_document(decision_path)
     if not isinstance(decision, dict):
         raise LedgerError("gate decision must be an object")
     if decision.get("gate_id") not in CORE_GATES:
         raise LedgerError("gate decision uses a non-canonical gate")
+    expected_stem = f"gate_decision.{decision['gate_id']}"
+    if decision_path.stem != expected_stem:
+        raise LedgerError(
+            f"gate decision file must be named {expected_stem}.json|yaml|yml"
+        )
+    sibling_decisions = [
+        candidate
+        for extension in (".json", ".yaml", ".yml")
+        if (candidate := decision_path.parent / f"{expected_stem}{extension}").is_file()
+    ]
+    if sibling_decisions != [decision_path]:
+        raise LedgerError(
+            "gate decision file is ambiguous or has already been retried with another extension"
+        )
 
     package_value = decision.get("package_path")
     if not isinstance(package_value, str) or not package_value:
@@ -358,16 +665,41 @@ def append_gate_decision(ledger_path: Path, decision_path: Path) -> LedgerAppend
     try:
         decision_path.relative_to(package_dir)
     except ValueError as exc:
-        raise LedgerError("gate decision must be stored inside its package directory") from exc
+        raise LedgerError(
+            "gate decision must be stored inside its package directory"
+        ) from exc
 
     run_entry = build_run_entry(package_dir, ledger_path=ledger_path)
     if decision.get("package_id") != run_entry["package_id"]:
-        raise LedgerError("gate decision package_id does not match current package artifacts")
+        raise LedgerError(
+            "gate decision package_id does not match current package artifacts"
+        )
     if not any(
-        entry.get("entry_kind") == "run" and entry.get("package_id") == run_entry["package_id"]
+        entry.get("entry_kind") == "run"
+        and entry.get("package_id") == run_entry["package_id"]
         for entry in entries
     ):
-        raise LedgerError("gate decision requires the exact run package to be recorded first")
+        raise LedgerError(
+            "gate decision requires the exact run package to be recorded first"
+        )
+
+    # A gate decision is an evaluator output, not a user-authored assertion. Re-run
+    # the authoritative evaluator before allowing the decision into the ledger.
+    from .gates import DEFAULT_POLICY_PATH, GateEvaluationError, evaluate_gate
+
+    try:
+        expected_decision = evaluate_gate(
+            package_dir,
+            gate=str(decision["gate_id"]),
+            reviewer=str(decision["reviewer"]),
+            policy_path=DEFAULT_POLICY_PATH,
+            ledger_path=ledger_path,
+        ).decision
+    except GateEvaluationError as exc:
+        raise LedgerError(f"gate decision cannot be reproduced: {exc}") from exc
+    expected_decision["created_at"] = decision.get("created_at")
+    if canonical_json(expected_decision) != canonical_json(decision):
+        raise LedgerError("gate decision does not match authoritative gate evaluation")
 
     evidence = decision.get("evidence", [])
     if not isinstance(evidence, list) or not evidence:
@@ -379,32 +711,23 @@ def append_gate_decision(ledger_path: Path, decision_path: Path) -> LedgerAppend
         try:
             evidence_path.relative_to(package_dir)
         except ValueError as exc:
-            raise LedgerError("gate decision evidence escapes package directory") from exc
-        if not evidence_path.is_file() or sha256_file(evidence_path) != item.get("sha256"):
-            raise LedgerError(f"gate decision evidence fingerprint mismatch: {item.get('path', '')}")
+            raise LedgerError(
+                "gate decision evidence escapes package directory"
+            ) from exc
+        if not evidence_path.is_file() or sha256_file(evidence_path) != item.get(
+            "sha256"
+        ):
+            raise LedgerError(
+                f"gate decision evidence fingerprint mismatch: {item.get('path', '')}"
+            )
 
-    artifacts = [*evidence, artifact_summary(package_dir, "gate_decision", decision_path)]
-    entry = {
-        "schema": LEDGER_SCHEMA_V2,
-        "entry_kind": "gate_decision",
-        "recorded_at": utc_now_iso(),
-        "decision_id": decision["id"],
-        "package_id": decision["package_id"],
-        "package_path": Path(os.path.relpath(package_dir, ledger_path.parent)).as_posix(),
-        "strategy_id": run_entry["strategy_id"],
-        "run_id": run_entry["run_id"],
-        "gate": decision["gate_id"],
-        "gate_result": decision["gate_result"],
-        "policy_version": decision["policy_version"],
-        "policy_hash": decision["policy_hash"],
-        "reviewer": decision["reviewer"],
-        "verdict": run_entry["verdict"],
-        "artifacts": artifacts,
-        "open_blockers": decision["blockers"],
-        "next_action": decision["summary"],
-        "safety": decision["safety"],
-        "previous_hash": None,
-    }
+    entry = build_gate_ledger_entry(
+        decision,
+        decision_path,
+        package_dir,
+        run_entry,
+        ledger_path,
+    )
 
     for existing in entries:
         if (
@@ -462,7 +785,9 @@ def format_ledger_summary(ledger_path: Path, entries: list[dict[str, Any]]) -> s
     lines = [f"Ledger: {ledger_path}", f"Entries: {len(entries)}"]
     for entry in entries:
         blockers = entry.get("open_blockers", [])
-        blocker_text = ", ".join(blockers) if isinstance(blockers, list) and blockers else "none"
+        blocker_text = (
+            ", ".join(blockers) if isinstance(blockers, list) and blockers else "none"
+        )
         lines.extend(
             [
                 "",

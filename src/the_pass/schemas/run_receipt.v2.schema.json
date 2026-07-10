@@ -17,6 +17,8 @@
     "random_seed": {},
     "inputs": { "type": "object" },
     "outputs": { "type": "object" },
+    "supersedes_package_id": { "type": "string", "pattern": "^pkg_[A-Fa-f0-9]{24}$" },
+    "supersedes_artifacts_hash": { "type": "string", "pattern": "^[A-Fa-f0-9]{64}$" },
     "safety": {
       "type": "object",
       "required": ["live_trading_enabled", "real_order_path_available", "credentials_available"],

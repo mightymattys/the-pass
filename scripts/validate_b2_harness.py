@@ -41,6 +41,7 @@ CORE_REPRO_FILES = (
     "screen_results.json",
     "run_report.md",
     "run_report.html",
+    "receipt-ledger.jsonl",
 )
 
 

@@ -74,25 +74,22 @@ Kill or revise when:
 
 Status: implemented.
 
-Build skills in this order:
+The original eleven-skill surface was consolidated by ADR-0009. The implemented public order is:
 
-1. `mise`
-2. `spec`
-3. `research`
-4. `backtest`
-5. `taste`
-6. `receipts`
-7. `refire`
-8. `simmer`
-9. `screen`
-10. `paper`
-11. `plate`
+1. `run`
+2. `research`
+3. `test`
+4. `review`
+5. `paper`
+6. `plate`
+7. `status`
 
 Done when:
 
 - Each skill has documented inputs, outputs, editable paths, blocked paths, and exit states.
 - Each skill emits or updates structured artifacts rather than only prose.
-- `taste` can block promotion from missing or weak evidence.
+- `review` can block promotion from missing or weak evidence.
+- `run` enforces a bounded, resumable stage queue to one selected non-live gate.
 
 Kill or revise when:
 

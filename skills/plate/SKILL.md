@@ -1,73 +1,84 @@
 ---
 name: plate
-description: "Prepare the next-gate approval pack after a candidate has a paper_candidate verdict, verified receipts, and paper evidence."
+description: "Prepare risk evidence and a pending human-decision approval pack after paper_gate, then hand the exact immutable package to an independent risk review without granting live approval."
 ---
 
 # The Pass Plate
 
-Use this skill to prepare an approval pack. `plate` does not approve live trading; it only
-packages evidence for the next human-controlled gate.
+Use this skill after an exact package has a recorded passed `paper_gate`. Plate prepares the inputs
+for `risk_review`; it does not perform that independent gate and never approves live trading.
 
 ## Inputs
 
-- Paper package, risk package, or candidate bundle.
-- Exact adapter ID, config hash, strategy ID, and requested next gate.
-- Human decision requirements and risk constraints.
+- Passed paper package and shared ledger.
+- Returns, stress scenarios, asset class, capacity, versioned risk policy, and unresolved blockers.
+- Exact config hash, config diff, adapter, limits, monitoring, rollback, and incident runbook.
+- Named pending human decisions and a new risk package/run ID.
 
 ## Read First
 
-- All prior receipts and verdict reports.
-- Paper observation outputs.
-- Risk limits, rollback plan, and monitoring plan.
+- Prior research and paper decisions for the source package.
+- `templates/risk_policy.yaml`
+- `templates/risk_report.yaml`
+- `templates/config_diff.yaml`
 - `templates/approval_pack.yaml`
+- `docs/implementation/ROBUSTNESS_RISK_AUDIT.md`
 - `docs/implementation/VALIDATION_AND_SAFETY.md`
-- Accepted live-capability ADRs, if any.
 
 ## Editable Paths
 
-- `reports/approval_packs/<strategy-id>/approval_pack.yaml`
-- `reports/approval_packs/<strategy-id>/decision_log.md`
-- Redacted public summaries under `reports/`.
+- Risk working evidence and redacted summaries under `reports/`.
+- One new superseding package under `experiments/runs/<strategy-id>/<risk-run-id>/`.
+- New run receipt after every required risk/approval artifact is finalized in the package root.
 
 ## Blocked Paths
 
-- Live credentials, wallet keys, broker configs, private account IDs, and real order placement code.
-- Prior evidence artifacts except to add links from the approval pack.
+- Recorded paper package, prior gate decisions, StrategySpec thesis, credentials, account details,
+  real order code, and approved human-decision state.
+- `live_gate` evaluation or any pack claiming to grant approval.
 
 ## Procedure
 
-- Include exact config hash and artifact links.
-- Verify that the source package's `verdict_report.verdict` equals `paper_candidate` and
-  that `the-pass receipts verify --ledger <ledger-path>` passes.
-- Before returning `packaged`, confirm the package's `package_id` appears at `paper_gate` in
-  `the-pass receipts --ledger <ledger-path>`. If either receipt check fails, return `blocked`.
-- Include risk limits, rollback plan, monitoring plan, and unresolved risks.
-- Live approval must be explicit, dated, and tied to an exact adapter and config hash.
-- Public packs must redact secrets, account identifiers, and proprietary data.
-- Package evidence; do not grant approval.
-- Keep every entry in `human_decisions_required` at `pending`. Preserve externally supplied
-  decisions as linked evidence; never manufacture or change human approval state.
-- Verify that every claimed passed gate points to a receipt and verdict.
-- List unresolved risks and required human decisions prominently.
-- If any approval-critical artifact is missing, return `blocked`.
+- Verify exact passed `paper_gate` membership for the source package and verify the ledger.
+- Build strategy-independent risk policy/report from returns and scenarios. Strategy code cannot
+  modify limits.
+- Create a superseding risk package and copy required paper evidence into its root.
+- Add risk report, config diff, and approval pack to the exact package root.
+- Compute the final package identity after all promotion evidence exists. Rebuild the risk report
+  with that package ID; changing only `risk_report.package_id` must not change the identity.
+- Require matching package ID, policy/config hashes, max notional/loss/drawdown, kill switches,
+  monitoring, rollback, incident runbook, capacity, and evidence links.
+- Keep every human decision `pending`; preserve external decisions only as linked evidence.
+- Validate the complete package, append its run receipt, and verify the ledger.
+- Re-evaluate and record `research_gate` and `paper_gate` for this exact risk package ID before
+  handing it to independent `/the-pass:review` for `risk_review`.
+- If live approval, credentials, or real order transport is requested, return `forbidden`.
 
 ## Required Checks
 
 ```bash
-the-pass validate <approval-pack> --type approval_pack
-the-pass receipts verify --ledger <ledger-path>
-the-pass receipts --ledger <ledger-path>
+the-pass risk build --returns <returns> --scenarios <scenarios> --package-id <package-id> \
+  --asset-class <asset-class> --capacity <capacity> --output-dir <risk-work-dir>
+the-pass workflow supersede <paper-package> <risk-package> \
+  --run-id <risk-run-id> --created-at <rfc3339>
+the-pass workflow fingerprint <risk-package>
+the-pass validate <risk-package>/risk_report.yaml --type risk_report
+the-pass validate <risk-package>/config_diff.yaml --type config_diff
+the-pass validate <risk-package>/approval_pack.yaml --type approval_pack
+the-pass validate-package <risk-package>
+the-pass receipts add <risk-package> --ledger <ledger>
+the-pass receipts verify --ledger <ledger>
 ```
 
 ## Outputs
 
-- Approval pack based on `templates/approval_pack.yaml`.
-- Missing evidence.
-- Human decisions required.
+- Versioned risk policy/report, config diff, and approval pack.
+- Immutable risk successor package with all human decisions pending.
+- Verified run receipt and exact handoff to independent `risk_review`.
+- Missing evidence or forbidden-operation report.
 
 ## Exit States
 
-- `packaged`: evidence pack is complete and ready for a human-controlled decision.
-- `blocked`: the source verdict is not `paper_candidate`, receipt verification fails, or
-  exact config, adapter, risk limit, rollback, monitoring, receipt, or human decision
-  evidence is missing.
+- `packaged`: the exact risk package validates, is recorded, and is ready for independent review.
+- `blocked`: prior gates, risk, config, operations, package, owner, or ledger evidence is missing.
+- `forbidden`: the request attempts live approval, credentials, real orders, or non-pending human state.

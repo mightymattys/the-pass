@@ -1,0 +1,244 @@
+schema_version: 1
+interface_version: 0.8.0
+public_skills:
+  run: [complete, waiting, blocked, killed]
+  research: [research_ready, rejected, blocked]
+  test: [complete, rejected, revise, blocked]
+  review: [passed, blocked, revise, kill, forbidden]
+  paper: [paper_ready, waiting, blocked, frozen]
+  plate: [packaged, blocked, forbidden]
+  status: [summarized, blocked]
+
+runtime:
+  state_path: .the-pass/runs/<run-id>/state.yaml
+  statuses: [in_progress, waiting, blocked, killed, complete]
+  target_gates: [research_gate, paper_gate, risk_review]
+  forbidden_target: live_gate
+  max_transitions: 20
+  max_remediation_laps: 3
+  max_consecutive_no_progress: 2
+  required_state_fields:
+    - schema_version
+    - run_id
+    - strategy_id
+    - objective
+    - target_gate
+    - strategy_owner
+    - run_owner
+    - reviewer
+    - started_at
+    - updated_at
+    - stage
+    - status
+    - transitions_used
+    - remediation_laps
+    - no_progress_laps
+    - package_path
+    - package_id
+    - ledger_path
+    - evidence_paths
+    - blockers
+    - next_action
+
+cli_contracts:
+  validate_artifact:
+    argv: [validate, artifact.yaml, --type, strategy_spec, --format, json]
+    accepted_exit_codes: [0, 1]
+    outputs: [validation_envelope]
+    capability: artifact_exists
+  validate_package:
+    argv: [validate-package, package, --format, json]
+    accepted_exit_codes: [0, 1]
+    outputs: [validation_envelope]
+    capability: complete_package_exists
+  data_quality:
+    argv: [data, quality, events.jsonl, --dataset-id, dataset, --created-at, "2026-07-10T00:00:00Z", --output, quality.json, --format, json]
+    accepted_exit_codes: [0, 1, 2]
+    outputs: [quality_report]
+    capability: canonical_events_exist
+  features_build:
+    argv: [features, build, events.jsonl, --dataset-fingerprint, aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa, --code-version, abc123, --config, features.json, --created-at, "2026-07-10T00:00:00Z", --output-dir, features, --format, json]
+    accepted_exit_codes: [0, 1]
+    outputs: [feature_rows, feature_manifest]
+    capability: quality_report_unblocked
+  screen_run:
+    argv: [screen, run, --closes, closes.json, --variants, variants.json, --family, donchian, --output, screen.json, --format, json]
+    accepted_exit_codes: [0, 1]
+    outputs: [screen_results]
+    capability: preregistered_supported_screen_family
+  backtest_baseline:
+    argv: [backtest, baseline, --name, donchian_momentum, --output, package, --format, json]
+    accepted_exit_codes: [0, 1]
+    outputs: [run_package]
+    capability: reference_baseline_supported
+  robustness_evaluate:
+    argv: [robustness, evaluate, --matrix, matrix.json, --selected-index, "0", --output, robustness.json, --format, json]
+    accepted_exit_codes: [0, 1]
+    outputs: [robustness_report]
+    capability: variant_return_matrix_exists
+  risk_build:
+    argv: [risk, build, --returns, returns.json, --scenarios, scenarios.json, --package-id, pkg_aaaaaaaaaaaaaaaaaaaaaaaa, --asset-class, crypto_intraday, --capacity, "1000", --output-dir, risk, --format, json]
+    accepted_exit_codes: [0, 1, 2]
+    outputs: [risk_policy, risk_report]
+    capability: robustness_evidence_exists
+  paper_run:
+    argv: [paper, run, --strategy, donchian_momentum, --events, events.jsonl, --risk-policy, risk_policy.json, --observation-time-ns, "1", --max-staleness-ns, "1", --max-clock-skew-ns, "1", --max-outage-gap-ns, "1", --output, paper.json, --format, json]
+    accepted_exit_codes: [0, 1, 2]
+    outputs: [paper_result]
+    capability: supported_strategy_and_exact_research_gate
+  gate_evaluate:
+    argv: [gate, evaluate, package, --gate, research_gate, --reviewer, independent-reviewer, --ledger, ledger.jsonl, --output, package/gate_decision.research_gate.yaml, --format, json]
+    accepted_exit_codes: [0, 1, 2, 3]
+    outputs: [gate_decision]
+    capability: exact_package_and_independent_reviewer
+  receipts_add:
+    argv: [receipts, add, package, --ledger, ledger.jsonl]
+    accepted_exit_codes: [0, 1]
+    outputs: [ledger_entry]
+    capability: finalized_valid_package
+  receipts_add_decision:
+    argv: [receipts, add-decision, package/gate_decision.research_gate.yaml, --ledger, ledger.jsonl]
+    accepted_exit_codes: [0, 1]
+    outputs: [ledger_entry]
+    capability: valid_gate_decision
+  receipts_verify:
+    argv: [receipts, verify, --ledger, ledger.jsonl]
+    accepted_exit_codes: [0, 1]
+    outputs: [ledger_verification]
+    capability: ledger_exists
+  report_build:
+    argv: [report, build, --repo-root, ., --output-dir, reports/generated, --format, json]
+    accepted_exit_codes: [0, 1]
+    outputs: [static_report]
+    capability: report_evidence_exists
+  dashboard_build:
+    argv: [dashboard, build, --repo-root, ., --output-dir, reports/dashboard, --format, json]
+    accepted_exit_codes: [0, 1]
+    outputs: [static_dashboard]
+    capability: dashboard_evidence_exists
+  workflow_start:
+    argv: [workflow, start, --state, state.yaml, --run-id, run-1, --objective, test-strategy, --target-gate, research_gate, --strategy-owner, owner-a, --run-owner, owner-b, --ledger, ledger.jsonl, --format, json]
+    accepted_exit_codes: [0, 1, 3]
+    outputs: [workflow_state]
+    capability: writable_local_state
+  workflow_advance:
+    argv: [workflow, advance, --state, state.yaml, --to-stage, research, --status, in_progress, --next-action, continue, --format, json]
+    accepted_exit_codes: [0, 1, 2]
+    outputs: [workflow_state]
+    capability: valid_existing_state
+  workflow_status:
+    argv: [workflow, status, --state, state.yaml, --format, json]
+    accepted_exit_codes: [0, 1]
+    outputs: [workflow_state]
+    capability: valid_existing_state
+  workflow_fingerprint:
+    argv: [workflow, fingerprint, package, --format, json]
+    accepted_exit_codes: [0, 1]
+    outputs: [package_id]
+    capability: valid_package
+  workflow_supersede:
+    argv: [workflow, supersede, package, next-package, --run-id, run-2, --created-at, "2026-07-10T00:00:00Z", --format, json]
+    accepted_exit_codes: [0, 1]
+    outputs: [superseding_package]
+    capability: immutable_source_package
+
+stages:
+  preflight:
+    role: orchestrator
+    skill: run
+    cli_contracts: [workflow_start, receipts_verify]
+    transitions: [research, screen, backtest, robustness, review_research, research_gate, paper_prepare, paper_observe, review_paper, paper_gate, risk_prepare, plate, review_risk, risk_review]
+  research:
+    role: researcher
+    skill: research
+    cli_contracts: [validate_artifact]
+    transitions: [screen, remediation]
+  screen:
+    role: implementer
+    skill: test
+    cli_contracts: [data_quality, features_build, screen_run]
+    transitions: [backtest, remediation]
+  backtest:
+    role: implementer
+    skill: test
+    cli_contracts: [backtest_baseline, validate_package, receipts_add, receipts_verify]
+    transitions: [robustness, remediation]
+  robustness:
+    role: stats_auditor
+    skill: review
+    cli_contracts: [robustness_evaluate, risk_build, workflow_supersede]
+    transitions: [review_research, remediation]
+  review_research:
+    role: independent_reviewer
+    reviewer_required: true
+    skill: review
+    cli_contracts: [validate_package]
+    transitions: [research_gate, remediation]
+  research_gate:
+    role: independent_reviewer
+    reviewer_required: true
+    skill: review
+    cli_contracts: [gate_evaluate, receipts_add_decision, receipts_verify]
+    transitions: [paper_prepare, complete]
+  paper_prepare:
+    role: paper_operator
+    skill: paper
+    cli_contracts: [workflow_supersede, validate_artifact, receipts_add, receipts_verify]
+    transitions: [paper_observe]
+  paper_observe:
+    role: paper_operator
+    skill: paper
+    cli_contracts: [paper_run]
+    transitions: [review_paper]
+  review_paper:
+    role: independent_reviewer
+    reviewer_required: true
+    skill: review
+    cli_contracts: [validate_artifact]
+    transitions: [paper_gate, remediation]
+  paper_gate:
+    role: independent_reviewer
+    reviewer_required: true
+    skill: review
+    cli_contracts: [gate_evaluate, receipts_add_decision, receipts_verify]
+    transitions: [risk_prepare, complete]
+  risk_prepare:
+    role: risk_operator
+    skill: plate
+    cli_contracts: [risk_build, workflow_supersede, workflow_fingerprint]
+    transitions: [plate, remediation]
+  plate:
+    role: packager
+    skill: plate
+    cli_contracts: [validate_artifact, receipts_add, receipts_verify]
+    transitions: [review_risk]
+  review_risk:
+    role: independent_reviewer
+    reviewer_required: true
+    skill: review
+    cli_contracts: [validate_artifact]
+    transitions: [risk_review, remediation]
+  risk_review:
+    role: independent_reviewer
+    reviewer_required: true
+    skill: review
+    cli_contracts: [gate_evaluate, receipts_add_decision, receipts_verify]
+    transitions: [complete]
+  remediation:
+    role: implementer
+    skill: run
+    cli_contracts: [workflow_advance, workflow_supersede, validate_package]
+    transitions: [screen, backtest, robustness, review_research, paper_prepare, paper_observe, review_paper, risk_prepare, plate, review_risk]
+  complete:
+    role: orchestrator
+    skill: run
+    cli_contracts: [workflow_status, report_build, dashboard_build]
+    transitions: []
+
+safety:
+  live_gate_target_allowed: false
+  live_gate_pass_transition_allowed: false
+  gate_decision_retryable: false
+  real_order_transport_allowed: false
+  credentials_allowed: false
+  paper_process_isolated: true

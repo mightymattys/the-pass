@@ -17,7 +17,7 @@ that machine-readable file.
 | 0 Product Contract Freeze | implemented | ADRs in `docs/adr/`, plugin manifest, skills, schemas, templates, CI, public release checklist |
 | 1 Artifact Validator CLI | implemented | `the-pass validate`, `the-pass validate-package`, JSON/YAML tests, package validation in CI |
 | 2 Receipt Ledger | implemented | `the-pass receipts add`, `the-pass receipts verify`, bare `the-pass receipts` summary, hash-chain tests, ledger simulation in CI |
-| 3 Skill Implementation | implemented | all 11 valid skills define inputs, read paths, editable paths, blocked paths, checks, schema-backed outputs, and exit states |
+| 3 Skill Implementation | implemented | seven valid public skills define inputs, read paths, editable paths, blocked paths, checks, schema-backed outputs, and exit states; `run` adds machine-validated bounded orchestration |
 | 4 Synthetic Golden Path | implemented | `examples/synthetic-breakout` validates and stays `blocked`; `examples/synthetic-random-baseline` validates and stays `kill` |
 | 5 Adapter SDK | implemented | strict adapter schema, adapter contract checks, dummy adapter, non-compliant adapter unit test |
 | 6 First Real Adapter | implemented | diagnostic Binance spot klines adapter descriptor and source note; generic futures and prediction-market descriptors validate without core market logic |
@@ -39,6 +39,10 @@ Trading roadmap gate evidence is tracked separately:
 - [L5-L6 locked boundary](../../reports/gates/L5_L6_LOCKED_2026-07-10.md)
 - [Final implementation audit](../../reports/FINAL_IMPLEMENTATION_AUDIT_2026-07-10.md)
 - [Remaining release and maintenance work](REMAINING_WORK_PLAN.md)
+- [Slash-skill consolidation plan](SLASH_SKILL_CONSOLIDATION_PLAN.md)
+- [Slash-skill consolidation implementation audit](../../reports/SLASH_SKILL_CONSOLIDATION_AUDIT_2026-07-10.md)
+- [Seven-skill machine policy](../../config/skill-pipeline.v1.yaml)
+- [Consolidated interface ADR](../adr/ADR-0009-consolidated-skill-interface.md)
 
 ## Local Completion Commands
 

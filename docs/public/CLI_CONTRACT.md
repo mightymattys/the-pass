@@ -45,6 +45,8 @@ declined promotion.
 - `automation`, `incident`: scheduler-neutral jobs and fail-closed incidents.
 - `report`, `dashboard`: static read-only evidence bundles.
 - `receipts`: append-only run and gate-decision ledger operations.
+- `workflow`: validated local run state, evidence resume checks, package fingerprinting, and
+  immutable successor creation.
 
 ## Compatibility
 

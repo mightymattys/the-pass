@@ -83,6 +83,9 @@ class CliEnvelopeContractTests(unittest.TestCase):
                 "receipts": [
                     "receipts", "--format", "json", "verify", "--ledger", str(root / "missing-ledger.jsonl"),
                 ],
+                "workflow": [
+                    "workflow", "status", "--state", str(root / "missing-state.yaml"), "--format", "json",
+                ],
             }
             for group, argv in invocations.items():
                 with self.subTest(group=group):

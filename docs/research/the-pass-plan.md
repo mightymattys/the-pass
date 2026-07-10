@@ -291,19 +291,15 @@ Navrhovane role:
 - `Risk Officer`: kontroluje sizing, exposure, drawdown, kill switches.
 - `Automation Engineer`: bali schvaleny workflow do opakovatelne automatizace.
 
-Navrhovane prikazy:
+Verejne prikazy:
 
-- `/the-pass:mise`: setup pravidel, slozek, sablon, credentials check bez obchodovani.
-- `/the-pass:research <topic>`: najdi zdroje, udelej source map, navrhni hypotezy.
-- `/the-pass:spec <idea>`: prepis napad do `StrategySpec`.
-- `/the-pass:screen <spec>`: rychly vectorized screen s konzervativnimi naklady.
-- `/the-pass:backtest <spec>`: event-driven backtest s artefakty.
-- `/the-pass:taste <run>`: nezavisly review dat, statistik, execution a rizika.
-- `/the-pass:refire <findings>`: oprav potvrzene problemy bez rozsireni scope.
-- `/the-pass:simmer <gate>`: iteruj jen do splneni konkretni brany nebo kill limitu.
-- `/the-pass:paper <candidate>`: paper trading se stejnym rozhodovacim kodem.
-- `/the-pass:plate <candidate>`: priprava approval packu pro dalsi gate, bez automatickeho live.
-- `/the-pass:receipts`: ledger runu, nakladu, zaveru a otevrenych rizik.
+- `/the-pass:run <objective>`: cely omezeny workflow k vybrane research, paper nebo risk brane.
+- `/the-pass:research <topic>`: zdroje, source map, hypoteza a `StrategySpec`.
+- `/the-pass:test <spec>`: rychly screen nebo reprodukovatelny event-driven backtest.
+- `/the-pass:review <package>`: nezavisly review dat, statistik, execution, paper a rizika.
+- `/the-pass:paper <candidate>`: izolovane paper pozorovani se stejnym rozhodovacim kodem.
+- `/the-pass:plate <candidate>`: risk a approval input pack bez automatickeho live.
+- `/the-pass:status`: read-only stav workflow, ledger, blokery a dalsi akce.
 
 Dulezite: `plate` nevytvari live obchodovani. Jen vyrobi balicek pro cloveka.
 
@@ -509,8 +505,7 @@ machine-readable `roadmap-status.yaml`; no roadmap phase is complete without gat
 Build:
 
 - `.codex-plugin/plugin.json`,
-- plugin skills for `mise`, `research`, `spec`, `screen`, `backtest`, `taste`, `refire`,
-  `simmer`, `paper`, `plate` and `receipts`,
+- plugin skills for `run`, `research`, `test`, `review`, `paper`, `plate`, and `status`,
 - `research/sources.yaml`: curated bibliography with status.
 - `templates/strategy_spec.yaml`.
 - `templates/research_brief.md`.
@@ -940,7 +935,8 @@ Core MVP:
 - `StrategySpec`, source note, data manifest, run receipt, metrics report, cost waterfall
   and verdict report contracts.
 - Asset-class adapter contract.
-- Gate workflow: research -> screen -> backtest -> taste -> refire/simmer -> paper -> plate.
+- Gate workflow: research -> test -> independent review -> research gate -> paper -> paper gate
+  -> plate -> risk review. `/the-pass:run` ho koordinuje s omezenym remediation rozpoctem.
 - Safety boundary: no secrets, no real order path, no live-capable code without separate ADR.
 
 Adapter examples, not product scope:

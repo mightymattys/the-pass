@@ -51,7 +51,7 @@ Build:
 - Add `gate_decision`, versioned gate policies, `the-pass gate evaluate`, and
   `the-pass receipts add-decision`.
 - Restrict core gates to `research_gate`, `paper_gate`, `risk_review`, and `live_gate`.
-- Fix chronology, promotion metrics, PBO/PSR bounds, gross-to-net consistency, and simmer
+- Fix chronology, promotion metrics, PBO/PSR bounds, gross-to-net consistency, and workflow
   no-progress validation.
 - Keep every valid run in the ledger, including blocked, revise, and kill outcomes.
 
@@ -60,7 +60,7 @@ Gate:
 - A blocked run cannot be represented as a passed paper gate.
 - Reversed sample or holdout windows fail.
 - Promotion cannot pass with only PnL populated.
-- Any pair of consecutive no-progress simmer laps fails.
+- Any pair of consecutive no-progress remediation laps fails.
 - V1 evidence remains readable but cannot prove a v2 promotion.
 
 Kill: stop later work if a gate can still pass from labels instead of artifact evidence.

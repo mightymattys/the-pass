@@ -34,6 +34,7 @@ venv/
 !/experiments/screens/README.md
 !/experiments/paper/README.md
 /experiments/ledger.jsonl
+/.the-pass/
 
 # Editor
 .idea/

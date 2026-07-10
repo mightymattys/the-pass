@@ -1,76 +1,91 @@
 ---
 name: paper
-description: "Prepare or review paper/replay trading observation with the same decision code, cost assumptions, and risk gates as research."
+description: "Prepare, run, or resume isolated paper observation from an exact passed research package, preserving decision parity and stopping safely on waiting windows, divergence, stale data, outages, or risk breaches."
 ---
 
 # The Pass Paper
 
-Use this skill when a candidate is ready for paper/replay observation.
+Use this skill only after an exact package has a recorded passed `research_gate` decision.
 
 ## Inputs
 
-- Backtest package whose `verdict_report.verdict` is `paper_candidate` and whose receipt
-  ledger verifies.
-- Candidate StrategySpec, adapter artifact, config hash, and observation window.
-- Divergence thresholds and stop conditions.
+- Passed research package, package ID, ledger, StrategySpec, adapter, and exact config hash.
+- Paper observation thresholds, minimum window/signals/trades, and stop conditions.
+- Canonical events, versioned risk policy, and supported strategy decision code.
+- New successor package and paper run IDs.
 
 ## Read First
 
-- Prior package artifacts and verdict.
+- Prior package and exact `research_gate` decision.
 - `templates/paper_plan.yaml`
 - `templates/observation_manifest.yaml`
 - `templates/divergence_report.yaml`
-- `docs/implementation/SKILL_CONTRACTS.md`
-- `docs/adapter-contract.md`
+- `docs/implementation/PAPER_AUTOMATION_REPORTING.md`
+- `docs/implementation/ARTIFACT_LIFECYCLE.md`
 - `docs/implementation/VALIDATION_AND_SAFETY.md`
 
 ## Editable Paths
 
-- `experiments/paper/<paper-id>/paper_plan.yaml`
-- `experiments/paper/<paper-id>/observation_manifest.yaml`
-- `experiments/paper/<paper-id>/divergence_report.yaml`
-- `reports/paper/`
+- Canonical working evidence under `experiments/paper/<paper-id>/` and `reports/paper/`.
+- One new superseding package under `experiments/runs/<strategy-id>/<paper-run-id>/`.
+- New run receipt in the shared ledger after package finalization.
 
 ## Blocked Paths
 
-- Broker credentials, private keys, real order placement code, and live account configs.
-- Live approval packs. Use `plate` only after paper evidence exists.
+- Recorded source package, StrategySpec thesis, historical decisions, credentials, user channels,
+  real order clients, live configs, and approval state.
+- Paper start without exact research-gate membership for the successor evidence chain.
 
 ## Procedure
 
-- Paper is not live trading.
-- Use the same decision logic as the accepted backtest where possible.
-- Track paper-vs-backtest divergence.
-- No broker credentials or real order paths in public repo artifacts.
-- Verify that the package's `verdict_report.verdict` equals `paper_candidate` and that
-  `the-pass receipts verify --ledger <ledger-path>` passes.
-- Before returning `paper_ready`, confirm the package's `package_id` appears at
-  `research_gate` in `the-pass receipts --ledger <ledger-path>`. If either receipt check
-  fails, return `blocked`.
-- Document every difference between backtest and paper decision logic before observation starts.
-- Set divergence thresholds, observation length, kill switches, and missing-data policies before observing results.
-- Record that generated paper orders are simulated intents only and cannot reach a broker or venue.
+- Verify source package and shared ledger before creating paper state.
+- Create a superseding package; never add paper files to the recorded research package.
+- Predeclare observation window, sample threshold, divergence limits, missing-data policy, outage
+  policy, clock-skew policy, and freeze conditions.
+- Use the same decision code and config hash as accepted research, or document every difference
+  before observation starts.
+- Run only the isolated virtual paper process. No credentials or network clients enter the worker.
+- Record decisions, simulated intents, fills, missed fills, costs, latency, outages, and risk events.
+- Freeze on stale data, clock skew, outage, or risk breach.
+- Return `waiting` while a valid minimum window is incomplete. Do not compress elapsed time or
+  manufacture observations.
+- Build and validate paper plan, observation manifest, and divergence report. Copy all three into
+  the exact successor package root before finalization.
+- Keep the successor mutable and unrecorded while observation is waiting. Once the predefined
+  window is complete, append the finalized successor and verify the ledger.
+- `/the-pass:review` must evaluate and record a fresh `research_gate` for the exact paper package
+  ID before evaluating `paper_gate`.
 
 ## Required Checks
 
 ```bash
-the-pass validate-package <source-package>
-the-pass validate <paper-plan> --type paper_plan
-the-pass validate <observation-manifest> --type observation_manifest
-the-pass validate <divergence-report> --type divergence_report
-the-pass receipts verify --ledger <ledger-path>
-the-pass receipts --ledger <ledger-path>
+the-pass workflow supersede <research-package> <paper-package> \
+  --run-id <paper-run-id> --created-at <rfc3339>
+the-pass paper run --strategy <supported-strategy> --events <events> \
+  --risk-policy <risk-policy> --observation-time-ns <time> \
+  --max-staleness-ns <limit> --max-clock-skew-ns <limit> \
+  --max-outage-gap-ns <limit> --output <paper-result>
+the-pass validate <paper-package>/paper_plan.yaml --type paper_plan
+the-pass validate <paper-package>/observation_manifest.yaml --type observation_manifest
+the-pass validate <paper-package>/divergence_report.yaml --type divergence_report
+the-pass validate-package <paper-package>
+the-pass receipts add <paper-package> --ledger <ledger>
+the-pass receipts verify --ledger <ledger>
 ```
+
+If the decision code is unsupported by the reference worker, return `blocked`; do not substitute a
+different strategy.
 
 ## Outputs
 
-- Paper plan based on `templates/paper_plan.yaml`.
-- Observation manifest based on `templates/observation_manifest.yaml`.
-- Divergence report requirements based on `templates/divergence_report.yaml`.
-- Gate criteria for risk review.
+- Valid paper plan, observation manifest, decision journal, and divergence report.
+- Immutable paper successor package and verified run receipt.
+- Waiting progress or fail-closed incident/freeze evidence.
+- Exact next action for independent paper-gate review.
 
 ## Exit States
 
-- `paper_ready`: plan is artifact-backed, uses the same decision logic, and cannot place real orders.
-- `blocked`: the source verdict is not `paper_candidate`, receipt verification fails,
-  divergence policy is missing, the adapter is unsafe, or live paths/credentials appear.
+- `paper_ready`: paper artifacts and finalized successor package validate and are recorded.
+- `waiting`: the observation is healthy but its predefined minimum window is incomplete.
+- `blocked`: prior gate, adapter, data, decision parity, package, or ledger evidence is missing.
+- `frozen`: stale data, outage, clock skew, divergence, or risk breach stopped observation.

@@ -1,105 +1,105 @@
 # Skill Contracts
 
-Each skill is a product interface. It should produce structured artifacts or explicit
-blockers, not only prose.
+The public plugin has one orchestrator and six focused skills. A skill succeeds only through
+schema-backed artifacts and actual CLI results; prose is never promotion evidence.
 
-## Shared Rules
+## Shared Invariants
 
-- Never create real order placement paths.
-- Never write secrets or credentials.
-- Prefer public-safe examples.
-- If required evidence is missing, return `blocked`.
-- Every gate claim must cite artifacts.
-- Every structured output must validate against the matching schema before its success state
-  can be returned. Human review is additionally required before an artifact becomes promotion
-  evidence.
-- Gate IDs use lower snake case; core gates are `research_gate`, `paper_gate`, `risk_review`,
-  and `live_gate`.
+- No skill creates live order transport, loads trading credentials, or grants live approval.
+- `live_gate` always returns forbidden in the public implementation.
+- Missing evidence fails closed as `blocked`; a valid adverse research result remains recorded.
+- StrategySpec and finalized package evidence are immutable. Corrections and later lifecycle
+  stages create explicit new versions or superseding packages.
+- A run receipt proves execution, not gate passage.
+- A passed gate requires a separate v2 gate decision, exact package ID, policy hash, artifact
+  fingerprints, no blockers, and a reviewer independent of the StrategySpec and run owners.
+- Structured artifacts must validate before they are returned as successful output.
 
-## Contracts
+## Skill Matrix
 
-| Skill | Inputs | Writes | Must Check | Exit States |
+| Skill | Owns | May Invoke | Must Not Do | Exit States |
 | --- | --- | --- | --- | --- |
-| `mise` | repo path | setup docs, folders, missing templates | plugin manifest, ADRs, public safety, schemas | ready, repaired, blocked |
-| `research` | topic or source URL/content | source notes, hypothesis artifacts | source type, claim, evidence, limitations, required tests | reviewed, rejected, blocked |
-| `spec` | idea or hypothesis | `StrategySpec` | edge thesis, data needs, costs, risks, done/kill criteria | draft, research_ready, blocked |
-| `screen` | StrategySpec, optional data manifest | screen report | diagnostic-only assumptions, null baseline, costs | reject, revise, backtest_candidate, blocked |
-| `backtest` | StrategySpec, data manifest, runner config | run package | manifest, receipt, metrics, cost waterfall, safety flags | complete, blocked |
-| `taste` | run package | verdict report, findings | leakage, overfit, costs, fills, risk, reproducibility | paper_candidate, blocked, revise, kill |
-| `refire` | confirmed findings | patch or superseding artifacts | scope boundaries, verification evidence | fixed, still_blocked |
-| `simmer` | target gate, package | iteration receipts | one target gate, no-progress, kill limits | passed, blocked, killed |
-| `paper` | paper candidate package | paper plan, observation checklist | same decision logic, divergence policy, no real orders | paper_ready, blocked |
-| `plate` | paper/risk package | approval pack | exact config hash, limits, rollback, unresolved risk | packaged, blocked |
-| `receipts` | repo or strategy ID | ledger summary | artifact links, verdicts, costs, blockers | summarized, blocked |
+| `run` | stage selection, budgets, state, queue, stop decisions | all policy-declared contracts and focused skills | fabricate evidence, retry gates, cross live boundary | `complete`, `waiting`, `blocked`, `killed` |
+| `research` | source review, hypothesis, StrategySpec | artifact validation and source tooling | use operator anecdotes as statistical proof | `research_ready`, `rejected`, `blocked` |
+| `test` | data checks, features, screens, backtests, run receipt | `data`, `features`, `screen`, `backtest`, package validation, receipts | promote diagnostic fills or overwrite a prior run | `complete`, `rejected`, `revise`, `blocked` |
+| `review` | independent findings, reproducibility, robustness, gate evaluation | `robustness`, `risk`, `gate`, decision ledger | edit implementation, self-review, soften blockers | `passed`, `blocked`, `revise`, `kill`, `forbidden` |
+| `paper` | paper plan, isolated observation, divergence, incidents | `paper`, package supersession, receipts, prerequisite gate replay | send orders, skip windows, change original spec | `paper_ready`, `waiting`, `blocked`, `frozen` |
+| `plate` | risk policy/report, config diff, approval input pack | `risk`, package supersession, receipts, prerequisite gate replay | approve live, add credentials, conceal pending decisions | `packaged`, `blocked`, `forbidden` |
+| `status` | read-only state, ledger, reports, next action | `workflow status`, `receipts verify`, `report`, `dashboard` | mutate evidence, limits, or gate state | `summarized`, `blocked` |
 
-## Artifact Validation Roles
+## Run State Contract
 
-All artifacts are schema-backed, machine-validated contracts. Human review is additionally
-required before any artifact becomes promotion evidence.
+The canonical policy is duplicated in the source distribution and repository:
 
-| Artifact Type | Validation Role |
-| --- | --- |
-| `adapter` | schema-backed |
-| `source_note` | schema-backed |
-| `hypothesis` | schema-backed |
-| `strategy_spec` | schema-backed |
-| `data_manifest` | schema-backed |
-| `run_receipt` | schema-backed |
-| `metrics_report` | schema-backed |
-| `cost_waterfall` | schema-backed |
-| `verdict_report` | schema-backed |
-| `screen_report` | schema-backed |
-| `findings` | schema-backed |
-| `paper_plan` | schema-backed |
-| `approval_pack` | schema-backed |
-| `divergence_report` | schema-backed |
-| `observation_manifest` | schema-backed |
-| `refire_ticket` | schema-backed |
-| `simmer_laps` | schema-backed |
-| `receipt_summary` | schema-backed |
-| `gate_decision` | schema-backed; required for any passed gate claim |
+- `config/skill-pipeline.v1.yaml`
+- `src/the_pass/policies/skill-pipeline.v1.yaml`
 
-## Editable Paths
+The files must be byte-identical. The policy defines the seven skills, exact CLI argv contracts,
+stage graph, transition and remediation budgets, target gates, and fail-closed safety settings.
+`the_pass.orchestration` validates that policy and stores atomic YAML state under
+`.the-pass/runs/<run-id>/state.yaml`.
 
-Skills may write:
+A workflow can terminate `complete` only immediately after its selected target gate. It cannot
+continue past that target. Resume from an existing package is allowed through preflight, but
+the orchestrator revalidates all exact-package prerequisites instead of trusting the requested
+start stage.
 
-- `docs/`
-- `templates/`
-- `schemas/`
-- `research/`
-- `experiments/`
-- `reports/`
-- `examples/`
+## Independent Review
 
-Skills must not write:
+Review is separated from implementation at two layers:
 
-- credential files,
-- private data files,
-- paid data dumps,
-- broker/exchange live configs,
-- live order placement code without accepted live ADR.
+1. Workflow state blocks review stages when reviewer identity is missing or equals either owner.
+2. `the-pass gate evaluate` repeats that check against the actual StrategySpec and run receipt.
 
-## Required Evidence For Promotion
+Research review covers chronology, source evidence, data quality, costs, fills, accounting,
+selection bias, stress, risk, and clean-room reproduction. Paper review additionally covers the
+predeclared window, signal/fill/cost/PnL divergence, incidents, and risk breaches. Risk review
+covers exact prior gates, strategy-independent limits, config diff, monitoring, rollback, and
+incident response.
 
-`taste` can return `paper_candidate` only when:
+Both layers may block a package. The orchestrator cannot reinterpret a blocking result as
+passage.
 
-- The package validates.
-- Gross and net metrics are both present.
-- Cost waterfall exists.
-- Data manifest exists and names limitations.
-- Null/random baseline exists or absence is justified.
-- Execution assumptions are explicit.
-- Safety flags say live trading is disabled and real order path is unavailable.
-- A separate `research_gate` decision is evaluated and recorded before `paper` can proceed.
+## Immutable Progression
 
-The `taste` exit state is the value written to `verdict_report.verdict`.
-`research_ready` is the `spec` command state; the matching StrategySpec state is `research`.
+An experimental package is finalized before its run receipt enters the ledger. Paper and risk
+artifacts are therefore not added in place. `the-pass workflow supersede`:
 
-`paper` can recommend risk review only when:
+1. validates the source package;
+2. copies it without changing source bytes;
+3. removes copied local ledger and stale gate-decision files;
+4. creates a new run receipt identity with source package provenance;
+5. validates the target and verifies that its package ID changed.
 
-- The backtest package has `verdict_report.verdict: paper_candidate` and
-  `the-pass receipts verify` passes.
-- Paper observation plan uses the same decision logic or documents every difference.
-- Divergence thresholds are set before observation.
+Package identity includes package-root paper, risk, config, approval, and gate-specific audit
+evidence. The self-reference field `risk_report.package_id` is normalized only for identity
+calculation; its full bytes remain ledger-fingerprinted. Gate decisions are append-only governance
+attachments, excluded from package identity so they can be recorded after the run without
+changing scientific evidence.
 
-`plate` can package evidence only. It cannot grant live approval.
+Because decisions are exact-package evidence, each successor receives fresh prerequisite gate
+decisions. A paper successor must pass `research_gate` before `paper_gate`; a risk successor must
+pass `research_gate` and `paper_gate` before `risk_review`.
+
+## Artifact Responsibilities
+
+Research artifacts include `source_note`, `research_brief`, `hypothesis`, and `strategy_spec`.
+Test artifacts include `instrument_registry`, `quality_report`, `feature_manifest`,
+`data_manifest`, `screen_report`, `run_receipt`, `metrics_report`, and `cost_waterfall`. Review
+artifacts include `findings`, `audit_report`, `verdict_report`, `risk_policy`, `risk_report`, and
+`gate_decision`. Operational artifacts include `paper_plan`, `observation_manifest`,
+`divergence_report`, `automation_run`, `incident_report`, `config_diff`, and `approval_pack`.
+
+V1 compatibility artifacts such as `refire_ticket`, `simmer_laps`, and `receipt_summary` remain
+readable historical evidence. They are no longer public slash-command interfaces and cannot
+prove a v2 gate passage.
+
+## Writable Boundaries
+
+Skills may write structured evidence under `research/`, `experiments/`, `reports/`, and local
+`.the-pass/` workflow state. Repository maintenance may also update `docs/`, `schemas/`,
+`templates/`, `config/`, and public-safe examples.
+
+Skills must never write secrets, paid datasets, private account data, broker live configuration,
+or real order-placement code without a separately accepted live-capability ADR and explicit user
+instruction. No such path exists in this version.

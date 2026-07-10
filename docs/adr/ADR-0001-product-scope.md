@@ -4,6 +4,10 @@ Status: accepted
 Date: 2026-07-09
 Owner: head_researcher
 
+Command-vocabulary portions are superseded by
+[ADR-0009](ADR-0009-consolidated-skill-interface.md). Product scope and the locked live boundary
+remain accepted.
+
 ## Context
 
 The Pass should be closer to `sous-chef` than to a single trading bot. The first product

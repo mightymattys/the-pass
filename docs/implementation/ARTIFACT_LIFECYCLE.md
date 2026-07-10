@@ -7,8 +7,13 @@ validate, and support the gate claim.
 
 ```text
 source -> source_note -> hypothesis -> StrategySpec -> screen -> backtest package
-       -> taste -> refire/simmer -> paper -> plate -> receipts
+       -> independent review -> research gate -> paper successor -> paper gate
+       -> risk successor -> risk review -> receipts and read-only reports
 ```
+
+`/the-pass:run` coordinates this line. `/the-pass:research`, `/the-pass:test`,
+`/the-pass:review`, `/the-pass:paper`, and `/the-pass:plate` own focused stages;
+`/the-pass:status` reads state and evidence without mutating them.
 
 ## Artifact Ownership
 
@@ -16,19 +21,19 @@ source -> source_note -> hypothesis -> StrategySpec -> screen -> backtest packag
 | --- | --- | --- | --- | --- |
 | Source review | `source_note` | `research` | yes until reviewed | Required for source-backed claims |
 | Hypothesis | `hypothesis` | `research` | yes before StrategySpec | Bridges claims to falsifiable tests |
-| Strategy definition | `StrategySpec` | `spec` | yes before first run | Required for all runs |
-| Data evidence | `data_manifest` | `backtest` or adapter | no after run | Required for every run |
-| Run evidence | `run_receipt` | runner or skill | no after run | Required for every run |
-| Performance evidence | `metrics_report` | runner or skill | no after run | Required for verdict |
-| Cost evidence | `cost_waterfall` | runner or skill | no after run | Required for verdict |
-| Decision | `verdict_report` | `taste` or gate skill | append/supersede | Required for gate |
-| Review findings | `findings` | `taste` | append/supersede | Explains independent gate result |
-| Repair scope | `refire_ticket` | `taste` or `refire` | append/supersede | Constrains confirmed fixes |
+| Strategy definition | `StrategySpec` | `research` | yes before first run | Required for all runs |
+| Data evidence | `data_manifest` | `test` or adapter | no after run | Required for every run |
+| Run evidence | `run_receipt` | runner or `test` | no after run | Required for every run |
+| Performance evidence | `metrics_report` | runner or `test` | no after run | Required for verdict |
+| Cost evidence | `cost_waterfall` | runner or `test` | no after run | Required for verdict |
+| Decision | `verdict_report` | `review` | append/supersede | Required for gate |
+| Review findings | `findings`, `audit_report` | `review` | append/supersede | Explains independent gate result |
+| Remediation state | workflow state and successor receipt | `run` | append/supersede | Constrains confirmed fixes and budgets |
 | Paper plan | `paper_plan` | `paper` | no after observation starts | Required for paper observation |
 | Paper evidence | `observation_manifest`, `divergence_report` | `paper` | append/supersede | Required for risk review |
 | Approval evidence | `approval_pack` | `plate` | append/supersede | Human decision input only |
-| Gate decision | `gate_decision` | gate evaluator | append-only | Only artifact that can prove a passed gate |
-| Ledger | receipt index | `receipts` | append-only | Required for audit |
+| Gate decision | `gate_decision` | `review` through gate evaluator | append-only | Only artifact that can prove a passed gate |
+| Ledger | receipt index | CLI, summarized by `status` | append-only | Required for audit |
 
 ## Package Layout
 
@@ -60,7 +65,8 @@ experiments/runs/<strategy-id>/<run-id>/
 ```
 
 Generated outputs should not overwrite prior run packages. A rerun creates a new `run-id`
-and may link to the previous package in its receipt.
+and links to the previous package in its receipt. Paper and risk phases always create a
+superseding package because the source run has already been receipted.
 
 ## Immutability Rules
 
@@ -70,6 +76,10 @@ and may link to the previous package in its receipt.
 - Metrics and cost reports are immutable after the verdict is recorded.
 - A revised StrategySpec must create a new version before rerun.
 - A corrected artifact supersedes the old artifact; it does not silently replace it.
+- A successor package receives a new package ID and must pass exact-package prerequisite gates
+  again before the next gate is evaluated.
+- Paper, risk, config, approval, and gate-specific audit artifacts participate in package
+  identity. Gate decisions are separate append-only governance attachments and do not.
 
 ## Receipt Ledger
 
@@ -80,8 +90,9 @@ manifest, open blockers, `previous_hash`, and `entry_hash`.
 `the-pass receipts add` validates and records a run without claiming that a gate passed.
 `the-pass gate evaluate` creates a separate artifact-backed decision, and
 `the-pass receipts add-decision` records it. `the-pass receipts verify` recomputes the hash
-chain, resolves every recorded artifact, and fails if evidence was edited, removed, or moved
-silently. Legacy v1 entries remain readable but cannot prove a v2 promotion.
+chain, resolves every recorded artifact, rebuilds v2 runs, and replays v2 gate decisions against
+the bundled policy in ledger order. A later gate may trust only an earlier decision that passed
+this replay. Legacy v1 entries remain readable but cannot prove a v2 promotion.
 
 ## Gate Inputs
 

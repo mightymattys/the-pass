@@ -5,6 +5,21 @@ and the Keep a Changelog structure.
 
 ## [Unreleased]
 
+### Added
+
+- `/the-pass:run`, a bounded and resumable whole-line orchestrator from research through the
+  selected `research_gate`, `paper_gate`, or `risk_review` target.
+- A machine-readable seven-skill pipeline policy and additive `the-pass workflow` state CLI.
+- Immutable successor-package support and regression coverage for transition budgets,
+  no-progress stops, target gates, reviewer independence, and the locked live boundary.
+
+### Changed
+
+- Consolidated eleven overlapping slash skills into seven public commands: `run`, `research`,
+  `test`, `review`, `paper`, `plate`, and `status`.
+- Promotion gates now require the reviewer to differ from both the StrategySpec owner and run
+  owner.
+
 ## [0.7.1] - 2026-07-10
 
 ### Fixed

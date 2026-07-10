@@ -285,5 +285,9 @@ def write_run_package(
     if not validation.ok:
         details = "; ".join(f"{issue.path}: {issue.message}" for issue in validation.issues)
         raise RuntimeError(f"generated package failed validation: {details}")
-    append_ledger_entry(package / "receipt-ledger.jsonl", package)
+    append_ledger_entry(
+        package / "receipt-ledger.jsonl",
+        package,
+        recorded_at=created_at,
+    )
     return package

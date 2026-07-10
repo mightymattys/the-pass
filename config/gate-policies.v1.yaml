@@ -16,6 +16,7 @@ gates:
       - risk_review_candidate_divergence_report
       - completed_observation_minimums
       - no_blocking_divergence
+      - passed_independent_paper_audit
   risk_review:
     requires:
       - passed_paper_gate_for_exact_package
@@ -23,7 +24,7 @@ gates:
       - approval_pack
       - config_diff
       - monitoring_rollback_and_incident_plans
+      - passed_independent_risk_audit
   live_gate:
     locked: true
     reason: Explicit human approval and a venue-specific live-capability ADR are required.
-

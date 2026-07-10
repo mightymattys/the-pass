@@ -4,6 +4,10 @@ Status: accepted
 Date: 2026-07-09
 Owner: automation_engineer
 
+The initial skill-list portion is superseded by
+[ADR-0009](ADR-0009-consolidated-skill-interface.md). Public distribution and safety decisions
+remain accepted.
+
 ## Context
 
 The Pass should feel like `sous-chef`: a named workflow product with commands, skills, and
