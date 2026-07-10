@@ -27,7 +27,7 @@ jobs:
         run: uv run python scripts/smoke_public_adapters.py --output reports/network/public-adapter-smoke.json
       - name: Archive evidence
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: public-adapter-smoke
           path: reports/network/public-adapter-smoke.json
