@@ -63,19 +63,23 @@ passage.
 ## Immutable Progression
 
 An experimental package is finalized before its run receipt enters the ledger. Paper and risk
-artifacts are therefore not added in place. `the-pass workflow supersede`:
+artifacts are therefore not added in place. `the-pass workflow supersede --ledger <ledger>`:
 
-1. validates the source package;
+1. verifies the ledger and proves the exact source package is recorded there;
 2. copies it without changing source bytes;
 3. removes copied local ledger and stale gate-decision files;
 4. creates a new run receipt identity with source package provenance;
 5. validates the target and verifies that its package ID changed.
 
+Receipt append and ledger replay independently resolve `supersedes_package_id`, compare the exact
+predecessor artifact hash, preserve strategy identity, and require a new run ID. The helper is not
+the only enforcement boundary.
+
 Package identity includes package-root paper, risk, config, approval, and gate-specific audit
-evidence. The self-reference field `risk_report.package_id` is normalized only for identity
-calculation; its full bytes remain ledger-fingerprinted. Gate decisions are append-only governance
-attachments, excluded from package identity so they can be recorded after the run without
-changing scientific evidence.
+evidence. The self-reference fields `risk_report.package_id` and `audit_report.package_id` are
+normalized only for identity calculation; their full bytes remain ledger-fingerprinted. Gate
+decisions are append-only governance attachments, excluded from package identity so they can be
+recorded after the run without changing scientific evidence.
 
 Because decisions are exact-package evidence, each successor receives fresh prerequisite gate
 decisions. A paper successor must pass `research_gate` before `paper_gate`; a risk successor must

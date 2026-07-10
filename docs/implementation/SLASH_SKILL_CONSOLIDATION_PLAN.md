@@ -52,7 +52,8 @@ or safety boundary." It never means:
 
 ## 3. Current-State Audit
 
-The repository currently exposes eleven skills and 837 lines of skill instructions:
+Before this implementation, the repository exposed eleven skills and 837 lines of skill
+instructions:
 
 `mise`, `research`, `spec`, `screen`, `backtest`, `taste`, `refire`, `simmer`, `paper`, `plate`,
 and `receipts`.
@@ -300,13 +301,14 @@ gate decisions are deliberately excluded from package identity. Progress that ne
 research, paper, risk, config, approval, or audit evidence creates a superseding package with a
 new run receipt and package ID:
 
-1. copy the required prior evidence into a new package root;
-2. assign a new run ID and run-receipt ID;
-3. record `supersedes_package_id` and the prior package fingerprint in the new run receipt;
-4. add robustness, review, paper, risk, or approval artifacts only to the new package;
-5. finalize all files and validate the new package;
-6. append the new run receipt to the shared ledger and immediately verify the ledger;
-7. re-evaluate and append every prerequisite gate against that exact new package in canonical
+1. verify the shared ledger and prove the exact source package is a recorded immutable run;
+2. copy the required prior evidence into a new package root;
+3. assign a new run ID and run-receipt ID;
+4. record `supersedes_package_id` and the prior package fingerprint in the new run receipt;
+5. add robustness, review, paper, risk, or approval artifacts only to the new package;
+6. finalize all files and validate the new package;
+7. append the new run receipt to the shared ledger and immediately verify the ledger;
+8. re-evaluate and append every prerequisite gate against that exact new package in canonical
    order, then evaluate the target gate.
 
 The backtest package's own local ledger remains valid and historical. `/run` never mutates it into
@@ -325,9 +327,10 @@ directories or follow unverified prose links.
 
 Package identity fingerprints package-root paper plans, observation manifests, divergence
 reports, risk policies/reports, config diffs, approval packs, incidents, and gate-specific audit
-reports. `risk_report.package_id` is normalized only while calculating the identity to break its
-self-reference; its complete bytes are still fingerprinted by run and gate-decision ledger
-entries. `the-pass workflow fingerprint` computes the stable identity before append.
+reports. `risk_report.package_id` and `audit_report.package_id` are normalized only while
+calculating identity to break their self-references; their complete bytes are still fingerprinted
+by run and gate-decision ledger entries. `the-pass workflow fingerprint` computes the stable
+identity before append.
 
 ## 7. Budgets, Remediation, and Convergence
 
@@ -339,6 +342,13 @@ Defaults and hard maxima:
 - no retry of gate decisions;
 - retries only for idempotent fetch/report operations;
 - every failed launch or remediation attempt consumes its budget slot.
+
+The runtime derives remediation accounting from entry into or active continuation within the
+`remediation` stage; callers cannot avoid a lap by omitting a flag. Entry requires at least one
+validated confirmed finding. A target-gate entry additionally requires the exact package's
+recorded `blocked` or `revise` decision to fingerprint that finding. Gate progress defaults to
+false and can reset the no-progress counter only when a new recorded successor proves lineage to
+the current package.
 
 Remediation procedure:
 
@@ -436,10 +446,11 @@ The Python and plugin versions move together to `0.8.0`. The Python CLI receives
 
 ### 11.1 Standalone skill ledger rules
 
-- `test` finalizes a package, appends the run entry, handles duplicate as idempotent success, and
+- `test` finalizes a package, appends the run entry, handles the same-path duplicate as idempotent
+  success, and
   verifies the ledger before returning `complete`, `rejected`, or `blocked`.
-- `review` evaluates the selected gate, appends the decision when valid, handles duplicate as
-  idempotent success, and verifies the ledger before returning `passed`.
+- `review` evaluates the selected gate, appends the decision when valid, handles the same exact
+  decision as idempotent success, and verifies the ledger before returning `passed`.
 - `paper` and `plate` create superseding packages, append their run entries after finalization,
   and verify the ledger.
 - append or verification failure forces `blocked`; no skill may report success from an unrecorded
@@ -567,10 +578,16 @@ Implementation completed every ordered item in section 13. The public surface no
 exactly seven skills, `/the-pass:run` owns the bounded whole-line workflow, and the granular CLI
 remains available for automation.
 
-Five independent read-only code-audit rounds were used during implementation. Confirmed findings
+Repeated independent read-only code-audit and focused re-audit rounds were used during
+implementation. Confirmed findings
 were fixed before closure, including forged completion state, stale resume evidence, mutable gate
 decisions, audit/evidence binding gaps, duplicate promotion artifacts, handwritten gate decisions,
-and hash-consistent forged ledger passes. The final focused audit reported `P0/P1 remaining: no`.
+hash-consistent forged ledger passes, failed target-gate transitions, unverified successor lineage,
+target completion at the transition-budget boundary, and caller-controlled remediation budget
+bypasses. Follow-up review also closed unauthenticated target remediation, forged successor
+lineage, caller-asserted gate progress, legacy-row authority, out-of-order gate replay,
+unrecorded package copies, and resumable exhausted budgets. The final focused audit reported
+`P0/P1 remaining: no`.
 
 The final trust model is stricter than the original draft:
 
@@ -580,6 +597,15 @@ The final trust model is stricter than the original draft:
 - only previously replayed decisions can satisfy paper/risk prerequisites;
 - workflow resume verifies the ledger, exact package identity, full artifact set, prerequisite gates,
   stage-specific evidence files, and explicit `evidence_paths` declarations;
+- failed target gates persist `blocked` or `killed`, resume explicitly, or enter bounded remediation;
+- remediation entry requires finding evidence and automatically consumes transition and lap budgets;
+- target remediation requires a recorded exact-package non-pass decision and bound finding hash;
+- remediation progress requires a newly recorded successor whose lineage replays successfully;
+- a verified target completes even when the bounded work-transition budget is fully consumed;
+- successor creation proves the exact source package is already recorded in a valid ledger;
+- all run append and replay paths independently enforce successor lineage;
+- only exact-path v2 rows are authoritative, and a gate must follow its trusted run in ledger order;
+- exhausted transition, remediation, and no-progress budgets cannot resume;
 - JSON/YAML/YML duplicates of the same core, promotion, audit, or decision artifact are rejected;
 - B2 golden ledgers are deterministic and include the quality report in package identity.
 

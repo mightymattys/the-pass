@@ -97,12 +97,20 @@ def workflow_artifact(
     return path, document if isinstance(document, dict) else None, issues
 
 
-def prior_gate_passes(ledger_path: Path, package_id: str, gate: str) -> bool:
+def prior_gate_passes(
+    ledger_path: Path, package_dir: Path, package_id: str, gate: str
+) -> bool:
     if not ledger_path.exists():
         return False
     if verify_ledger_file(ledger_path):
         return False
-    return has_passed_gate(read_ledger_entries(ledger_path), package_id, gate)
+    return has_passed_gate(
+        read_ledger_entries(ledger_path),
+        package_id,
+        gate,
+        ledger_path=ledger_path,
+        package_path=package_dir,
+    )
 
 
 def gate_audit_artifact(
@@ -287,9 +295,17 @@ def evaluate_gate(
         if verdict.get("verdict") != "paper_candidate":
             blockers.append("paper_gate requires paper_candidate verdict")
         research_passes = (
-            has_passed_gate(trusted_entries, package_id, "research_gate")
+            has_passed_gate(
+                trusted_entries,
+                package_id,
+                "research_gate",
+                ledger_path=ledger_path,
+                package_path=package_dir,
+            )
             if trusted_entries is not None
-            else prior_gate_passes(ledger_path.resolve(), package_id, "research_gate")
+            else prior_gate_passes(
+                ledger_path.resolve(), package_dir, package_id, "research_gate"
+            )
         )
         if not research_passes:
             blockers.append("exact package has no passed research_gate decision")
@@ -363,9 +379,17 @@ def evaluate_gate(
                 }
             )
         paper_passes = (
-            has_passed_gate(trusted_entries, package_id, "paper_gate")
+            has_passed_gate(
+                trusted_entries,
+                package_id,
+                "paper_gate",
+                ledger_path=ledger_path,
+                package_path=package_dir,
+            )
             if trusted_entries is not None
-            else prior_gate_passes(ledger_path.resolve(), package_id, "paper_gate")
+            else prior_gate_passes(
+                ledger_path.resolve(), package_dir, package_id, "paper_gate"
+            )
         )
         if not paper_passes:
             blockers.append("exact package has no passed paper_gate decision")

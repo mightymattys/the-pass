@@ -60,7 +60,7 @@ Use this skill only after an exact package has a recorded passed `research_gate`
 
 ```bash
 the-pass workflow supersede <research-package> <paper-package> \
-  --run-id <paper-run-id> --created-at <rfc3339>
+  --ledger <ledger> --run-id <paper-run-id> --created-at <rfc3339>
 the-pass paper run --strategy <supported-strategy> --events <events> \
   --risk-policy <risk-policy> --observation-time-ns <time> \
   --max-staleness-ns <limit> --max-clock-skew-ns <limit> \

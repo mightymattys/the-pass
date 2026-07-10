@@ -99,10 +99,13 @@ preflight -> research -> screen -> backtest -> robustness
 ### 5. Bound remediation
 
 - Enter remediation only for confirmed findings with evidence paths.
+- At a target gate, require the exact package's recorded `blocked` or `revise` decision to
+  fingerprint that finding. Never remediate an unevaluated target.
 - Freeze the thesis, original search space, and all recorded packages.
 - Apply one coherent finding-scoped change per lap and create superseding evidence.
 - Maximum three remediation laps per gate; stop after two consecutive no-progress laps.
-- Every failed attempt consumes budget. Gate decisions are never retried automatically.
+- Every failed attempt consumes budget. Record gate progress only with a ledger-backed successor.
+  Gate decisions are never retried automatically.
 
 ### 6. Stop honestly
 
@@ -139,7 +142,7 @@ Before extending recorded evidence:
 
 ```bash
 the-pass workflow supersede <recorded-package> <new-package> \
-  --run-id <new-run-id> --created-at <rfc3339>
+  --ledger <ledger> --run-id <new-run-id> --created-at <rfc3339>
 ```
 
 ## Outputs

@@ -1508,6 +1508,162 @@ safety:
         )
         self.assertFalse(issues, [issue.as_dict() for issue in issues])
 
+    def test_gate_decision_rejects_unrecorded_copy_of_recorded_run(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            recorded = root / "recorded"
+            copied = root / "copied"
+            ledger = root / "ledger.jsonl"
+            shutil.copytree(EXAMPLE_PACKAGE, recorded)
+            prepare_paper_candidate(recorded)
+            append_ledger_entry(ledger, recorded)
+            shutil.copytree(recorded, copied)
+            evaluation = evaluate_gate(
+                copied,
+                gate="research_gate",
+                reviewer="independent-auditor",
+                ledger_path=ledger,
+            )
+            decision_path = copied / "gate_decision.research_gate.json"
+            write_gate_decision(decision_path, evaluation.decision)
+
+            with self.assertRaisesRegex(LedgerError, "exact run package"):
+                append_gate_decision(ledger, decision_path)
+
+    def test_semantic_replay_rejects_gate_before_its_exact_run(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            package = root / "package"
+            ledger = root / "ledger.jsonl"
+            shutil.copytree(EXAMPLE_PACKAGE, package)
+            prepare_paper_candidate(package)
+            append_ledger_entry(ledger, package)
+            evaluation = evaluate_gate(
+                package,
+                gate="research_gate",
+                reviewer="independent-auditor",
+                ledger_path=ledger,
+            )
+            decision_path = package / "gate_decision.research_gate.json"
+            write_gate_decision(decision_path, evaluation.decision)
+            append_gate_decision(ledger, decision_path)
+            entries = list(reversed(read_ledger_entries(ledger)))
+            previous_hash = None
+            for entry in entries:
+                entry["previous_hash"] = previous_hash
+                entry["entry_hash"] = hash_entry(entry)
+                previous_hash = entry["entry_hash"]
+            ledger.write_text(
+                "".join(json.dumps(entry, sort_keys=True) + "\n" for entry in entries),
+                encoding="utf-8",
+            )
+
+            issues = verify_ledger_file(ledger)
+
+        self.assertTrue(
+            any("exact v2 run earlier" in issue.message for issue in issues),
+            [issue.as_dict() for issue in issues],
+        )
+
+    def test_duplicate_package_id_at_another_path_is_never_authoritative(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            recorded = root / "recorded"
+            copied = root / "copied"
+            ledger = root / "ledger.jsonl"
+            shutil.copytree(EXAMPLE_PACKAGE, recorded)
+            shutil.copytree(recorded, copied)
+            append_ledger_entry(ledger, recorded)
+
+            with self.assertRaisesRegex(LedgerError, "different package path"):
+                append_ledger_entry(ledger, copied)
+
+            entries = [
+                build_run_entry(
+                    recorded,
+                    ledger_path=ledger,
+                    recorded_at="2026-07-10T00:00:00Z",
+                ),
+                build_run_entry(
+                    copied,
+                    ledger_path=ledger,
+                    recorded_at="2026-07-10T00:00:01Z",
+                ),
+            ]
+            previous_hash = None
+            for entry in entries:
+                entry["previous_hash"] = previous_hash
+                entry["entry_hash"] = hash_entry(entry)
+                previous_hash = entry["entry_hash"]
+            ledger.write_text(
+                "".join(json.dumps(entry, sort_keys=True) + "\n" for entry in entries),
+                encoding="utf-8",
+            )
+
+            issues = verify_ledger_file(ledger)
+
+        self.assertTrue(
+            any("duplicate v2 package_id" in issue.message for issue in issues),
+            [issue.as_dict() for issue in issues],
+        )
+
+    def test_canonical_research_paper_risk_gate_chain_appends_and_replays(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            package = root / "package"
+            ledger = root / "ledger.jsonl"
+            shutil.copytree(EXAMPLE_PACKAGE, package)
+            prepare_paper_candidate(package)
+            add_paper_gate_artifacts(package)
+            add_risk_review_artifacts(package)
+
+            package_id = build_run_entry(package, ledger_path=ledger)["package_id"]
+            for name in (
+                "risk_report.json",
+                "audit_report.paper_gate.json",
+                "audit_report.risk_review.json",
+            ):
+                path = package / name
+                document = json.loads(path.read_text(encoding="utf-8"))
+                document["package_id"] = package_id
+                path.write_text(json.dumps(document), encoding="utf-8")
+            self.assertEqual(
+                build_run_entry(package, ledger_path=ledger)["package_id"], package_id
+            )
+
+            append_ledger_entry(ledger, package)
+            gates = (
+                ("research_gate", "independent-auditor"),
+                ("paper_gate", "independent-paper-reviewer"),
+                ("risk_review", "independent-risk-reviewer"),
+            )
+            for gate, reviewer in gates:
+                evaluation = evaluate_gate(
+                    package,
+                    gate=gate,
+                    reviewer=reviewer,
+                    ledger_path=ledger,
+                )
+                self.assertEqual(
+                    evaluation.exit_code, 0, evaluation.decision["blockers"]
+                )
+                decision_path = package / f"gate_decision.{gate}.json"
+                write_gate_decision(decision_path, evaluation.decision)
+                append_gate_decision(ledger, decision_path)
+
+            entries = read_ledger_entries(ledger)
+            issues = verify_ledger_file(ledger)
+
+        self.assertEqual(
+            [
+                entry.get("gate")
+                for entry in entries
+                if entry.get("entry_kind") == "gate_decision"
+            ],
+            [gate for gate, _ in gates],
+        )
+        self.assertFalse(issues, [issue.as_dict() for issue in issues])
+
     def test_gate_decision_append_rejects_a_forged_evaluator_result(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

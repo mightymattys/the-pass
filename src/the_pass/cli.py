@@ -449,7 +449,7 @@ def build_parser() -> argparse.ArgumentParser:
     workflow_advance.add_argument("--remediation", action="store_true")
     workflow_advance.add_argument("--resume", action="store_true")
     workflow_advance.add_argument(
-        "--moved-gate", choices=("true", "false"), default="true"
+        "--moved-gate", choices=("true", "false"), default="false"
     )
     workflow_advance.add_argument("--updated-at")
     workflow_advance.add_argument("--format", choices=("text", "json"), default="text")
@@ -474,6 +474,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     workflow_supersede.add_argument("source", type=Path)
     workflow_supersede.add_argument("target", type=Path)
+    workflow_supersede.add_argument("--ledger", type=Path, required=True)
     workflow_supersede.add_argument("--run-id", required=True)
     workflow_supersede.add_argument("--created-at", required=True)
     workflow_supersede.add_argument(
@@ -1012,6 +1013,7 @@ def main(argv: list[str] | None = None) -> int:
             target, package_id = create_superseding_package(
                 args.source,
                 args.target,
+                ledger_path=args.ledger,
                 run_id=args.run_id,
                 created_at=args.created_at,
             )

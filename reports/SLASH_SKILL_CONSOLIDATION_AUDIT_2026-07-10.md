@@ -39,8 +39,22 @@ Independent read-only review was repeated after each repair. Confirmed findings 
 | P1 | Paper/risk audit was not bound to exact reviewed evidence | Gate-specific audit package ID and evidence fingerprints are mandatory |
 | P1 | Gate decision could be overwritten or handwritten | Create-only output plus authoritative reevaluation before append |
 | P1 | Hash-consistent forged ledger could manufacture a pass | `receipts verify` semantically rebuilds runs and replays gates in trusted order |
+| P1 | Failed target gate could not persist or enter remediation | Target stages now support blocked, killed, explicit resume, and bounded remediation paths |
+| P1 | Caller could bypass remediation budgets by omitting a flag | Runtime derives lap accounting from stage transitions and requires finding evidence on entry |
+| P1 | Waiting/blocked entry could bypass remediation accounting | Entry into remediation is restricted to active `in_progress` attempts |
+| P1 | Unevaluated targets or arbitrary files could authorize remediation | Exact-package non-pass decisions must fingerprint a validated confirmed finding |
+| P1 | Manually authored successor lineage could bypass the helper | Append and semantic replay resolve and verify every predecessor and artifact hash |
+| P1 | Legacy or out-of-order rows could impersonate authority | Authoritative lookups require exact-path v2 rows and replay requires run-before-gate order |
+| P1 | Duplicate package IDs on different paths could reuse a gate | Append/replay reject duplicate v2 package IDs and every gate lookup binds the resolved path |
 | P2 | Duplicate JSON/YAML evidence could be selected inconsistently | Duplicate core, promotion, audit, and decision stems are rejected |
 | P2 | Arbitrary append policy could remain authoritative | Append and replay use the bundled policy; policy hash must match reevaluation |
+| P2 | Successor lineage could name an unrecorded source | `workflow supersede` now requires and verifies the exact source ledger entry |
+| P2 | Forward scenarios skipped canonical later-gate replay | Tests append and replay research, paper, and risk gates in canonical order |
+| P2 | A passed target at the transition limit could be rewritten as blocked | Verified terminal completion is excluded from the work-transition budget |
+| P2 | Caller assertion could reset no-progress accounting | `moved_gate` requires a new ledger-recorded successor of the current package |
+| P2 | Exhausted remediation blocks could be resumed | Exhausted transition, lap, and no-progress counters are non-resumable |
+| P2 | Byte-identical unrecorded copies could reuse decisions | Workflow and gate append compare the resolved recorded package path |
+| P3 | Partial-lineage artifact check was not dispatched | Public run-receipt validation now invokes the lineage-pair invariant |
 
 Final independent focused review result: `P0/P1 remaining: no`.
 
@@ -50,7 +64,8 @@ The final local matrix passed:
 
 - Ruff: pass.
 - Locked dependency resolution: pass, 41 packages.
-- Unit, contract, property, mutation, safety, and end-to-end tests: **127/127 pass**.
+- Unit, contract, property, mutation, safety, and end-to-end tests: **143/143 pass**.
+- Fresh isolated Python 3.9 and 3.12 environments: complete suite passes on both versions.
 - Public repository validator: pass after deterministic B2 ledger regeneration.
 - B2 golden replay: 6 packages, 11 variants, including deterministic ledger fingerprint.
 - Research corpus: 50 structured notes, 31 reviewed, 5 OxfordStrat hypotheses, 5 StrategySpecs.

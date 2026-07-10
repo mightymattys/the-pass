@@ -11,7 +11,13 @@ from pathlib import Path
 from unittest.mock import patch
 
 from the_pass.cli import build_parser, main as cli_main
-from the_pass.ledger import build_run_entry
+from the_pass.ledger import (
+    LedgerError,
+    append_ledger_entry,
+    build_run_entry,
+    hash_entry,
+    verify_ledger_file,
+)
 from the_pass.orchestration import (
     PUBLIC_SKILLS,
     ForbiddenWorkflowError,
@@ -22,14 +28,51 @@ from the_pass.orchestration import (
     new_workflow_state,
     read_workflow_state,
     validate_workflow_state,
+    verify_remediation_progress,
+    verify_target_remediation_entry,
     verify_workflow_evidence,
     write_workflow_state_atomic,
 )
-from the_pass.validator import validate_package
+from the_pass.validator import validate_artifact, validate_package
 
 
 ROOT = Path(__file__).resolve().parents[1]
 EXAMPLE_PACKAGE = ROOT / "examples" / "synthetic-breakout" / "package"
+
+
+def write_confirmed_findings(
+    path: Path, *, target_gate: str = "research_gate", package: str = "."
+) -> dict:
+    document = {
+        "schema_version": 2,
+        "id": "confirmed-remediation-finding",
+        "created_at": "2026-07-10T00:00:00Z",
+        "package": package,
+        "reviewer": "independent-reviewer",
+        "target_gate": target_gate,
+        "findings": [
+            {
+                "id": "finding-1",
+                "severity": "P1",
+                "status": "confirmed",
+                "title": "Confirmed gate blocker",
+                "evidence": {
+                    "artifact": "metrics_report",
+                    "path": "metrics_report.json",
+                    "note": "reproduced mismatch",
+                },
+                "blocks_promotion": True,
+                "recommendation": "create a scoped successor",
+            }
+        ],
+        "summary": {
+            "gate_result": "revise",
+            "unresolved_blockers": ["confirmed gate blocker"],
+            "next_action": "remediate the confirmed finding",
+        },
+    }
+    path.write_text(json.dumps(document), encoding="utf-8")
+    return document
 
 
 def tree_fingerprint(path: Path) -> str:
@@ -168,6 +211,216 @@ class OrchestrationTests(unittest.TestCase):
 
         self.assertEqual(completed["status"], "complete")
 
+    @patch("the_pass.orchestration.verify_target_remediation_entry")
+    @patch("the_pass.orchestration.verify_workflow_evidence")
+    @patch("the_pass.orchestration.workflow_target_passes", return_value=False)
+    def test_failed_target_gate_can_block_kill_resume_or_enter_remediation(
+        self, _target_passes, _verify_evidence, _verify_remediation
+    ) -> None:
+        target = advance_workflow_state(
+            self.make_state("research_gate"),
+            to_stage="research_gate",
+            status="in_progress",
+            next_action="evaluate target gate",
+            reviewer="independent-reviewer",
+        )
+        blocked = advance_workflow_state(
+            target,
+            to_stage=None,
+            status="blocked",
+            next_action="resolve missing evidence",
+            blockers=["research gate blocked"],
+        )
+        resumed = advance_workflow_state(
+            blocked,
+            to_stage=None,
+            status="in_progress",
+            next_action="reevaluate target gate",
+            reviewer="independent-reviewer",
+            resume=True,
+        )
+        remediation = advance_workflow_state(
+            resumed,
+            to_stage="remediation",
+            status="in_progress",
+            next_action="repair confirmed finding",
+            evidence_paths=[str(EXAMPLE_PACKAGE / "verdict_report.json")],
+            blockers=[],
+        )
+        killed = advance_workflow_state(
+            target,
+            to_stage=None,
+            status="killed",
+            next_action="archive killed hypothesis",
+            blockers=["declared kill condition reached"],
+        )
+
+        self.assertEqual(
+            (blocked["stage"], blocked["status"]), ("research_gate", "blocked")
+        )
+        self.assertEqual(
+            (resumed["stage"], resumed["status"]), ("research_gate", "in_progress")
+        )
+        self.assertEqual(remediation["stage"], "remediation")
+        self.assertEqual(remediation["remediation_laps"], 1)
+        self.assertEqual(remediation["no_progress_laps"], 1)
+        self.assertEqual(
+            remediation["transitions_used"], resumed["transitions_used"] + 1
+        )
+        self.assertEqual(killed["status"], "killed")
+
+    @patch("the_pass.orchestration.verify_workflow_evidence")
+    @patch("the_pass.orchestration.workflow_target_passes", return_value=False)
+    def test_target_remediation_requires_confirmed_finding_evidence(
+        self, _target_passes, _verify_evidence
+    ) -> None:
+        target = advance_workflow_state(
+            self.make_state("research_gate"),
+            to_stage="research_gate",
+            status="in_progress",
+            next_action="evaluate target gate",
+            reviewer="independent-reviewer",
+        )
+
+        with self.assertRaisesRegex(WorkflowError, "requires evidence paths"):
+            advance_workflow_state(
+                target,
+                to_stage="remediation",
+                status="in_progress",
+                next_action="repair an unproven finding",
+            )
+
+    @patch("the_pass.orchestration._confirmed_finding_artifact")
+    def test_remediation_rejects_waiting_or_blocked_entry(self, _confirmed) -> None:
+        state = advance_workflow_state(
+            self.make_state(),
+            to_stage="research",
+            status="in_progress",
+            next_action="formalize hypothesis",
+        )
+        evidence = [str(EXAMPLE_PACKAGE / "verdict_report.json")]
+
+        for status in ("waiting", "blocked"):
+            with self.subTest(status=status), self.assertRaisesRegex(
+                WorkflowError, "only in_progress"
+            ):
+                advance_workflow_state(
+                    state,
+                    to_stage="remediation",
+                    status=status,
+                    next_action="invalid remediation entry",
+                    blockers=["not an active remediation attempt"],
+                    evidence_paths=evidence,
+                )
+
+    def test_target_remediation_requires_recorded_nonpass_package_finding(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            package = root / "package"
+            package.mkdir()
+            findings_path = package / "findings.json"
+            findings = write_confirmed_findings(findings_path)
+            package_id = "pkg_" + "a" * 24
+            ledger = root / "ledger.jsonl"
+            ledger.touch()
+            state = self.make_state("research_gate")
+            state.update(
+                {
+                    "stage": "research_gate",
+                    "reviewer": findings["reviewer"],
+                    "package_path": str(package),
+                    "package_id": package_id,
+                    "ledger_path": str(ledger),
+                }
+            )
+            run_entry = {
+                "schema": "the-pass/receipt-ledger-entry/v2",
+                "entry_kind": "run",
+                "package_id": package_id,
+                "package_path": "package",
+            }
+            gate_entry = {
+                "schema": "the-pass/receipt-ledger-entry/v2",
+                "entry_kind": "gate_decision",
+                "package_id": package_id,
+                "package_path": "package",
+                "gate": "research_gate",
+                "gate_result": "revise",
+                "reviewer": findings["reviewer"],
+                "artifacts": [
+                    {
+                        "type": "findings",
+                        "path": "findings.json",
+                        "sha256": hashlib.sha256(
+                            findings_path.read_bytes()
+                        ).hexdigest(),
+                    }
+                ],
+            }
+
+            with (
+                patch("the_pass.orchestration.verify_ledger_file", return_value=[]),
+                patch(
+                    "the_pass.orchestration.read_ledger_entries",
+                    return_value=[run_entry, gate_entry],
+                ),
+            ):
+                verify_target_remediation_entry(state, [str(findings_path)])
+
+            legacy_entries = [
+                {**run_entry, "schema": "the-pass/receipt-ledger-entry/v1"},
+                {**gate_entry, "schema": "the-pass/receipt-ledger-entry/v1"},
+            ]
+            with (
+                patch("the_pass.orchestration.verify_ledger_file", return_value=[]),
+                patch(
+                    "the_pass.orchestration.read_ledger_entries",
+                    return_value=legacy_entries,
+                ),
+                self.assertRaisesRegex(WorkflowError, "exact recorded run"),
+            ):
+                verify_target_remediation_entry(state, [str(findings_path)])
+
+            with (
+                patch("the_pass.orchestration.verify_ledger_file", return_value=[]),
+                patch(
+                    "the_pass.orchestration.read_ledger_entries",
+                    return_value=[run_entry],
+                ),
+                self.assertRaisesRegex(WorkflowError, "recorded blocked or revise"),
+            ):
+                verify_target_remediation_entry(state, [str(findings_path)])
+
+            external_findings = root / "findings.json"
+            external_findings.write_bytes(findings_path.read_bytes())
+            with self.assertRaisesRegex(WorkflowError, "inside the exact package"):
+                verify_target_remediation_entry(state, [str(external_findings)])
+
+    @patch("the_pass.orchestration.verify_workflow_evidence")
+    def test_healthy_incomplete_paper_window_waits_and_resumes(
+        self, _verify_evidence
+    ) -> None:
+        waiting = advance_workflow_state(
+            self.make_state("paper_gate"),
+            to_stage="paper_observe",
+            status="waiting",
+            next_action="continue observation after more elapsed market time",
+            blockers=["minimum paper observation window is incomplete"],
+        )
+        resumed = advance_workflow_state(
+            waiting,
+            to_stage=None,
+            status="in_progress",
+            next_action="resume healthy paper observation",
+        )
+
+        self.assertEqual(
+            (waiting["stage"], waiting["status"]), ("paper_observe", "waiting")
+        )
+        self.assertEqual(
+            (resumed["stage"], resumed["status"]), ("paper_observe", "in_progress")
+        )
+
     def test_blocked_state_requires_explicit_resume(self) -> None:
         blocked = advance_workflow_state(
             self.make_state(),
@@ -221,7 +474,8 @@ class OrchestrationTests(unittest.TestCase):
         self.assertEqual(reviewed["stage"], "review_research")
         self.assertEqual(reviewed["reviewer"], "independent-reviewer")
 
-    def test_two_no_progress_remediation_laps_block_the_run(self) -> None:
+    @patch("the_pass.orchestration._confirmed_finding_artifact")
+    def test_two_no_progress_remediation_laps_block_the_run(self, _confirmed) -> None:
         state = advance_workflow_state(
             self.make_state(),
             to_stage="research",
@@ -233,27 +487,53 @@ class OrchestrationTests(unittest.TestCase):
             to_stage="remediation",
             status="in_progress",
             next_action="repair first finding",
+            evidence_paths=[str(EXAMPLE_PACKAGE / "verdict_report.json")],
         )
         state = advance_workflow_state(
             state,
             to_stage=None,
             status="in_progress",
             next_action="retry first repair",
-            remediation=True,
-            moved_gate=False,
-        )
-        state = advance_workflow_state(
-            state,
-            to_stage=None,
-            status="in_progress",
-            next_action="retry second repair",
-            remediation=True,
-            moved_gate=False,
         )
 
         validate_workflow_state(state)
         self.assertEqual(state["status"], "blocked")
+        self.assertEqual(state["remediation_laps"], 2)
         self.assertEqual(state["no_progress_laps"], 2)
+
+        with self.assertRaisesRegex(WorkflowError, "non-resumable"):
+            advance_workflow_state(
+                state,
+                to_stage="screen",
+                status="in_progress",
+                next_action="escape exhausted remediation",
+                resume=True,
+            )
+
+    @patch("the_pass.orchestration._confirmed_finding_artifact")
+    def test_moved_gate_requires_a_recorded_successor(self, _confirmed) -> None:
+        state = advance_workflow_state(
+            self.make_state(),
+            to_stage="research",
+            status="in_progress",
+            next_action="formalize hypothesis",
+        )
+        state = advance_workflow_state(
+            state,
+            to_stage="remediation",
+            status="in_progress",
+            next_action="repair confirmed finding",
+            evidence_paths=[str(EXAMPLE_PACKAGE / "verdict_report.json")],
+        )
+
+        with self.assertRaisesRegex(WorkflowError, "recorded successor"):
+            advance_workflow_state(
+                state,
+                to_stage=None,
+                status="in_progress",
+                next_action="claim unsupported gate progress",
+                moved_gate=True,
+            )
 
     def test_exhausted_transition_budget_returns_a_valid_blocked_state(self) -> None:
         policy = load_pipeline_policy()
@@ -273,21 +553,47 @@ class OrchestrationTests(unittest.TestCase):
             blocked["transitions_used"], policy["runtime"]["max_transitions"]
         )
 
+    @patch("the_pass.orchestration.verify_workflow_evidence")
+    @patch("the_pass.orchestration.workflow_target_passes", return_value=True)
+    def test_passed_target_completes_at_transition_budget_boundary(
+        self, _target_passes, _verify_evidence
+    ) -> None:
+        policy = load_pipeline_policy()
+        state = self.make_state("research_gate")
+        state["stage"] = "research_gate"
+        state["status"] = "in_progress"
+        state["reviewer"] = "independent-reviewer"
+        state["transitions_used"] = policy["runtime"]["max_transitions"]
+
+        completed = advance_workflow_state(
+            state,
+            to_stage="complete",
+            status="complete",
+            next_action="target gate passed",
+        )
+
+        validate_workflow_state(completed)
+        self.assertEqual(completed["stage"], "complete")
+        self.assertEqual(completed["status"], "complete")
+        self.assertEqual(
+            completed["transitions_used"], policy["runtime"]["max_transitions"]
+        )
+
     def test_superseding_package_preserves_source_and_gets_new_identity(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             source = root / "source"
             target = root / "target"
+            ledger = root / "ledger.jsonl"
             shutil.copytree(EXAMPLE_PACKAGE, source)
-            (source / "ledger.jsonl").write_text(
-                "historical local ledger\n", encoding="utf-8"
-            )
+            append_ledger_entry(ledger, source)
             before = tree_fingerprint(source)
-            source_id = build_run_entry(source)["package_id"]
+            source_id = build_run_entry(source, ledger_path=ledger)["package_id"]
 
             created, target_id = create_superseding_package(
                 source,
                 target,
+                ledger_path=ledger,
                 run_id="superseding-run-2",
                 created_at="2026-07-10T01:00:00Z",
             )
@@ -299,8 +605,125 @@ class OrchestrationTests(unittest.TestCase):
             self.assertEqual(created, target.resolve())
             self.assertNotEqual(target_id, source_id)
             self.assertEqual(receipt["supersedes_package_id"], source_id)
-            self.assertFalse((target / "ledger.jsonl").exists())
             self.assertTrue(validate_package(target).ok)
+            append_ledger_entry(ledger, target)
+            self.assertFalse(verify_ledger_file(ledger))
+
+            state = self.make_state()
+            state.update(
+                {
+                    "package_path": str(source),
+                    "package_id": source_id,
+                    "ledger_path": str(ledger),
+                }
+            )
+            verify_remediation_progress(state, str(target), target_id)
+
+    def test_ledger_append_rejects_forged_successor_lineage(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            package = root / "package"
+            ledger = root / "ledger.jsonl"
+            shutil.copytree(EXAMPLE_PACKAGE, package)
+            receipt_path = package / "run_receipt.json"
+            receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+            receipt.update(
+                {
+                    "supersedes_package_id": "pkg_" + "f" * 24,
+                    "supersedes_artifacts_hash": "f" * 64,
+                }
+            )
+            receipt_path.write_text(json.dumps(receipt), encoding="utf-8")
+
+            with self.assertRaisesRegex(LedgerError, "unknown prior v2 package"):
+                append_ledger_entry(ledger, package)
+
+            forged_entry = build_run_entry(package, ledger_path=ledger)
+            forged_entry["entry_hash"] = hash_entry(forged_entry)
+            ledger.write_text(json.dumps(forged_entry) + "\n", encoding="utf-8")
+            issues = verify_ledger_file(ledger)
+            self.assertTrue(
+                any("unknown prior v2 package" in issue.message for issue in issues),
+                [issue.as_dict() for issue in issues],
+            )
+
+    def test_partial_successor_lineage_fails_public_artifact_validation(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            receipt_path = Path(tmp) / "run_receipt.json"
+            receipt = json.loads(
+                (EXAMPLE_PACKAGE / "run_receipt.json").read_text(encoding="utf-8")
+            )
+            receipt["supersedes_package_id"] = "pkg_" + "a" * 24
+            receipt_path.write_text(json.dumps(receipt), encoding="utf-8")
+
+            result = validate_artifact(receipt_path, artifact_type="run_receipt")
+
+        self.assertFalse(result.ok)
+        self.assertTrue(
+            any("requires both" in issue.message for issue in result.issues),
+            [issue.as_dict() for issue in result.issues],
+        )
+
+    def test_workflow_rejects_unrecorded_copy_of_recorded_package(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            recorded = root / "recorded"
+            copied = root / "copied"
+            ledger = root / "ledger.jsonl"
+            shutil.copytree(EXAMPLE_PACKAGE, recorded)
+            append_ledger_entry(ledger, recorded)
+            shutil.copytree(recorded, copied)
+            package_id = build_run_entry(recorded, ledger_path=ledger)["package_id"]
+            state = self.make_state()
+            state.update(
+                {
+                    "stage": "robustness",
+                    "package_path": str(copied),
+                    "package_id": package_id,
+                    "ledger_path": str(ledger),
+                }
+            )
+
+            with self.assertRaisesRegex(WorkflowError, "exact package run"):
+                verify_workflow_evidence(state)
+
+    def test_superseding_package_rejects_unrecorded_source(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            source = Path(tmp) / "source"
+            target = Path(tmp) / "target"
+            ledger = Path(tmp) / "ledger.jsonl"
+            shutil.copytree(EXAMPLE_PACKAGE, source)
+            ledger.touch()
+
+            with self.assertRaisesRegex(WorkflowError, "not recorded"):
+                create_superseding_package(
+                    source,
+                    target,
+                    ledger_path=ledger,
+                    run_id="new-run",
+                    created_at="2026-07-10T01:00:00Z",
+                )
+
+    def test_superseding_package_rejects_an_unrecorded_copy_of_a_recorded_package(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            recorded = root / "recorded"
+            copied = root / "copied"
+            ledger = root / "ledger.jsonl"
+            shutil.copytree(EXAMPLE_PACKAGE, recorded)
+            append_ledger_entry(ledger, recorded)
+            shutil.copytree(recorded, copied)
+
+            with self.assertRaisesRegex(WorkflowError, "source path does not match"):
+                create_superseding_package(
+                    copied,
+                    root / "target",
+                    ledger_path=ledger,
+                    run_id="new-run",
+                    created_at="2026-07-10T01:00:00Z",
+                )
 
     def test_state_resume_recomputes_package_identity(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -346,7 +769,13 @@ class OrchestrationTests(unittest.TestCase):
                 {"type": "risk_report", "path": "risk_report.json", "sha256": "a" * 64}
             ]
             entries = [
-                {"entry_kind": "run", "package_id": package_id, "artifacts": artifacts},
+                {
+                    "schema": "the-pass/receipt-ledger-entry/v2",
+                    "entry_kind": "run",
+                    "package_id": package_id,
+                    "package_path": "package",
+                    "artifacts": artifacts,
+                },
                 {
                     "schema": "the-pass/receipt-ledger-entry/v2",
                     "entry_kind": "gate_decision",
@@ -397,7 +826,9 @@ class OrchestrationTests(unittest.TestCase):
     ) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             source = Path(tmp) / "source"
+            ledger = Path(tmp) / "ledger.jsonl"
             shutil.copytree(EXAMPLE_PACKAGE, source)
+            append_ledger_entry(ledger, source)
             source_run_id = json.loads(
                 (source / "run_receipt.json").read_text(encoding="utf-8")
             )["id"]
@@ -406,6 +837,7 @@ class OrchestrationTests(unittest.TestCase):
                 create_superseding_package(
                     source,
                     Path(tmp) / "same-run",
+                    ledger_path=ledger,
                     run_id=source_run_id,
                     created_at="2026-07-10T01:00:00Z",
                 )
@@ -413,6 +845,7 @@ class OrchestrationTests(unittest.TestCase):
                 create_superseding_package(
                     source,
                     source / "nested",
+                    ledger_path=ledger,
                     run_id="new-run",
                     created_at="2026-07-10T01:00:00Z",
                 )
@@ -422,6 +855,7 @@ class OrchestrationTests(unittest.TestCase):
                 create_superseding_package(
                     source,
                     Path(tmp) / "symlink-target",
+                    ledger_path=ledger,
                     run_id="new-run",
                     created_at="2026-07-10T01:00:00Z",
                 )

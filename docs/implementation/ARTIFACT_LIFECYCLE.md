@@ -66,7 +66,14 @@ experiments/runs/<strategy-id>/<run-id>/
 
 Generated outputs should not overwrite prior run packages. A rerun creates a new `run-id`
 and links to the previous package in its receipt. Paper and risk phases always create a
-superseding package because the source run has already been receipted.
+superseding package because the source run has already been receipted. The supersede command
+requires that shared ledger and refuses unrecorded or altered source packages. The same lineage
+checks run during ordinary receipt append and full semantic replay, so manually authored
+`supersedes_*` fields cannot bypass the helper.
+
+V1 rows remain readable historical evidence but are never authoritative for package identity,
+lineage, promotion, remediation, or completion. Every authoritative lookup requires the exact
+recorded package path as well as its v2 package ID and artifact fingerprints.
 
 ## Immutability Rules
 

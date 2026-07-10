@@ -19,6 +19,16 @@ and the Keep a Changelog structure.
   `test`, `review`, `paper`, `plate`, and `status`.
 - Promotion gates now require the reviewer to differ from both the StrategySpec owner and run
   owner.
+- Failed target gates can now stop, resume, or enter bounded remediation without bypassing
+  completion checks, passed targets complete at the transition-budget boundary, and successor
+  packages require ledger-backed source provenance.
+- Remediation accounting is derived from workflow transitions, defaults to no gate progress, and
+  requires concrete finding evidence on entry. Target-gate remediation additionally requires a
+  recorded exact-package non-pass decision, while progress requires a recorded successor.
+- Successor lineage is enforced by every ledger append and semantic replay, including predecessor
+  package, strategy, run ID, and artifact fingerprint checks.
+- Only exact-path v2 runs and decisions are authoritative; semantic replay enforces run-before-gate
+  ordering, and exhausted workflow budgets cannot be resumed.
 
 ## [0.7.1] - 2026-07-10
 

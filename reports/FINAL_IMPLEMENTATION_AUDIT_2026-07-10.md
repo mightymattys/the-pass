@@ -33,7 +33,8 @@ repository work.
 - The current unit, golden, mutation, safety, and integration matrix passes on Python 3.9 and
   3.12; its exact count is recorded in `reports/RELEASE_AUDIT_0.7.0.md`.
 - Roadmap, research, data, B2, V3, P4, and public-repository validators pass.
-- Plugin validation and all 11 slash-skill validators pass.
+- The original eleven-skill validation passed before consolidation; the current seven-skill
+  interface is validated by `SLASH_SKILL_CONSOLIDATION_AUDIT_2026-07-10.md`.
 - Ruff, sdist build, wheel build, schema-copy checks, and Git whitespace checks pass.
 
 ## Candidate Usage Requirements

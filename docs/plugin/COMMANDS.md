@@ -43,6 +43,13 @@ laps, after two consecutive no-progress laps, or after twenty total transitions.
 when a paper window is incomplete, evidence is unavailable, a kill condition fires, or an
 independent reviewer is absent. A blocked state resumes only through an explicit `--resume`
 transition after its blocker has been resolved and external evidence revalidates.
+Entering remediation requires at least one existing `--evidence` path. The runtime derives
+remediation accounting from the destination stage, and `--moved-gate` defaults to `false` so an
+omitted flag cannot reset the no-progress counter. At a target gate, entry also requires a
+ledger-recorded `blocked` or `revise` decision whose exact package fingerprints a confirmed
+blocking finding. `--moved-gate true` is accepted only with a new recorded successor package.
+Budget exhaustion and two consecutive no-progress laps are non-resumable; continuation requires a
+new bounded workflow rather than editing counters or leaving the blocked remediation stage.
 
 State is stored at `.the-pass/runs/<run-id>/state.yaml`. Every transition is atomic and contains
 the current stage, target, owners, reviewer, exact package ID, evidence paths, blockers, budgets,
@@ -75,7 +82,7 @@ the-pass workflow advance --state <path> --to-stage <stage> \
 the-pass workflow status --state <path>
 the-pass workflow fingerprint <package>
 the-pass workflow supersede <source-package> <target-package> \
-  --run-id <new-id> --created-at <RFC3339>
+  --ledger <ledger> --run-id <new-id> --created-at <RFC3339>
 ```
 
 The orchestrator maps stages only to the exact parser contracts in

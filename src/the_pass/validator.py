@@ -489,6 +489,19 @@ def validate_workflow_artifact(
 
     issues: list[ValidationIssue] = []
 
+    if artifact_type == "run_receipt":
+        lineage_fields = (
+            "supersedes_package_id",
+            "supersedes_artifacts_hash",
+        )
+        if sum(field in document for field in lineage_fields) == 1:
+            issues.append(
+                ValidationIssue(
+                    "$",
+                    "successor run receipt requires both supersedes lineage fields",
+                )
+            )
+
     if artifact_type == "metrics_report" and document.get("schema_version") == 2:
         reasons = document["not_applicable_reasons"]
         for group_name in ("gross_metrics", "net_metrics"):
@@ -695,6 +708,7 @@ def validate_artifact(
                     ValidationIssue(issue.path, issue.message, issue.severity)
                 )
         elif detected_type in {
+            "run_receipt",
             "metrics_report",
             "screen_report",
             "findings",

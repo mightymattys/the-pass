@@ -276,6 +276,28 @@ def verify_ledger_semantics(
                     )
                 )
                 continue
+            lineage_issue = run_lineage_issue(expected, trusted_entries)
+            if lineage_issue is not None:
+                issues.append(ValidationIssue(entry_path, lineage_issue))
+                continue
+            duplicate_run = next(
+                (
+                    item
+                    for item in trusted_entries
+                    if item.get("schema") == LEDGER_SCHEMA_V2
+                    and item.get("entry_kind") == "run"
+                    and item.get("package_id") == entry.get("package_id")
+                ),
+                None,
+            )
+            if duplicate_run is not None:
+                issues.append(
+                    ValidationIssue(
+                        entry_path,
+                        "duplicate v2 package_id is not allowed in the ledger",
+                    )
+                )
+                continue
             trusted_entries.append(entry)
             continue
 
@@ -288,6 +310,28 @@ def verify_ledger_semantics(
             issues.append(
                 ValidationIssue(
                     entry_path, "gate entry requires exactly one gate_decision artifact"
+                )
+            )
+            continue
+        trusted_run = next(
+            (
+                item
+                for item in trusted_entries
+                if item.get("schema") == LEDGER_SCHEMA_V2
+                and item.get("entry_kind") == "run"
+                and item.get("package_id") == entry.get("package_id")
+                and (
+                    ledger_parent / str(item.get("package_path", ""))
+                ).resolve()
+                == package_dir
+            ),
+            None,
+        )
+        if trusted_run is None:
+            issues.append(
+                ValidationIssue(
+                    entry_path,
+                    "gate decision requires its exact v2 run earlier in the ledger",
                 )
             )
             continue
@@ -455,6 +499,42 @@ def deterministic_package_id(
     return "pkg_" + sha256_text(canonical_json(package_fingerprint))[:24]
 
 
+def artifacts_hash(entry: dict[str, Any]) -> str:
+    """Fingerprint the exact artifact list used by successor lineage."""
+
+    return sha256_text(canonical_json(entry.get("artifacts", [])))
+
+
+def run_lineage_issue(
+    entry: dict[str, Any], prior_entries: list[dict[str, Any]]
+) -> str | None:
+    predecessor_id = entry.get("supersedes_package_id")
+    predecessor_hash = entry.get("supersedes_artifacts_hash")
+    if predecessor_id is None and predecessor_hash is None:
+        return None
+    if not isinstance(predecessor_id, str) or not isinstance(predecessor_hash, str):
+        return "successor run requires both lineage fields"
+    predecessor = next(
+        (
+            item
+            for item in prior_entries
+            if item.get("schema") == LEDGER_SCHEMA_V2
+            and item.get("entry_kind") == "run"
+            and item.get("package_id") == predecessor_id
+        ),
+        None,
+    )
+    if predecessor is None:
+        return "successor run references an unknown prior v2 package"
+    if predecessor.get("strategy_id") != entry.get("strategy_id"):
+        return "successor run must preserve the predecessor strategy_id"
+    if predecessor.get("run_id") == entry.get("run_id"):
+        return "successor run_id must differ from its predecessor"
+    if artifacts_hash(predecessor) != predecessor_hash:
+        return "successor artifacts hash does not match the prior package"
+    return None
+
+
 def failed_gates(verdict: dict[str, Any]) -> list[str]:
     gate_results = verdict.get("gate_results")
     if not isinstance(gate_results, dict):
@@ -547,6 +627,11 @@ def build_run_entry(
         "safety": run_receipt.get("safety", {}),
         "previous_hash": None,
     }
+    predecessor_id = run_receipt.get("supersedes_package_id")
+    predecessor_hash = run_receipt.get("supersedes_artifacts_hash")
+    if predecessor_id is not None or predecessor_hash is not None:
+        entry["supersedes_package_id"] = predecessor_id
+        entry["supersedes_artifacts_hash"] = predecessor_hash
     return entry
 
 
@@ -568,11 +653,22 @@ def append_ledger_entry(
         recorded_at=recorded_at,
         ledger_path=ledger_path,
     )
+    lineage_issue = run_lineage_issue(entry, entries)
+    if lineage_issue is not None:
+        raise LedgerError(f"cannot append invalid successor lineage: {lineage_issue}")
     for existing in entries:
         if (
-            existing.get("package_id") == entry["package_id"]
+            existing.get("schema") == LEDGER_SCHEMA_V2
+            and existing.get("package_id") == entry["package_id"]
             and existing.get("entry_kind") == "run"
         ):
+            existing_path = (
+                ledger_path.parent / str(existing.get("package_path", ""))
+            ).resolve()
+            if existing_path != package_dir.resolve():
+                raise LedgerError(
+                    "package_id is already recorded at a different package path"
+                )
             return LedgerAppendResult(existing, False, "package already recorded")
 
     entry["previous_hash"] = entries[-1]["entry_hash"] if entries else None
@@ -675,8 +771,11 @@ def append_gate_decision(ledger_path: Path, decision_path: Path) -> LedgerAppend
             "gate decision package_id does not match current package artifacts"
         )
     if not any(
-        entry.get("entry_kind") == "run"
+        entry.get("schema") == LEDGER_SCHEMA_V2
+        and entry.get("entry_kind") == "run"
         and entry.get("package_id") == run_entry["package_id"]
+        and (ledger_path.parent / str(entry.get("package_path", ""))).resolve()
+        == package_dir
         for entry in entries
     ):
         raise LedgerError(
@@ -731,7 +830,8 @@ def append_gate_decision(ledger_path: Path, decision_path: Path) -> LedgerAppend
 
     for existing in entries:
         if (
-            existing.get("entry_kind") == "gate_decision"
+            existing.get("schema") == LEDGER_SCHEMA_V2
+            and existing.get("entry_kind") == "gate_decision"
             and existing.get("decision_id") == entry["decision_id"]
         ):
             return LedgerAppendResult(existing, False, "gate decision already recorded")
@@ -744,13 +844,24 @@ def append_gate_decision(ledger_path: Path, decision_path: Path) -> LedgerAppend
     return LedgerAppendResult(entry, True, "gate decision appended")
 
 
-def has_passed_gate(entries: list[dict[str, Any]], package_id: str, gate: str) -> bool:
+def has_passed_gate(
+    entries: list[dict[str, Any]],
+    package_id: str,
+    gate: str,
+    *,
+    ledger_path: Path,
+    package_path: Path,
+) -> bool:
+    ledger_parent = ledger_path.resolve().parent
+    expected_package = package_path.resolve()
     return any(
         entry.get("schema") == LEDGER_SCHEMA_V2
         and entry.get("entry_kind") == "gate_decision"
         and entry.get("package_id") == package_id
         and entry.get("gate") == gate
         and entry.get("gate_result") == "pass"
+        and (ledger_parent / str(entry.get("package_path", ""))).resolve()
+        == expected_package
         for entry in entries
     )
 

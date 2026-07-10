@@ -137,7 +137,7 @@ cli_contracts:
     outputs: [package_id]
     capability: valid_package
   workflow_supersede:
-    argv: [workflow, supersede, package, next-package, --run-id, run-2, --created-at, "2026-07-10T00:00:00Z", --format, json]
+    argv: [workflow, supersede, package, next-package, --ledger, ledger.jsonl, --run-id, run-2, --created-at, "2026-07-10T00:00:00Z", --format, json]
     accepted_exit_codes: [0, 1]
     outputs: [superseding_package]
     capability: immutable_source_package
@@ -179,7 +179,7 @@ stages:
     reviewer_required: true
     skill: review
     cli_contracts: [gate_evaluate, receipts_add_decision, receipts_verify]
-    transitions: [paper_prepare, complete]
+    transitions: [paper_prepare, remediation, complete]
   paper_prepare:
     role: paper_operator
     skill: paper
@@ -201,7 +201,7 @@ stages:
     reviewer_required: true
     skill: review
     cli_contracts: [gate_evaluate, receipts_add_decision, receipts_verify]
-    transitions: [risk_prepare, complete]
+    transitions: [risk_prepare, remediation, complete]
   risk_prepare:
     role: risk_operator
     skill: plate
@@ -223,7 +223,7 @@ stages:
     reviewer_required: true
     skill: review
     cli_contracts: [gate_evaluate, receipts_add_decision, receipts_verify]
-    transitions: [complete]
+    transitions: [remediation, complete]
   remediation:
     role: implementer
     skill: run
