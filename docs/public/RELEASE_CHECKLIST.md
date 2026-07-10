@@ -2,7 +2,7 @@
 
 Use this before pushing or publishing The Pass.
 
-Status: `v0.9.0` published and reverified from freshly downloaded release assets on 2026-07-10.
+Status: `v0.9.1` published and reverified from freshly downloaded release assets on 2026-07-10.
 
 ## Repository Safety
 
@@ -45,16 +45,17 @@ Status: `v0.9.0` published and reverified from freshly downloaded release assets
 - [x] The wheel passes clean installation and CLI validation outside the checkout.
 - [x] Branch protection requires both Python CI contexts and pull-request review.
 - [x] Release publication is gated by `.github/workflows/release.yml`.
-- [x] The repository owner explicitly authorized an administrative review exception for PR #9
+- [x] The repository owner explicitly authorized an administrative review exception for PR #11
       after both required CI contexts passed; no independent GitHub approval was recorded.
-- [x] The audited main commit was tagged `v0.9.0` and the release workflow published
+- [x] The audited main commit was tagged `v0.9.1` and the release workflow published
       matching assets and checksums.
 
 Release evidence:
 
-- `https://github.com/matk0shub/the-pass/pull/9`
-- `reports/RELEASE_AUDIT_0.9.0.md`
-- `reports/POST_RELEASE_AUDIT_0.9.0.md`
+- `https://github.com/matk0shub/the-pass/pull/11`
+- `reports/RELEASE_AUDIT_0.9.1.md`
+- `reports/POST_RELEASE_AUDIT_0.9.1.md`
+- `docs/public/USAGE_GUIDE.md`
 - `reports/CROSS_AGENT_ORCHESTRATION_AUDIT_0.9.0.md`
 - `reports/FULL_REPOSITORY_STABILITY_AUDIT_2026-07-10.md`
 - `reports/benchmarks/baseline-v0.7.0.json`

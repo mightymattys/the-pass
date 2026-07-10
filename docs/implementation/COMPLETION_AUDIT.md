@@ -52,6 +52,7 @@ Trading roadmap gate evidence is tracked separately:
 - [`v0.9.0` release audit](../../reports/RELEASE_AUDIT_0.9.0.md)
 - [`v0.9.0` post-release verification](../../reports/POST_RELEASE_AUDIT_0.9.0.md)
 - [`v0.9.1` installation and usage release audit](../../reports/RELEASE_AUDIT_0.9.1.md)
+- [`v0.9.1` post-release verification](../../reports/POST_RELEASE_AUDIT_0.9.1.md)
 
 ## Local Completion Commands
 
