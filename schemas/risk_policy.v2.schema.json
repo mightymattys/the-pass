@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://the-pass.dev/schemas/risk_policy.v2.schema.json",
+  "title": "RiskPolicyV2",
+  "type": "object",
+  "required": ["schema_version", "policy_id", "policy_version", "created_at", "asset_class", "sizing", "limits", "stress", "policy_hash"],
+  "properties": {
+    "schema_version": { "const": 2 },
+    "policy_id": { "type": "string", "minLength": 1 },
+    "policy_version": { "type": "string", "minLength": 1 },
+    "created_at": { "type": "string", "format": "date-time" },
+    "asset_class": { "enum": ["crypto_intraday", "crypto_funding", "listed_futures", "prediction_market", "generic"] },
+    "sizing": {
+      "type": "object",
+      "required": ["allowed", "default", "kelly_use"],
+      "properties": {
+        "allowed": { "type": "array", "minItems": 1, "items": { "enum": ["fixed_fraction", "volatility_target"] } },
+        "default": { "enum": ["fixed_fraction", "volatility_target"] },
+        "kelly_use": { "const": "analytical_upper_bound_only" }
+      },
+      "additionalProperties": false
+    },
+    "limits": { "type": "object", "minProperties": 1 },
+    "stress": { "type": "object", "minProperties": 1 },
+    "promotion_thresholds": { "type": "object" },
+    "policy_hash": { "type": "string", "pattern": "^[A-Fa-f0-9]{64}$" }
+  },
+  "additionalProperties": false
+}

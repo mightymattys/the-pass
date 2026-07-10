@@ -1,0 +1,17 @@
+schema_version: 2
+id: novy-marx-trading-costs
+type: academic
+category: financial_validation
+priority: P1
+status: skimmed
+url: https://doi.org/10.1016/j.jfineco.2019.07.002
+bibliography: "Novy-Marx, R., and Velikov, M. A Taxonomy of Anomalies and Their Trading Costs."
+claim: Trading costs can materially change anomaly rankings and implementability.
+evidence: Bibliographic record and abstract identified; full methodological review remains pending.
+limitations: Not counted as reviewed evidence and no result has been independently reproduced.
+market_applicability: [equities, cross_asset]
+required_tests: [cost_break_even, turnover_sensitivity]
+failure_modes: [gross_only_selection, understated_turnover]
+system_requirements: [cost_waterfall, turnover_report]
+evidence_classification: primary_academic_backlog
+license_note: Bibliographic metadata only; copyrighted text is not redistributed.

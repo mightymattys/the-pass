@@ -1,0 +1,21 @@
+schema_version: 2
+id: crypto-systematic-mapping
+type: academic
+category: crypto_perpetuals
+priority: P1
+status: reviewed
+url: https://www.sciencedirect.com/science/article/pii/S2667096824000296
+bibliography: "Nguyen and Chan. Cryptocurrency Trading: A Systematic Mapping Study. IJIM Data Insights 4(2), 2024."
+claim: Cryptocurrency trading research uses heterogeneous data, features, and increasingly ML-heavy methods, so published results are not directly comparable.
+evidence: The open-access mapping study categorizes influential variables, technologies, data inputs, and research directions.
+limitations: A mapping study summarizes literature rather than validating the profitability or execution quality of any strategy.
+market_applicability: [crypto]
+tradable_implication: Maintain recency, data-source, venue, horizon, cost, and validation tags for every crypto claim.
+required_tests: [post_publication_holdout, venue_transfer, simple_baseline_comparison]
+failure_modes: [paper_count_as_evidence, stale_venue_data, ML_without_baseline]
+system_requirements: [source recency tags, provider metadata, baseline-first gate]
+notes_owner: study_scout
+review_date: "2026-07-10"
+evidence_classification: systematic_mapping
+license_note: Open-access article; no full-text redistribution.
+

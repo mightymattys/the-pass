@@ -1,0 +1,17 @@
+schema_version: 2
+id: cartea-algorithmic-trading
+type: book
+category: execution_microstructure
+priority: P2
+status: skimmed
+url: https://doi.org/10.1017/CBO9781316380952
+bibliography: "Cartea, A., Jaimungal, S., and Penalva, J. Algorithmic and High-Frequency Trading."
+claim: Inventory, adverse selection, and order-flow models provide execution-risk test families.
+evidence: Publisher record identified; chapter-level review remains pending.
+limitations: Models need venue-specific assumptions and must not imply live readiness.
+market_applicability: [cross_asset]
+required_tests: [inventory_stress, adverse_selection_stress]
+failure_modes: [parameter_transfer, unrealistic_arrivals]
+system_requirements: [inventory_accounting, fill_diagnostics]
+evidence_classification: publisher_backlog
+license_note: Bibliographic metadata only; copyrighted text is not redistributed.

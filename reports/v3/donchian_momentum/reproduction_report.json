@@ -1,0 +1,75 @@
+{
+  "backtest_exit_code": 0,
+  "clean_temporary_directory": true,
+  "commands": [
+    "python -m the_pass.cli backtest baseline --name donchian_momentum --output <temp>/package --format json",
+    "python -m the_pass.cli receipts verify --ledger <temp>/package/receipt-ledger.jsonl"
+  ],
+  "created_at": "2026-07-10T00:00:00Z",
+  "fingerprints": [
+    {
+      "expected": "cbe25aab55349b568fe38860370f882670bf812d37a8082ec1218575f620beb3",
+      "observed": "cbe25aab55349b568fe38860370f882670bf812d37a8082ec1218575f620beb3",
+      "path": "strategy_spec.json"
+    },
+    {
+      "expected": "69bd3e7e3f469c27fa4e2665a7a043fffb1c0c2d203330dcf9467ba276fdcab0",
+      "observed": "69bd3e7e3f469c27fa4e2665a7a043fffb1c0c2d203330dcf9467ba276fdcab0",
+      "path": "data_manifest.json"
+    },
+    {
+      "expected": "60cb77791b7e98c4b96105acf5d743fdeec994bb02d86d4eb3de1ad898c69ddb",
+      "observed": "60cb77791b7e98c4b96105acf5d743fdeec994bb02d86d4eb3de1ad898c69ddb",
+      "path": "quality_report.json"
+    },
+    {
+      "expected": "840d8f6d75d6a10523f6f0909ea91050b2e4dad087713934dfe1c63d5c738679",
+      "observed": "840d8f6d75d6a10523f6f0909ea91050b2e4dad087713934dfe1c63d5c738679",
+      "path": "run_receipt.json"
+    },
+    {
+      "expected": "0e1a17f39db4d3ab9a3844abd1b3e833c97b4d1b913875b052376fa2b49f01e6",
+      "observed": "0e1a17f39db4d3ab9a3844abd1b3e833c97b4d1b913875b052376fa2b49f01e6",
+      "path": "metrics_report.json"
+    },
+    {
+      "expected": "3483a22be0d5cee05c42ce437316c140db84178d4d60a9daf0a8a2bfa2429e9a",
+      "observed": "3483a22be0d5cee05c42ce437316c140db84178d4d60a9daf0a8a2bfa2429e9a",
+      "path": "cost_waterfall.json"
+    },
+    {
+      "expected": "593c0af38f20526a99c4b2121740caf906007fdb5b2c9b06b621a5269ad59106",
+      "observed": "593c0af38f20526a99c4b2121740caf906007fdb5b2c9b06b621a5269ad59106",
+      "path": "verdict_report.json"
+    },
+    {
+      "expected": "e934567ae50b673e36d8ff263835dd0862fb95eed6f96df918693bd297f00d8c",
+      "observed": "e934567ae50b673e36d8ff263835dd0862fb95eed6f96df918693bd297f00d8c",
+      "path": "search_space.json"
+    },
+    {
+      "expected": "3ec693092aaa474bffccb1afc081db71d3afefe80870abff10cbb9b0d57b0c8f",
+      "observed": "3ec693092aaa474bffccb1afc081db71d3afefe80870abff10cbb9b0d57b0c8f",
+      "path": "runner_result.json"
+    },
+    {
+      "expected": "c512bb356acc0aac98bc6cac79aa4939a9960b0af968d6319ed7e16f46eda7be",
+      "observed": "c512bb356acc0aac98bc6cac79aa4939a9960b0af968d6319ed7e16f46eda7be",
+      "path": "screen_results.json"
+    },
+    {
+      "expected": "f9c2db52b911d8e600ab0095fbb758eef0fc9aa2ad60f316da8ba3f53bdb0a68",
+      "observed": "f9c2db52b911d8e600ab0095fbb758eef0fc9aa2ad60f316da8ba3f53bdb0a68",
+      "path": "run_report.md"
+    },
+    {
+      "expected": "b31881e7fe07a40809c4f46279fcc34849487b397863f8728303ca9761586a8b",
+      "observed": "b31881e7fe07a40809c4f46279fcc34849487b397863f8728303ca9761586a8b",
+      "path": "run_report.html"
+    }
+  ],
+  "mismatches": [],
+  "receipt_exit_code": 0,
+  "schema_version": 1,
+  "status": "pass"
+}

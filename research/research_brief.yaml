@@ -1,0 +1,44 @@
+schema_version: 2
+id: r0-baseline-research-brief
+created_at: "2026-07-10T00:00:00Z"
+topic: Evidence-first baseline research across crypto, futures, and prediction markets
+owner: head_researcher
+objective: Build controls and falsifiable baseline families before testing complex or proprietary strategies.
+sources:
+  - pbo-cscv
+  - deflated-sharpe
+  - white-reality-check
+  - hansen-spa
+  - harvey-factor-zoo
+  - afml-lecture
+  - ml-fund-failures
+  - oos-method-comparison
+  - almgren-chriss
+  - market-microstructure-practice
+  - bis-arbitrage-costs
+  - time-series-momentum
+  - century-trend
+  - trends-everywhere
+  - perpetual-futures-pricing
+  - crypto-systematic-mapping
+  - crypto-microstructure-review
+  - berkshire-2024-letter
+  - bridgewater-all-weather
+  - oxfordstrat-nr7-corpus
+hypotheses:
+  - null_random_control_v1
+  - crypto_spot_buy_hold_benchmark_v1
+  - crypto_spot_time_series_momentum_v1
+  - futures_diversified_trend_v1
+  - prediction_market_complement_or_fair_value_v1
+evidence_gaps:
+  - No canonical provider dataset has passed D1 quality and cross-source gates yet.
+  - Futures promotion requires licensed multi-contract history.
+  - Polymarket promotion requires archived books, dynamic fees, and verified settlement semantics.
+  - OxfordStrat pages are secondary reviews and do not prove edge.
+next_tests:
+  - Implement canonical event, instrument, quality, and feature-manifest contracts.
+  - Run deterministic random, buy-and-hold, momentum, and mean-reversion controls.
+  - Preserve every parameter variant before calculating PBO or DSR.
+status: ready
+

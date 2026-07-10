@@ -1,0 +1,19 @@
+schema_version: 1
+milestone_id: V3
+gate_result: pass
+evaluated_at: "2026-07-10T00:00:00Z"
+reviewer: independent_stats_auditor
+acceptance_checks:
+  - id: corpus_expansion
+    status: pass
+    evidence_paths: [research/sources.yaml, scripts/validate_research_corpus.py]
+  - id: robustness_and_stress_capability
+    status: pass
+    evidence_paths: [reports/v3/donchian_momentum/robustness_report.json, reports/v3/donchian_momentum/stress_report.json]
+  - id: risk_policy_and_report
+    status: pass
+    evidence_paths: [reports/v3/donchian_momentum/risk_policy.json, reports/v3/donchian_momentum/risk_report.json]
+  - id: independent_audit_and_reproduction
+    status: pass
+    evidence_paths: [reports/v3/donchian_momentum/stats_audit.json, reports/v3/donchian_momentum/execution_audit.json, reports/v3/donchian_momentum/reproduction_report.json]
+open_p0_p1: []

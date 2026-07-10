@@ -13,12 +13,16 @@ from unittest.mock import patch
 import the_pass.validator as validator_module
 from the_pass.cli import main as cli_main
 from the_pass.ledger import (
+    LEDGER_SCHEMA_V1,
     LedgerError,
+    append_gate_decision,
     append_ledger_entry,
-    build_ledger_entry,
+    build_run_entry,
+    hash_entry,
     read_ledger_entries,
     verify_ledger_file,
 )
+from the_pass.gates import GateEvaluationError, evaluate_gate, write_gate_decision
 from the_pass.validator import default_schema_dir, validate_artifact, validate_package
 
 
@@ -204,6 +208,19 @@ def workflow_artifacts() -> dict[str, dict]:
 
 
 def prepare_paper_candidate(package: Path, *, reviewer: str = "independent-auditor") -> None:
+    for name in (
+        "strategy_spec.json",
+        "data_manifest.json",
+        "run_receipt.json",
+        "metrics_report.json",
+        "cost_waterfall.json",
+        "verdict_report.json",
+    ):
+        path = package / name
+        document = json.loads(path.read_text(encoding="utf-8"))
+        document["schema_version"] = 2
+        path.write_text(json.dumps(document), encoding="utf-8")
+
     adapter_path = package / "adapter.json"
     adapter = json.loads(adapter_path.read_text(encoding="utf-8"))
     adapter["mode"] = "research"
@@ -211,8 +228,29 @@ def prepare_paper_candidate(package: Path, *, reviewer: str = "independent-audit
 
     metrics_path = package / "metrics_report.json"
     metrics = json.loads(metrics_path.read_text(encoding="utf-8"))
-    metrics["gross_metrics"]["pnl"] = 1.0
-    metrics["net_metrics"]["pnl"] = 0.5
+    standard_metrics = {
+        "pnl": 1.0,
+        "total_return": 0.10,
+        "annualized_return": 0.12,
+        "volatility": 0.08,
+        "downside_volatility": 0.05,
+        "sharpe": 1.5,
+        "sortino": 1.8,
+        "calmar": 1.2,
+        "max_drawdown": 0.08,
+        "average_drawdown": 0.03,
+        "drawdown_duration": 5.0,
+        "win_rate": 0.55,
+        "payoff_ratio": 1.4,
+        "expectancy": 0.05,
+        "turnover": 2.0,
+        "average_holding_period": 3600.0,
+        "expected_shortfall": 0.02,
+        "capacity_estimate": 1000.0,
+    }
+    metrics["gross_metrics"] = standard_metrics
+    metrics["net_metrics"] = {**standard_metrics, "pnl": 0.5, "total_return": 0.05, "sharpe": 1.1}
+    metrics["not_applicable_reasons"] = {}
     metrics["sample"]["trades"] = 10
     metrics["sample"].update(
         {
@@ -272,7 +310,86 @@ def prepare_paper_candidate(package: Path, *, reviewer: str = "independent-audit
     )
     strategy["validation"]["train_test_split"] = "first 66 percent train, next 14 percent validation"
     strategy["validation"]["holdout_policy"] = "latest 20 percent locked until final review"
+    strategy["validation"]["windows"] = {
+        "train_start": "2026-01-01T00:00:00Z",
+        "train_end": "2026-01-15T00:00:00Z",
+        "validation_start": "2026-01-15T00:00:00Z",
+        "validation_end": "2026-01-21T00:00:00Z",
+        "holdout_start": "2026-01-21T00:00:00Z",
+        "holdout_end": "2026-01-31T00:00:00Z",
+    }
     strategy_path.write_text(json.dumps(strategy), encoding="utf-8")
+
+
+def add_risk_review_artifacts(package: Path) -> None:
+    package_id = build_run_entry(package)["package_id"]
+    policy_hash = "a" * 64
+    config_hash = "b" * 64
+    risk_report = {
+        "schema_version": 2,
+        "id": "risk-report-1",
+        "created_at": "2026-07-09T00:00:00Z",
+        "package_id": package_id,
+        "policy_id": "risk-policy-1",
+        "policy_hash": policy_hash,
+        "sizing": {"method": "fixed_fraction"},
+        "drawdown_distribution": {"p95": 0.10},
+        "expected_shortfall": 0.03,
+        "risk_of_ruin_proxy": 0.01,
+        "worst_windows": [],
+        "exposure_correlation": {},
+        "scenario_losses": [{"scenario": "fees_x1_5", "loss": 0.02}],
+        "capacity": {"max_notional": 1000},
+        "blockers": [],
+        "verdict": "pass",
+    }
+    config_diff = {
+        "schema_version": 2,
+        "id": "config-diff-1",
+        "created_at": "2026-07-09T00:00:00Z",
+        "before_hash": "c" * 64,
+        "after_hash": config_hash,
+        "changes": [{"path": "risk.max_notional", "before": "500", "after": "1000"}],
+        "review_required": True,
+        "secrets_present": False,
+    }
+    approval_pack = {
+        "schema_version": 2,
+        "id": "approval-pack-1",
+        "created_at": "2026-07-09T00:00:00Z",
+        "strategy_id": "synthetic-breakout-v0",
+        "requested_gate": "risk_review",
+        "config_hash": config_hash,
+        "adapter": "dummy-diagnostic",
+        "evidence": {
+            "receipts": ["run_receipt.json"],
+            "verdict_reports": ["verdict_report.json"],
+            "paper_reports": ["divergence_report.json"],
+            "risk_reports": ["risk_report.json"],
+        },
+        "risk_limits": {
+            "max_notional": "1000 USD",
+            "max_daily_loss": "25 USD",
+            "max_drawdown": "10 percent",
+            "kill_switches": ["data stale"],
+        },
+        "operations": {
+            "monitoring_plan": "continuous risk monitor",
+            "rollback_plan": "freeze the paper strategy",
+            "incident_runbook": "docs/INCIDENTS.md",
+        },
+        "human_decisions_required": [
+            {"decision": "accept risk review", "owner": "human-reviewer", "status": "pending"}
+        ],
+        "safety": {"grants_approval": False, "live_trading_enabled": False, "real_order_path_available": False},
+        "status": "packaged",
+    }
+    for name, document in (
+        ("risk_report.json", risk_report),
+        ("config_diff.json", config_diff),
+        ("approval_pack.json", approval_pack),
+    ):
+        (package / name).write_text(json.dumps(document), encoding="utf-8")
 
 
 class ValidatorTests(unittest.TestCase):
@@ -435,6 +552,38 @@ class ValidatorTests(unittest.TestCase):
             {**first_lap, "lap": 3, "moved_gate": True},
         ]
         document["final"] = {"status": "passed", "reason": "late movement", "next_action": "continue"}
+        with tempfile.TemporaryDirectory() as tmp:
+            artifact = Path(tmp) / "simmer_laps.json"
+            artifact.write_text(json.dumps(document), encoding="utf-8")
+            result = validate_artifact(artifact, schema_dir=SCHEMA_DIR, artifact_type="simmer_laps")
+
+        self.assertFalse(result.ok)
+        self.assertTrue(any("two consecutive no-progress" in issue.message for issue in result.issues))
+
+    def test_simmer_rejects_exactly_two_no_progress_laps(self) -> None:
+        document = workflow_artifacts()["simmer_laps"]
+        first_lap = document["laps"][0]
+        document["laps"] = [
+            {**first_lap, "lap": 1, "moved_gate": False},
+            {**first_lap, "lap": 2, "moved_gate": False},
+        ]
+        with tempfile.TemporaryDirectory() as tmp:
+            artifact = Path(tmp) / "simmer_laps.json"
+            artifact.write_text(json.dumps(document), encoding="utf-8")
+            result = validate_artifact(artifact, schema_dir=SCHEMA_DIR, artifact_type="simmer_laps")
+
+        self.assertFalse(result.ok)
+        self.assertTrue(any("two consecutive no-progress" in issue.message for issue in result.issues))
+
+    def test_simmer_rejects_no_progress_pair_at_end(self) -> None:
+        document = workflow_artifacts()["simmer_laps"]
+        first_lap = document["laps"][0]
+        document["budget"]["max_laps"] = 3
+        document["laps"] = [
+            {**first_lap, "lap": 1, "moved_gate": True},
+            {**first_lap, "lap": 2, "moved_gate": False},
+            {**first_lap, "lap": 3, "moved_gate": False},
+        ]
         with tempfile.TemporaryDirectory() as tmp:
             artifact = Path(tmp) / "simmer_laps.json"
             artifact.write_text(json.dumps(document), encoding="utf-8")
@@ -720,6 +869,42 @@ safety:
         self.assertFalse(result.ok)
         self.assertTrue(any("reviewed or implemented" in issue.message for issue in result.issues))
 
+    def test_paper_candidate_rejects_reversed_sample_and_holdout_windows(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            package = Path(tmp) / "package"
+            shutil.copytree(EXAMPLE_PACKAGE, package)
+            prepare_paper_candidate(package)
+            metrics_path = package / "metrics_report.json"
+            metrics = json.loads(metrics_path.read_text(encoding="utf-8"))
+            metrics["sample"].update(
+                {
+                    "start_time": "2026-02-01T00:00:00Z",
+                    "end_time": "2026-01-01T00:00:00Z",
+                    "holdout_start_time": "2026-01-30T00:00:00Z",
+                    "holdout_end_time": "2026-01-20T00:00:00Z",
+                }
+            )
+            metrics_path.write_text(json.dumps(metrics), encoding="utf-8")
+            result = validate_package(package, schema_dir=SCHEMA_DIR)
+
+        self.assertFalse(result.ok)
+        self.assertTrue(any("start must be earlier" in issue.message for issue in result.issues))
+
+    def test_paper_candidate_requires_full_core_metric_set(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            package = Path(tmp) / "package"
+            shutil.copytree(EXAMPLE_PACKAGE, package)
+            prepare_paper_candidate(package)
+            metrics_path = package / "metrics_report.json"
+            metrics = json.loads(metrics_path.read_text(encoding="utf-8"))
+            metrics["net_metrics"]["expectancy"] = None
+            metrics["not_applicable_reasons"]["net_metrics.expectancy"] = "not calculated"
+            metrics_path.write_text(json.dumps(metrics), encoding="utf-8")
+            result = validate_package(package, schema_dir=SCHEMA_DIR)
+
+        self.assertFalse(result.ok)
+        self.assertTrue(any("numeric expectancy" in issue.message for issue in result.issues))
+
     def test_data_manifest_requires_sha256_fingerprint(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             artifact = Path(tmp) / "data_manifest.json"
@@ -753,8 +938,8 @@ safety:
             shutil.copytree(EXAMPLE_PACKAGE, left)
             shutil.copytree(EXAMPLE_PACKAGE, right)
 
-            left_entry = build_ledger_entry(left, gate="research_gate", recorded_at="2026-07-09T00:00:00Z")
-            right_entry = build_ledger_entry(right, gate="research_gate", recorded_at="2026-07-10T00:00:00Z")
+            left_entry = build_run_entry(left, recorded_at="2026-07-09T00:00:00Z")
+            right_entry = build_run_entry(right, recorded_at="2026-07-10T00:00:00Z")
 
         self.assertEqual(left_entry["package_id"], right_entry["package_id"])
 
@@ -764,7 +949,7 @@ safety:
             package = Path(tmp) / "package"
             shutil.copytree(EXAMPLE_PACKAGE, package)
 
-            result = append_ledger_entry(ledger, package, gate="research_gate")
+            result = append_ledger_entry(ledger, package)
             entries = read_ledger_entries(ledger)
             issues = verify_ledger_file(ledger)
 
@@ -772,7 +957,8 @@ safety:
         self.assertEqual(len(entries), 1)
         self.assertFalse(issues, [issue.as_dict() for issue in issues])
         self.assertEqual(entries[0]["strategy_id"], "synthetic-breakout-v0")
-        self.assertEqual(entries[0]["gate"], "research_gate")
+        self.assertEqual(entries[0]["entry_kind"], "run")
+        self.assertNotIn("gate", entries[0])
         self.assertEqual(entries[0]["verdict"], "blocked")
         self.assertEqual(entries[0]["package_path"], "package")
         self.assertEqual(entries[0]["cost_waterfall"]["path"], "cost_waterfall.json")
@@ -803,7 +989,7 @@ safety:
             package = Path(tmp) / "package"
             shutil.copytree(RANDOM_BASELINE_PACKAGE, package)
 
-            result = append_ledger_entry(ledger, package, gate="research_gate")
+            result = append_ledger_entry(ledger, package)
             entries = read_ledger_entries(ledger)
             issues = verify_ledger_file(ledger)
 
@@ -820,8 +1006,8 @@ safety:
             package = Path(tmp) / "package"
             shutil.copytree(EXAMPLE_PACKAGE, package)
 
-            first = append_ledger_entry(ledger, package, gate="research_gate")
-            second = append_ledger_entry(ledger, package, gate="research_gate")
+            first = append_ledger_entry(ledger, package)
+            second = append_ledger_entry(ledger, package)
             entries = read_ledger_entries(ledger)
 
         self.assertTrue(first.appended)
@@ -829,20 +1015,18 @@ safety:
         self.assertEqual(len(entries), 1)
         self.assertEqual(first.entry["package_id"], second.entry["package_id"])
 
-    def test_same_package_can_be_recorded_at_distinct_gates(self) -> None:
+    def test_run_receipt_cannot_claim_a_gate(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             ledger = Path(tmp) / "ledger.jsonl"
             package = Path(tmp) / "package"
             shutil.copytree(EXAMPLE_PACKAGE, package)
 
-            first = append_ledger_entry(ledger, package, gate="research_gate")
-            second = append_ledger_entry(ledger, package, gate="paper_gate")
+            result = append_ledger_entry(ledger, package)
             entries = read_ledger_entries(ledger)
 
-        self.assertTrue(first.appended)
-        self.assertTrue(second.appended)
-        self.assertEqual(len(entries), 2)
-        self.assertEqual({entry["gate"] for entry in entries}, {"research_gate", "paper_gate"})
+        self.assertTrue(result.appended)
+        self.assertEqual(len(entries), 1)
+        self.assertNotIn("gate", entries[0])
 
     def test_ledger_paths_remain_valid_when_tree_moves(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -852,28 +1036,204 @@ safety:
             package = original / "package"
             ledger = original / "ledger.jsonl"
             shutil.copytree(EXAMPLE_PACKAGE, package)
-            append_ledger_entry(ledger, package, gate="research_gate")
+            append_ledger_entry(ledger, package)
 
             shutil.move(original, moved)
             issues = verify_ledger_file(moved / "ledger.jsonl")
 
         self.assertFalse(issues, [issue.as_dict() for issue in issues])
 
-    def test_ledger_rejects_invalid_gate_name(self) -> None:
+    def test_v1_ledger_entry_remains_verifiable_but_has_no_v2_gate_pass(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             ledger = Path(tmp) / "ledger.jsonl"
             package = Path(tmp) / "package"
             shutil.copytree(EXAMPLE_PACKAGE, package)
+            entry = build_run_entry(package, ledger_path=ledger)
+            entry["schema"] = LEDGER_SCHEMA_V1
+            entry.pop("entry_kind")
+            entry["gate"] = "research_gate"
+            entry["entry_hash"] = hash_entry(entry)
+            ledger.write_text(json.dumps(entry, sort_keys=True) + "\n", encoding="utf-8")
+
+            issues = verify_ledger_file(ledger)
+
+        self.assertFalse(issues, [issue.as_dict() for issue in issues])
+
+    def test_research_gate_decision_requires_recorded_exact_run(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            ledger = tmp_path / "ledger.jsonl"
+            package = tmp_path / "package"
+            shutil.copytree(EXAMPLE_PACKAGE, package)
+            prepare_paper_candidate(package)
+            evaluation = evaluate_gate(
+                package,
+                gate="research_gate",
+                reviewer="independent-auditor",
+                ledger_path=ledger,
+            )
+            decision_path = package / "gate_decision.research_gate.yaml"
+            write_gate_decision(decision_path, evaluation.decision)
 
             with self.assertRaises(LedgerError):
-                append_ledger_entry(ledger, package, gate="Risk Review")
+                append_gate_decision(ledger, decision_path)
+
+            append_ledger_entry(ledger, package)
+            appended = append_gate_decision(ledger, decision_path)
+            entries = read_ledger_entries(ledger)
+            issues = verify_ledger_file(ledger)
+
+        self.assertEqual(evaluation.exit_code, 0)
+        self.assertEqual(evaluation.decision["gate_result"], "pass")
+        self.assertTrue(appended.appended)
+        self.assertEqual([entry["entry_kind"] for entry in entries], ["run", "gate_decision"])
+        self.assertFalse(issues, [issue.as_dict() for issue in issues])
+
+    def test_cli_run_and_gate_decision_workflow(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            ledger = tmp_path / "ledger.jsonl"
+            package = tmp_path / "package"
+            decision = package / "gate_decision.research_gate.yaml"
+            shutil.copytree(EXAMPLE_PACKAGE, package)
+            prepare_paper_candidate(package)
+
+            with redirect_stdout(io.StringIO()):
+                add_run_exit = cli_main(["receipts", "add", str(package), "--ledger", str(ledger)])
+                gate_exit = cli_main(
+                    [
+                        "gate",
+                        "evaluate",
+                        str(package),
+                        "--gate",
+                        "research_gate",
+                        "--reviewer",
+                        "independent-auditor",
+                        "--ledger",
+                        str(ledger),
+                        "--output",
+                        str(decision),
+                    ]
+                )
+                add_decision_exit = cli_main(
+                    ["receipts", "add-decision", str(decision), "--ledger", str(ledger)]
+                )
+                verify_exit = cli_main(["receipts", "verify", "--ledger", str(ledger)])
+
+        self.assertEqual((add_run_exit, gate_exit, add_decision_exit, verify_exit), (0, 0, 0, 0))
+
+    def test_cli_json_contract_is_stable_for_validation_and_receipts(self) -> None:
+        required = {"ok", "status", "artifact_paths", "issues", "receipt_id"}
+        with tempfile.TemporaryDirectory() as tmp:
+            ledger = Path(tmp) / "ledger.jsonl"
+            validate_output = io.StringIO()
+            with redirect_stdout(validate_output):
+                validate_exit = cli_main(
+                    ["validate", str(EXAMPLE_PACKAGE / "strategy_spec.json"), "--format", "json"]
+                )
+            add_output = io.StringIO()
+            with redirect_stdout(add_output):
+                add_exit = cli_main(
+                    [
+                        "receipts",
+                        "--format",
+                        "json",
+                        "add",
+                        str(EXAMPLE_PACKAGE),
+                        "--ledger",
+                        str(ledger),
+                    ]
+                )
+            summary_output = io.StringIO()
+            with redirect_stdout(summary_output):
+                summary_exit = cli_main(
+                    ["receipts", "--format", "json", "--ledger", str(ledger)]
+                )
+
+        documents = [json.loads(stream.getvalue()) for stream in (validate_output, add_output, summary_output)]
+        self.assertEqual((validate_exit, add_exit, summary_exit), (0, 0, 0))
+        self.assertTrue(all(required.issubset(document) for document in documents))
+        self.assertTrue(documents[1]["receipt_id"].startswith("pkg_"))
+
+    def test_blocked_run_cannot_pass_paper_gate_by_label(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            package = Path(tmp) / "package"
+            shutil.copytree(EXAMPLE_PACKAGE, package)
+
+            evaluation = evaluate_gate(
+                package,
+                gate="paper_gate",
+                reviewer="independent-auditor",
+                ledger_path=Path(tmp) / "ledger.jsonl",
+            )
+
+        self.assertEqual(evaluation.exit_code, 2)
+        self.assertEqual(evaluation.decision["gate_result"], "blocked")
+        self.assertTrue(any("paper_candidate" in blocker for blocker in evaluation.decision["blockers"]))
+
+    def test_risk_review_validates_complete_evidence_instead_of_blanket_blocking(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            package = Path(tmp) / "package"
+            shutil.copytree(EXAMPLE_PACKAGE, package)
+            prepare_paper_candidate(package)
+            add_risk_review_artifacts(package)
+
+            with patch("the_pass.gates.prior_gate_passes", return_value=True):
+                evaluation = evaluate_gate(
+                    package,
+                    gate="risk_review",
+                    reviewer="independent-risk-reviewer",
+                    ledger_path=Path(tmp) / "ledger.jsonl",
+                )
+
+        self.assertEqual(evaluation.exit_code, 0)
+        self.assertEqual(evaluation.decision["gate_result"], "pass")
+        self.assertFalse(evaluation.decision["blockers"])
+        self.assertTrue(
+            {"risk_report", "approval_pack", "config_diff"}.issubset(
+                {item["type"] for item in evaluation.decision["evidence"]}
+            )
+        )
+
+    def test_risk_review_blocks_config_hash_mismatch(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            package = Path(tmp) / "package"
+            shutil.copytree(EXAMPLE_PACKAGE, package)
+            prepare_paper_candidate(package)
+            add_risk_review_artifacts(package)
+            approval_path = package / "approval_pack.json"
+            approval = json.loads(approval_path.read_text(encoding="utf-8"))
+            approval["config_hash"] = "d" * 64
+            approval_path.write_text(json.dumps(approval), encoding="utf-8")
+
+            with patch("the_pass.gates.prior_gate_passes", return_value=True):
+                evaluation = evaluate_gate(
+                    package,
+                    gate="risk_review",
+                    reviewer="independent-risk-reviewer",
+                    ledger_path=Path(tmp) / "ledger.jsonl",
+                )
+
+        self.assertEqual(evaluation.exit_code, 2)
+        self.assertIn(
+            "approval config_hash does not match config diff after_hash",
+            evaluation.decision["blockers"],
+        )
+
+    def test_gate_evaluator_rejects_invalid_gate_name(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            package = Path(tmp) / "package"
+            shutil.copytree(EXAMPLE_PACKAGE, package)
+
+            with self.assertRaises(GateEvaluationError):
+                evaluate_gate(package, gate="Risk Review", reviewer="auditor")
 
     def test_ledger_verify_detects_artifact_tampering(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             ledger = Path(tmp) / "ledger.jsonl"
             package = Path(tmp) / "package"
             shutil.copytree(EXAMPLE_PACKAGE, package)
-            append_ledger_entry(ledger, package, gate="research_gate")
+            append_ledger_entry(ledger, package)
             metrics_path = package / "metrics_report.json"
             metrics = json.loads(metrics_path.read_text(encoding="utf-8"))
             metrics["limitations"].append("changed after receipt")
@@ -890,19 +1250,19 @@ safety:
             second_package = Path(tmp) / "second-package"
             shutil.copytree(EXAMPLE_PACKAGE, first_package)
             shutil.copytree(RANDOM_BASELINE_PACKAGE, second_package)
-            append_ledger_entry(ledger, first_package, gate="research_gate")
+            append_ledger_entry(ledger, first_package)
             metrics_path = first_package / "metrics_report.json"
             metrics_path.write_text(metrics_path.read_text(encoding="utf-8") + "\n", encoding="utf-8")
 
             with self.assertRaises(LedgerError):
-                append_ledger_entry(ledger, second_package, gate="research_gate")
+                append_ledger_entry(ledger, second_package)
 
     def test_ledger_verify_detects_tampering(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             ledger = Path(tmp) / "ledger.jsonl"
             package = Path(tmp) / "package"
             shutil.copytree(EXAMPLE_PACKAGE, package)
-            append_ledger_entry(ledger, package, gate="research_gate")
+            append_ledger_entry(ledger, package)
             text = ledger.read_text(encoding="utf-8")
             ledger.write_text(text.replace('"verdict":"blocked"', '"verdict":"revise"'), encoding="utf-8")
 

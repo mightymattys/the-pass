@@ -1,0 +1,17 @@
+schema_version: 2
+id: jegadeesh-titman-momentum
+type: academic
+category: trend_futures
+priority: P2
+status: skimmed
+url: https://doi.org/10.1111/j.1540-6261.1993.tb04702.x
+bibliography: "Jegadeesh, N., and Titman, S. Returns to Buying Winners and Selling Losers."
+claim: Cross-sectional momentum is a benchmark distinct from time-series trend.
+evidence: Bibliographic record identified; full methodology review remains pending.
+limitations: Equity cross-section does not directly validate futures or crypto trend.
+market_applicability: [equities, cross_asset]
+required_tests: [cross_sectional_baseline, crash_regime_split]
+failure_modes: [factor_conflation, crowding]
+system_requirements: [cross_sectional_universe, regime_report]
+evidence_classification: primary_academic_backlog
+license_note: Bibliographic metadata only; copyrighted text is not redistributed.

@@ -1,0 +1,20 @@
+{
+  "attempts": 1,
+  "automation_spec": "automations/data-health.yaml",
+  "errors": [],
+  "finished_at": "2026-07-10T00:00:00Z",
+  "id": "automation-run-b52cbf58cd659983",
+  "idempotency_key": "b52cbf58cd6599838c14e951780384f84cf899f80d0299c0b6b2908bc17e12fb",
+  "outputs": [
+    "reports/automation/data_health-snapshot.json"
+  ],
+  "receipt": {
+    "command": "data_health",
+    "forbidden_actions_enforced": true,
+    "inputs_fingerprint": "de132b9868449f54e5e282e1185641ddcdafef2074ebff8472c37f4b9fca013c",
+    "spec_fingerprint": "cae8080453389bb657104308c855ecaf1d30294220f0293e9452b891bde28c73"
+  },
+  "schema_version": 2,
+  "started_at": "2026-07-10T00:00:00Z",
+  "status": "complete"
+}

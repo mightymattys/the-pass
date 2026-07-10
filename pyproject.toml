@@ -4,17 +4,34 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "the-pass"
-version = "0.1.0"
+version = "0.6.0"
 description = "A review station for trading strategy research artifacts."
 readme = "README.md"
 requires-python = ">=3.9"
-license = { text = "MIT" }
+license = "MIT"
 authors = [{ name = "The Pass contributors" }]
 dependencies = [
   "jsonschema>=4.23",
   "PyYAML>=6.0.2"
 ]
 keywords = ["trading", "backtesting", "strategy-research", "risk", "automation"]
+
+[project.optional-dependencies]
+data = [
+  "duckdb>=1.1",
+  "httpx>=0.27",
+  "pyarrow>=17",
+  "websockets>=13"
+]
+research = [
+  "numpy>=1.26",
+  "pandas>=2.2",
+  "scipy>=1.13"
+]
+paper = []
+dev = [
+  "ruff>=0.9"
+]
 
 [project.scripts]
 the-pass = "the_pass.cli:main"
@@ -23,4 +40,4 @@ the-pass = "the_pass.cli:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-the_pass = ["schemas/*.json"]
+the_pass = ["schemas/*.json", "policies/*.yaml"]

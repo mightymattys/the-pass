@@ -1,0 +1,39 @@
+schema_version: 2
+id: null_random_control_v1
+name: Seeded random-signal negative control
+status: research
+owner: head_researcher
+created_at: "2026-07-10"
+market: {asset_class: synthetic, venues: [fixture], instruments: [SYNTH], timeframes: [1h]}
+edge:
+  primary_family: null_control
+  secondary_tags: [random, negative_control]
+  thesis: A seeded random signal has no durable gross or net edge and should be killed by the framework.
+  why_now: Every runner and cost model needs a known negative control before strategy research.
+  expected_failure_modes: [finite_sample_luck, accidental_lookahead, omitted_costs]
+data:
+  required_sources: [synthetic_fixture]
+  required_fields: [event_time, close, volume]
+  minimum_history: 1000 bars across multiple deterministic seeds
+  manifest_path: pending_D1
+signal:
+  inputs: [seed, event_index]
+  transforms: [seeded_uniform_long_flat_short]
+  decision_time_policy: Decide only after the current event is received.
+  lookahead_controls: [fixed_seed, no_future_fields]
+execution: {order_type: diagnostic_only, fill_model: next_event_with_slippage, latency_assumption_ms: 1000, fee_model: explicit_fixture_fee, slippage_model: fixed_plus_spread}
+risk: {sizing_rule: fixed_fraction_virtual, max_exposure: one_virtual_unit, max_drawdown: diagnostic_only, kill_switches: [unexpected_positive_stability]}
+validation:
+  train_test_split: Independent deterministic seeds and chronological holdout.
+  holdout_policy: Final seeds and latest 20 percent remain locked.
+  null_baselines: [zero_position]
+  parameter_sweeps: [{seed_start: 1, seed_end: 100}]
+  required_metrics: [gross_pnl, net_pnl, sharpe, max_drawdown, turnover, pbo]
+gates:
+  research_gate: [must_not_show_systematic_net_edge, all_seeds_recorded]
+  paper_gate: [not_eligible]
+  live_gate: [forbidden]
+done_when: [runner kills the control after costs, result is reproducible]
+kill_when: [control appears persistently profitable, any seed is omitted]
+notes: This is infrastructure evidence, never a tradable candidate.
+

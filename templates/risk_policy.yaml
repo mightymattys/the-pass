@@ -1,0 +1,13 @@
+schema_version: 2
+policy_id: ""
+policy_version: ""
+created_at: ""
+asset_class: generic
+sizing:
+  allowed: [fixed_fraction]
+  default: fixed_fraction
+  kelly_use: analytical_upper_bound_only
+limits: {}
+stress: {}
+promotion_thresholds: {}
+policy_hash: ""

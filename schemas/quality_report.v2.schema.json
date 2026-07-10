@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://the-pass.dev/schemas/quality_report.v2.schema.json",
+  "title": "QualityReportV2",
+  "type": "object",
+  "required": ["schema_version", "id", "created_at", "dataset_id", "checks", "summary", "quarantine", "promotion_impact"],
+  "properties": {
+    "schema_version": { "const": 2 },
+    "id": { "type": "string", "minLength": 1 },
+    "created_at": { "type": "string", "format": "date-time" },
+    "dataset_id": { "type": "string", "minLength": 1 },
+    "checks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["code", "severity", "count", "affected", "message"],
+        "properties": {
+          "code": { "type": "string", "minLength": 1 },
+          "severity": { "enum": ["info", "warning", "error", "critical"] },
+          "count": { "type": "integer", "minimum": 0 },
+          "affected": { "type": "array", "items": { "type": "string" } },
+          "message": { "type": "string", "minLength": 1 }
+        },
+        "additionalProperties": false
+      }
+    },
+    "summary": {
+      "type": "object",
+      "required": ["events", "errors", "warnings", "status"],
+      "properties": {
+        "events": { "type": "integer", "minimum": 0 },
+        "errors": { "type": "integer", "minimum": 0 },
+        "warnings": { "type": "integer", "minimum": 0 },
+        "status": { "enum": ["pass", "warning", "fail"] }
+      },
+      "additionalProperties": false
+    },
+    "quarantine": { "type": "boolean" },
+    "promotion_impact": { "enum": ["none", "diagnostic_only", "blocked"] }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,31 @@
+{
+  "code_version": "the-pass-0.4.0-b2",
+  "command": "the-pass backtest baseline --strategy volatility_filtered_mean_reversion_v1",
+  "config_hash": "1884f34c41542fab2f54966dd0456d2872c4424f101f2ea4894b2a3191e05449",
+  "created_at": "2026-07-10T00:00:00Z",
+  "data_manifest": "data_manifest.json",
+  "id": "volatility_filtered_mean_reversion_v1-run",
+  "inputs": {
+    "dataset_fingerprint": "a31ba3e65c56b17b21a42660902dc95c3d2ed365c1a3f01a0efb983293886f69",
+    "search_space": "search_space.json"
+  },
+  "notes": "Deterministic public synthetic B2 baseline.",
+  "outputs": {
+    "cost_waterfall": "cost_waterfall.json",
+    "html_report": "run_report.html",
+    "markdown_report": "run_report.md",
+    "metrics_report": "metrics_report.json",
+    "quality_report": "quality_report.json",
+    "screen_results": "screen_results.json",
+    "verdict_report": "verdict_report.json"
+  },
+  "owner": "strategy_implementer",
+  "random_seed": null,
+  "safety": {
+    "credentials_available": false,
+    "live_trading_enabled": false,
+    "real_order_path_available": false
+  },
+  "schema_version": 2,
+  "strategy_spec": "strategy_spec.json"
+}

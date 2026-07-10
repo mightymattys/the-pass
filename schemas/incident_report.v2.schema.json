@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://the-pass.dev/schemas/incident_report.v2.schema.json",
+  "title": "IncidentReportV2",
+  "type": "object",
+  "required": ["schema_version", "id", "severity", "detected_at", "source", "summary", "timeline", "impact", "evidence", "actions", "status"],
+  "properties": {
+    "schema_version": { "const": 2 },
+    "id": { "type": "string", "minLength": 1 },
+    "severity": { "enum": ["P0", "P1", "P2", "P3"] },
+    "detected_at": { "type": "string", "format": "date-time" },
+    "source": { "type": "string", "minLength": 1 },
+    "summary": { "type": "string", "minLength": 1 },
+    "timeline": { "type": "array", "minItems": 1, "items": { "type": "object" } },
+    "impact": { "type": "object" },
+    "evidence": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+    "actions": { "type": "array", "minItems": 1, "items": { "type": "object" } },
+    "status": { "enum": ["open", "contained", "resolved", "postmortem_complete"] }
+  },
+  "additionalProperties": false
+}

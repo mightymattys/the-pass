@@ -1,0 +1,17 @@
+schema_version: 2
+id: value-momentum-everywhere
+type: academic
+category: trend_futures
+priority: P2
+status: skimmed
+url: https://doi.org/10.1111/jofi.12021
+bibliography: "Asness, C. S., Moskowitz, T. J., and Pedersen, L. H. Value and Momentum Everywhere."
+claim: Momentum comparisons should account for common cross-asset exposures and correlations.
+evidence: Bibliographic record identified; full tables and construction review remains pending.
+limitations: Factor evidence is not an execution-ready strategy specification.
+market_applicability: [cross_asset, futures]
+required_tests: [factor_exposure, correlation_stress]
+failure_modes: [hidden_beta, portfolio_concentration]
+system_requirements: [exposure_report, correlation_matrix]
+evidence_classification: primary_academic_backlog
+license_note: Bibliographic metadata only; copyrighted text is not redistributed.

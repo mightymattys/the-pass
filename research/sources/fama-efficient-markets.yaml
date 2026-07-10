@@ -1,0 +1,17 @@
+schema_version: 2
+id: fama-efficient-markets
+type: academic
+category: financial_validation
+priority: P2
+status: skimmed
+url: https://doi.org/10.1111/j.1540-6261.1970.tb00518.x
+bibliography: "Fama, E. F. Efficient Capital Markets: A Review of Theory and Empirical Work."
+claim: Any claimed edge needs a benchmark, information set, and joint model made explicit.
+evidence: Canonical bibliographic record identified; full review remains pending.
+limitations: Historical survey and not direct evidence for a current tradable strategy.
+market_applicability: [cross_asset]
+required_tests: [benchmark_comparison, information_timing]
+failure_modes: [weak_benchmark, post_decision_information]
+system_requirements: [strategy_spec, chronology_validation]
+evidence_classification: primary_academic_backlog
+license_note: Bibliographic metadata only; copyrighted text is not redistributed.

@@ -1,0 +1,113 @@
+{
+  "cost_components": {
+    "borrow": "0",
+    "fees": "0",
+    "funding": "0",
+    "rejects_or_missed_fills": "0",
+    "roll": "0",
+    "slippage": "0",
+    "spread": "0"
+  },
+  "diagnostics": {
+    "opportunities": [
+      {
+        "ask_sum": "0.99",
+        "gross_edge": "0.01",
+        "index": 0
+      },
+      {
+        "ask_sum": "0.99",
+        "gross_edge": "0.01",
+        "index": 2
+      },
+      {
+        "ask_sum": "0.98",
+        "gross_edge": "0.02",
+        "index": 6
+      },
+      {
+        "ask_sum": "0.97",
+        "gross_edge": "0.03",
+        "index": 10
+      },
+      {
+        "ask_sum": "0.99",
+        "gross_edge": "0.01",
+        "index": 11
+      },
+      {
+        "ask_sum": "0.98",
+        "gross_edge": "0.02",
+        "index": 15
+      },
+      {
+        "ask_sum": "0.99",
+        "gross_edge": "0.01",
+        "index": 20
+      },
+      {
+        "ask_sum": "0.99",
+        "gross_edge": "0.01",
+        "index": 22
+      },
+      {
+        "ask_sum": "0.98",
+        "gross_edge": "0.02",
+        "index": 26
+      },
+      {
+        "ask_sum": "0.97",
+        "gross_edge": "0.03",
+        "index": 30
+      },
+      {
+        "ask_sum": "0.99",
+        "gross_edge": "0.01",
+        "index": 31
+      },
+      {
+        "ask_sum": "0.98",
+        "gross_edge": "0.02",
+        "index": 35
+      },
+      {
+        "ask_sum": "0.99",
+        "gross_edge": "0.01",
+        "index": 40
+      },
+      {
+        "ask_sum": "0.99",
+        "gross_edge": "0.01",
+        "index": 42
+      },
+      {
+        "ask_sum": "0.98",
+        "gross_edge": "0.02",
+        "index": 46
+      }
+    ],
+    "snapshots": 48,
+    "status": "diagnostic_only",
+    "strategy_id": "prediction_market_complement_or_fair_value_v1"
+  },
+  "events_processed": 48,
+  "fills": 0,
+  "final_snapshot": {
+    "borrow": "0",
+    "cash": "100000",
+    "collateral": "0",
+    "equity": "100000",
+    "event_time_ns": 1704070020001000000,
+    "fees": "0",
+    "funding": "0",
+    "opportunity_cost": "0",
+    "positions": {},
+    "realized_pnl": "0",
+    "roll": "0",
+    "unrealized_pnl": "0"
+  },
+  "missed": [],
+  "rejected": [],
+  "signals": 15,
+  "strategy_id": "prediction_market_complement_or_fair_value_v1"
+}

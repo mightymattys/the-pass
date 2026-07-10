@@ -1,0 +1,20 @@
+schema_version: 2
+id: data-snooping-technical-rules
+type: academic
+category: overfitting_statistics
+priority: P0
+status: reviewed
+url: https://eprints.lse.ac.uk/119144/1/dp303.pdf
+bibliography: "Sullivan, Timmermann, and White. Data-Snooping, Technical Trading Rule Performance, and the Bootstrap. Journal of Finance 54(5), 1999."
+claim: A technical rule must be judged against the full universe searched, not only against its own nominal statistic.
+evidence: The study expands a rule universe and applies White's Reality Check with data-snooping adjustment.
+limitations: DJIA daily evidence and its historical rule universe do not establish portability to modern venues.
+market_applicability: [futures, crypto]
+tradable_implication: Persist every tried rule and run a strategy-zoo correction.
+required_tests: [complete_variant_matrix, reality_check, transaction_cost_stress]
+failure_modes: [winner_only_reporting, nominal_pvalue, omitted_costs]
+system_requirements: [preregistered_search_space, reality_check_spa]
+notes_owner: stats_auditor
+review_date: "2026-07-10"
+evidence_classification: primary_academic_fulltext
+license_note: LSE repository paper reviewed; no bundled copy.

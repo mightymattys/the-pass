@@ -1,0 +1,21 @@
+schema_version: 2
+id: bridgewater-all-weather
+type: blog
+category: investor_operator
+priority: P2
+status: reviewed
+url: https://www.bridgewater.com/research-and-insights/the-all-weather-story
+bibliography: "Bridgewater Associates. The All Weather Story."
+claim: Portfolio diversification should balance underlying economic risks rather than equal nominal capital weights or a single forecast.
+evidence: Bridgewater's primary account explains environmental bias, risk balancing, and the distinction between diversified beta and alpha.
+limitations: It is firm-authored historical material, not an independent performance audit; leverage and derivatives add implementation risk.
+market_applicability: [futures, portfolio_risk]
+tradable_implication: Report risk contribution and regime exposure separately from nominal position size.
+required_tests: [risk_contribution, inflation_growth_regimes, leverage_stress]
+failure_modes: [equal_capital_called_diversified, hidden_leverage, historical_story_as_proof]
+system_requirements: [portfolio exposure report, scenario engine, leverage cap]
+notes_owner: risk_officer
+review_date: "2026-07-10"
+evidence_classification: primary_operator_material
+license_note: Public firm research page; store only paraphrased process implications.
+

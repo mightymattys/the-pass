@@ -1,0 +1,13 @@
+schema_version: 2
+id: data-health
+owner: data_steward
+trigger: {schedule: "external-daily"}
+command: data_health
+inputs: {quality_reports: "reports/**/*.json"}
+allowed_writes: [reports/automation]
+forbidden_actions: [gate_decision, live_transaction, credential_access]
+timeout_seconds: 300
+retry_policy: {max_attempts: 2, idempotent_only: true}
+alert_sink: local_incident_artifact
+freeze_procedure: freeze affected dataset and preserve evidence
+enabled: true

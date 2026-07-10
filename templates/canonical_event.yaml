@@ -1,0 +1,12 @@
+schema_version: 2
+source: ""
+venue: ""
+asset_class: ""
+instrument_id: ""
+event_type: bar
+event_time_ns: 0
+receive_time_ns: 0
+sequence: null
+ingest_id: ""
+raw_fingerprint: ""
+payload: {}

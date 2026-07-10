@@ -1,0 +1,57 @@
+{
+  "asset_class": "crypto_intraday",
+  "created_at": "2026-07-10T00:00:00Z",
+  "limits": {
+    "max_daily_loss": 1000,
+    "max_leverage": 1.0,
+    "max_notional": 100000,
+    "max_position_units": 1,
+    "paper_capital": "virtual_only",
+    "research_capital": 0
+  },
+  "policy_hash": "d4f248c131c6831b29c819dcb5126794c349f9e5f0de45eb0f3bf3faca915731",
+  "policy_id": "risk-policy-v1-crypto_intraday",
+  "policy_version": "risk-policy-v1",
+  "promotion_thresholds": {
+    "drawdown": "max_historical_drawdown_le_2x_expected_annualized_net_return_or_risk_officer_exception",
+    "holdout_latest_fraction": 0.2,
+    "maximum_pbo": 0.1,
+    "minimum_dsr_or_psr": "positive_vs_zero_after_multiple_tests",
+    "minimum_history_months_screen": 12,
+    "minimum_oos_net_sharpe": 1.0,
+    "minimum_trades_4h_plus": 100,
+    "minimum_trades_intraday": 500,
+    "paper": "30_calendar_days_and_100_fills_or_500_signals_costs_within_25_percent_no_unresolved_outage",
+    "preferred_history_months_promotion": 24,
+    "stress": [
+      "fees_x1_5",
+      "slippage_x2",
+      "latency_x2",
+      "fill_rate_x0_7"
+    ]
+  },
+  "schema_version": 2,
+  "sizing": {
+    "allowed": [
+      "fixed_fraction",
+      "volatility_target"
+    ],
+    "default": "fixed_fraction",
+    "kelly_use": "analytical_upper_bound_only"
+  },
+  "stress": {
+    "depth_multiple": 0.5,
+    "fee_multiple": 1.5,
+    "funding_window": "worst_decile",
+    "latency_multiple": 2.0,
+    "maker_fill_probability_multiple": 0.5,
+    "scenarios": [
+      "exchange_outage",
+      "missing_interval",
+      "correlated_gap",
+      "forced_deleverage"
+    ],
+    "severe_depth_multiple": 0.25,
+    "slippage_multiple": 2.0
+  }
+}

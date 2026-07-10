@@ -1,0 +1,21 @@
+schema_version: 2
+id: ml-fund-failures
+type: academic
+category: financial_validation
+priority: P1
+status: reviewed
+url: https://papers.ssrn.com/sol3/papers.cfm?abstract_id=3104816
+bibliography: "Lopez de Prado. The 10 Reasons Most Machine Learning Funds Fail. 2018."
+claim: Quantitative ML programs often fail because research, data, software, and portfolio construction are organized around avoidable methodological errors.
+evidence: The practitioner paper catalogs recurring failure patterns observed across quantitative investment programs.
+limitations: The evidence is partly experiential and should guide controls, not establish universal causal frequencies.
+market_applicability: [crypto, futures, prediction_markets]
+tradable_implication: Separate research roles, keep immutable evidence, and prefer simple falsifiable baselines before ML.
+required_tests: [role-separation audit, data provenance audit, baseline-before-ML gate]
+failure_modes: [single_researcher_self_approval, backtest_overfit, non_reproducible_pipeline]
+system_requirements: [independent reviewers, receipts, deterministic pipelines]
+notes_owner: head_researcher
+review_date: "2026-07-10"
+evidence_classification: practitioner_academic
+license_note: Public SSRN paper; no redistribution.
+

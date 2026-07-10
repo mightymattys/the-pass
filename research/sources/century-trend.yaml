@@ -1,0 +1,21 @@
+schema_version: 2
+id: century-trend
+type: academic
+category: trend_futures
+priority: P1
+status: reviewed
+url: https://research.cbs.dk/en/publications/a-century-of-evidence-on-trend-following-investing/
+bibliography: "Hurst, Ooi, and Pedersen. A Century of Evidence on Trend-Following Investing. JPM 44(1), 2017."
+claim: Diversified trend following shows positive average returns across long historical periods and varied macro regimes.
+evidence: The study extends trend evidence to 1880 and reports decade, crisis, and macro-environment breakdowns.
+limitations: Reconstructed old data, survivorship, implementability, and changing transaction costs require independent replication.
+market_applicability: [futures]
+tradable_implication: Test trend across regimes and sectors rather than optimizing one recent sample.
+required_tests: [regime_split, sector_concentration, historical_cost_stress, post_publication_holdout]
+failure_modes: [reconstructed_data_bias, modern_cost_assumption_on_old_data, portfolio_concentration]
+system_requirements: [regime reports, long-history manifests, sector exposure]
+notes_owner: head_researcher
+review_date: "2026-07-10"
+evidence_classification: primary_academic_abstract
+license_note: University research metadata/abstract reviewed; no redistribution.
+

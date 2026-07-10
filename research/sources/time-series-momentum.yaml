@@ -1,0 +1,21 @@
+schema_version: 2
+id: time-series-momentum
+type: academic
+category: trend_futures
+priority: P0
+status: reviewed
+url: https://w4.stern.nyu.edu/facdir/lpederse/papers/TimeSeriesMomentum.pdf
+bibliography: "Moskowitz, Ooi, and Pedersen. Time Series Momentum. Journal of Financial Economics 104, 2012."
+claim: Past 1-12 month returns predict continuation across a diversified set of liquid futures, with longer-horizon partial reversal.
+evidence: The study evaluates 58 equity-index, currency, commodity, and bond futures and reports broad time-series momentum evidence.
+limitations: Historical futures results, portfolio construction, roll treatment, and institutional costs do not transfer automatically to one market or intraday horizon.
+market_applicability: [futures, crypto]
+tradable_implication: Use diversified time-series momentum as a baseline family before complex signals.
+required_tests: [multi_instrument_oos, roll_and_cost_waterfall, horizon_sensitivity, concentration_limit]
+failure_modes: [single_market_overclaim, omitted_roll_cost, crisis_period_concentration]
+system_requirements: [futures registry, continuous-series policy, diversified trend baseline]
+notes_owner: head_researcher
+review_date: "2026-07-10"
+evidence_classification: primary_academic
+license_note: Public author PDF; no redistribution.
+

@@ -1,0 +1,13 @@
+[
+  {
+    "instrument_id": "ESZ6",
+    "symbol": "ESZ6",
+    "venue": "XCME",
+    "tick_size": "0.25",
+    "lot_size": "1",
+    "multiplier": "50",
+    "quote_currency": "USD",
+    "expiry": "2026-12-18T14:30:00Z",
+    "margin_mode": "futures"
+  }
+]

@@ -1,0 +1,16 @@
+schema_version: 2
+id: ""
+created_at: ""
+package_id: ""
+policy_id: ""
+policy_hash: ""
+sizing: {}
+drawdown_distribution: {}
+expected_shortfall: 0
+risk_of_ruin_proxy: 1
+worst_windows: []
+exposure_correlation: {}
+scenario_losses: []
+capacity: {}
+blockers: []
+verdict: blocked

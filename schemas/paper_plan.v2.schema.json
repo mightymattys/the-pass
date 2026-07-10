@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://the-pass.dev/schemas/paper_plan.v2.schema.json",
+  "title": "PaperPlan",
+  "type": "object",
+  "required": ["schema_version", "id", "created_at", "source_package", "strategy_spec", "adapter", "config_hash", "observation", "decision_logic", "divergence_policy", "safety", "status"],
+  "properties": {
+    "schema_version": { "const": 2 },
+    "id": { "type": "string", "minLength": 1 },
+    "created_at": { "type": "string", "format": "date-time" },
+    "source_package": { "type": "string" },
+    "strategy_spec": { "type": "string" },
+    "adapter": { "type": "string" },
+    "config_hash": { "type": "string" },
+    "observation": {
+      "type": "object",
+      "required": ["start_after", "minimum_days", "minimum_signals", "instruments"],
+      "properties": {
+        "start_after": { "type": "string" },
+        "minimum_days": { "type": ["integer", "null"], "minimum": 1 },
+        "minimum_signals": { "type": ["integer", "null"], "minimum": 1 },
+        "instruments": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+      }
+    },
+    "decision_logic": {
+      "type": "object",
+      "required": ["same_as_backtest", "differences"],
+      "properties": {
+        "same_as_backtest": { "type": "boolean" },
+        "differences": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+      }
+    },
+    "divergence_policy": {
+      "type": "object",
+      "required": ["max_cost_divergence", "max_signal_divergence", "max_fill_divergence", "stop_conditions"],
+      "properties": {
+        "max_cost_divergence": { "type": "string" },
+        "max_signal_divergence": { "type": "string" },
+        "max_fill_divergence": { "type": "string" },
+        "stop_conditions": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+      }
+    },
+    "safety": {
+      "type": "object",
+      "required": ["simulated_intents_only", "live_trading_enabled", "real_order_path_available", "credentials_required"],
+      "properties": {
+        "simulated_intents_only": { "const": true },
+        "live_trading_enabled": { "const": false },
+        "real_order_path_available": { "const": false },
+        "credentials_required": {
+          "const": false,
+          "description": "Whether the adapter or strategy requires credentials."
+        }
+      }
+    },
+    "status": { "enum": ["paper_ready", "blocked"] }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "status": { "const": "paper_ready" } } },
+      "then": {
+        "properties": {
+          "source_package": { "minLength": 1 },
+          "strategy_spec": { "minLength": 1 },
+          "adapter": { "minLength": 1 },
+          "config_hash": { "minLength": 1 },
+          "observation": {
+            "properties": {
+              "start_after": { "minLength": 1 },
+              "minimum_days": { "type": "integer" },
+              "minimum_signals": { "type": "integer" },
+              "instruments": { "minItems": 1 }
+            }
+          },
+          "divergence_policy": {
+            "properties": {
+              "max_cost_divergence": { "minLength": 1 },
+              "max_signal_divergence": { "minLength": 1 },
+              "max_fill_divergence": { "minLength": 1 },
+              "stop_conditions": { "minItems": 1 }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "additionalProperties": true
+}

@@ -1,0 +1,39 @@
+{
+  "cost_components": {
+    "borrow": "0",
+    "fees": "0.196750925",
+    "funding": "0",
+    "rejects_or_missed_fills": "0",
+    "roll": "0",
+    "slippage": "0.098375",
+    "spread": "0"
+  },
+  "diagnostics": {
+    "fill_model_promotion_eligible": true,
+    "missed_fill_opportunity_cost": "not estimated",
+    "missed_intents": 0,
+    "rejected_intents": 0
+  },
+  "events_processed": 96,
+  "fills": 2,
+  "final_snapshot": {
+    "borrow": "0",
+    "cash": "99997.854874075",
+    "collateral": "0",
+    "equity": "99997.854874075",
+    "event_time_ns": 1704072900001000000,
+    "fees": "0.196750925",
+    "funding": "0",
+    "opportunity_cost": "0",
+    "positions": {
+      "ETHUSDT": "0"
+    },
+    "realized_pnl": "-1.948375",
+    "roll": "0",
+    "unrealized_pnl": "0.00"
+  },
+  "missed": [],
+  "rejected": [],
+  "signals": 2,
+  "strategy_id": "volatility_filtered_mean_reversion_v1"
+}

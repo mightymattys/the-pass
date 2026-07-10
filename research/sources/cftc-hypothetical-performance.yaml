@@ -1,0 +1,17 @@
+schema_version: 2
+id: cftc-hypothetical-performance
+type: vendor-doc
+category: investor_operator
+priority: P1
+status: skimmed
+url: https://www.cftc.gov/LawRegulation/FederalRegister/finalrules/2023-13091.html
+bibliography: "U.S. CFTC. Rules and guidance concerning hypothetical performance presentations."
+claim: Public reports must distinguish hypothetical, paper, and live results with visible limitations.
+evidence: Official regulator record identified; legal applicability review remains pending.
+limitations: This is process guidance, not legal advice or evidence of statistical edge.
+market_applicability: [futures, cross_asset]
+required_tests: [report_labeling, evidence_provenance]
+failure_modes: [performance_misrepresentation, omitted_assumptions]
+system_requirements: [report_disclosures, immutable_receipts]
+evidence_classification: official_regulatory_backlog
+license_note: Official public record referenced; no legal conclusion is asserted.

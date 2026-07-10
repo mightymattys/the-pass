@@ -1,0 +1,17 @@
+schema_version: 2
+id: polymarket-fees
+type: vendor-doc
+category: prediction_markets
+priority: P0
+status: skimmed
+url: https://docs.polymarket.com/developers/CLOB/introduction
+bibliography: "Polymarket. CLOB developer documentation and fee-rate interface."
+claim: Fee evidence must be captured per market and time rather than represented by a global flat constant.
+evidence: Official documentation entry point identified; complete current fee-policy review remains pending.
+limitations: Live fee responses are temporal evidence and documentation may change.
+market_applicability: [prediction_markets]
+required_tests: [fee_snapshot_replay, fee_cost_reconciliation]
+failure_modes: [flat_fee_assumption, stale_fee]
+system_requirements: [cost_snapshot, timestamped_fee_rate]
+evidence_classification: official_provider_backlog
+license_note: Official URL and summary only; dated API evidence must accompany research runs.

@@ -1,0 +1,17 @@
+schema_version: 2
+id: vpin-flow-toxicity
+type: academic
+category: execution_microstructure
+priority: P2
+status: skimmed
+url: https://doi.org/10.3905/jpm.2012.39.1.104
+bibliography: "Easley, D., Lopez de Prado, M., and O'Hara, M. Flow Toxicity and Liquidity in a High-Frequency World."
+claim: Order-flow toxicity may be a risk diagnostic for passive execution.
+evidence: Bibliographic record identified; estimator construction and criticism review remain pending.
+limitations: Metric validity is contested and it must not become a promotion shortcut.
+market_applicability: [futures, crypto]
+required_tests: [estimator_sensitivity, adverse_selection_link]
+failure_modes: [bucket_artifact, false_precision]
+system_requirements: [trade_classification, execution_audit]
+evidence_classification: primary_academic_backlog
+license_note: Bibliographic metadata only; copyrighted text is not redistributed.

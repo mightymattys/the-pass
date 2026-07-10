@@ -1,0 +1,13 @@
+schema_version: 2
+id: ""
+owner: ""
+trigger: {}
+command: ""
+inputs: {}
+allowed_writes: []
+forbidden_actions: [gate_decision, live_transaction, credential_access]
+timeout_seconds: 300
+retry_policy: {max_attempts: 1, idempotent_only: true}
+alert_sink: local_artifact
+freeze_procedure: ""
+enabled: false

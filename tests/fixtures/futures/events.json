@@ -1,0 +1,32 @@
+[
+  {
+    "event_type": "bar",
+    "venue": "XCME",
+    "instrument_id": "ESZ6",
+    "event_time_ns": 1704067200000000000,
+    "receive_time_ns": 1704067200100000000,
+    "sequence": 1,
+    "payload": {
+      "open": "4800.00",
+      "high": "4802.00",
+      "low": "4799.75",
+      "close": "4801.25",
+      "volume": "120"
+    }
+  },
+  {
+    "event_type": "bar",
+    "venue": "XCME",
+    "instrument_id": "ESZ6",
+    "event_time_ns": 1704067260000000000,
+    "receive_time_ns": 1704067260100000000,
+    "sequence": 2,
+    "payload": {
+      "open": "4801.25",
+      "high": "4803.00",
+      "low": "4801.00",
+      "close": "4802.50",
+      "volume": "95"
+    }
+  }
+]

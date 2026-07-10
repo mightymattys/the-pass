@@ -1,0 +1,26 @@
+{
+  "created_at": "2026-07-10T00:00:00Z",
+  "evidence": [
+    "stress_report.json",
+    "reproduction_report.json"
+  ],
+  "findings": [
+    {
+      "blocks_promotion": true,
+      "evidence": "../../../examples/b2-baselines/donchian_momentum/package/run_receipt.json",
+      "promotion_impact": "blocks_promotion",
+      "recommendation": "Repeat on archived trades and books with depth, latency, and rejection evidence.",
+      "severity": "P2",
+      "status": "confirmed",
+      "title": "Bar fills do not prove executable liquidity"
+    }
+  ],
+  "id": "donchian-execution-audit-v1",
+  "limitations": [
+    "no venue archive or order-book replay"
+  ],
+  "reviewer": "execution_skeptic",
+  "schema_version": 2,
+  "target": "examples/b2-baselines/donchian_momentum/package",
+  "verdict": "blocked"
+}

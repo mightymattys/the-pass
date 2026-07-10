@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://the-pass.dev/schemas/cost_waterfall.v2.schema.json",
+  "title": "CostWaterfall",
+  "type": "object",
+  "required": ["schema_version", "id", "run_receipt", "created_at", "gross_pnl", "costs", "net_pnl", "assumptions"],
+  "properties": {
+    "schema_version": { "const": 2 },
+    "id": { "type": "string", "minLength": 1 },
+    "run_receipt": { "type": "string" },
+    "created_at": { "type": "string", "format": "date-time" },
+    "gross_pnl": { "type": ["number", "null"] },
+    "costs": {
+      "type": "object",
+      "required": ["fees", "spread", "slippage", "funding", "borrow", "roll", "rejects_or_missed_fills"],
+      "properties": {
+        "fees": { "type": ["number", "null"] },
+        "spread": { "type": ["number", "null"] },
+        "slippage": { "type": ["number", "null"] },
+        "funding": { "type": ["number", "null"] },
+        "borrow": { "type": ["number", "null"] },
+        "roll": { "type": ["number", "null"] },
+        "rejects_or_missed_fills": { "type": ["number", "null"] }
+      }
+    },
+    "net_pnl": { "type": ["number", "null"] },
+    "assumptions": { "type": "object" },
+    "stress": { "type": "object" },
+    "limitations": { "type": "array", "items": { "type": "string" } }
+  },
+  "additionalProperties": true
+}

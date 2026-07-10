@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://the-pass.dev/schemas/dry_run_proof.v2.schema.json",
+  "title": "LockedDryRunProofV2",
+  "type": "object",
+  "required": ["schema_version", "id", "created_at", "gateway", "config_hash", "intent_fingerprint", "external_side_effects", "transport_available", "result"],
+  "properties": {
+    "schema_version": { "const": 2 },
+    "id": { "type": "string", "minLength": 1 },
+    "created_at": { "type": "string", "format": "date-time" },
+    "gateway": { "const": "locked_public_core" },
+    "config_hash": { "type": "string", "pattern": "^[A-Fa-f0-9]{64}$" },
+    "intent_fingerprint": { "type": "string", "pattern": "^[A-Fa-f0-9]{64}$" },
+    "external_side_effects": { "const": false },
+    "transport_available": { "const": false },
+    "result": { "const": "blocked" }
+  },
+  "additionalProperties": false
+}

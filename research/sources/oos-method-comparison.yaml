@@ -1,0 +1,21 @@
+schema_version: 2
+id: oos-method-comparison
+type: academic
+category: financial_validation
+priority: P2
+status: reviewed
+url: https://papers.ssrn.com/sol3/Delivery.cfm/4778909.pdf?abstractid=4778909
+bibliography: "Arian, Norouzi, and Seco. Backtest Overfitting in the Machine Learning Era: A Comparison of OOS Testing Methods. 2024."
+claim: Walk-forward, purged folds, and combinatorial purged validation can behave differently under controlled non-stationary and jump processes.
+evidence: The working paper compares validation methods in synthetic controlled environments using PBO and DSR diagnostics.
+limitations: It is a recent working paper based on simulated processes; reported method rankings may not generalize to real markets.
+market_applicability: [crypto, futures]
+tradable_implication: Choose validation from label overlap and strategy mechanics rather than treating walk-forward as automatically safest.
+required_tests: [controlled synthetic comparison, regime sensitivity, splitter leakage mutation tests]
+failure_modes: [universal_splitter_choice, synthetic_to_real_overclaim, missing_embargo]
+system_requirements: [multiple splitters, controlled DGP fixtures, comparison report]
+notes_owner: stats_auditor
+review_date: "2026-07-10"
+evidence_classification: academic_working_paper
+license_note: Public working paper reviewed; no redistribution.
+

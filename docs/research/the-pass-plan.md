@@ -500,8 +500,9 @@ promotion_gates:
 ## 9. Gate-based roadmap
 
 Status note: the phase numbers in `docs/implementation/BUILD_PLAN.md` describe the public
-framework build and are implemented. The phases in this section describe the separate
-trading research roadmap; they have not started and do not claim strategy evidence.
+framework build and are implemented. The separate trading research implementation is
+controlled by `docs/implementation/TRADING_ROADMAP_EXECUTION_PLAN.md` and its
+machine-readable `roadmap-status.yaml`; no roadmap phase is complete without gate evidence.
 
 ### Phase 0: Public plugin and research operating system
 

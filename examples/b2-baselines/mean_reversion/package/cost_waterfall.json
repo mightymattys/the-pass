@@ -1,0 +1,26 @@
+{
+  "assumptions": {
+    "depth_model": "available depth with conservative rejection",
+    "fee_model": "explicit linear fee per fill",
+    "fill_model": "subsequent evidence or next-bar open",
+    "latency_model": "decision at receive time; no same-event fill"
+  },
+  "costs": {
+    "borrow": 0.0,
+    "fees": 0.196750925,
+    "funding": 0.0,
+    "rejects_or_missed_fills": 0.0,
+    "roll": 0.0,
+    "slippage": 0.098375,
+    "spread": 0.0
+  },
+  "created_at": "2026-07-10T00:00:00Z",
+  "gross_pnl": -1.85,
+  "id": "volatility_filtered_mean_reversion_v1-costs",
+  "limitations": [
+    "synthetic diagnostic data"
+  ],
+  "net_pnl": -2.145125925,
+  "run_receipt": "run_receipt.json",
+  "schema_version": 2
+}

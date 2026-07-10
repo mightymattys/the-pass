@@ -1,13 +1,14 @@
 # Completion Audit
 
-Audit date: 2026-07-09.
+Audit date: 2026-07-10.
 
 This file maps the build plan to the evidence that proves the current public framework is
 complete. It does not claim that any trading strategy has edge.
 
-The phases below are the implemented framework phases from `BUILD_PLAN.md`. The trading
-roadmap phases in `docs/research/the-pass-plan.md` are a separate numbering system and have
-not started.
+The phases below are the implemented framework phases from `BUILD_PLAN.md`. The broader
+trading roadmap is a separate, gate-ordered implementation tracked in
+`TRADING_ROADMAP_EXECUTION_PLAN.md` and `roadmap-status.yaml`; its status must be read from
+that machine-readable file.
 
 ## Phase Evidence
 
@@ -21,14 +22,28 @@ not started.
 | 5 Adapter SDK | implemented | strict adapter schema, adapter contract checks, dummy adapter, non-compliant adapter unit test |
 | 6 First Real Adapter | implemented | diagnostic Binance spot klines adapter descriptor and source note; generic futures and prediction-market descriptors validate without core market logic |
 
-The latest tracked human-readable audit is
+The framework layers through V3 are complete. P4 capability is implemented but its gate is
+blocked pending a real elapsed paper window; L5/L6 remains intentionally locked. The latest
+tracked human-readable hardening audit is
 [../../reports/SYSTEM_HARDENING_AUDIT_2026-07-09.md](../../reports/SYSTEM_HARDENING_AUDIT_2026-07-09.md).
+
+Trading roadmap gate evidence is tracked separately:
+
+- [H0 framework trust](../../reports/gates/H0_2026-07-10.md)
+- [R0 research operating system](../../reports/gates/R0_2026-07-10.md)
+- [D1 canonical data and adapters](../../reports/gates/D1_2026-07-10.md)
+- [D1 public read-only smoke](../../reports/gates/D1_public_smoke_2026-07-10.json)
+- [B2 screen and backtest harness](../../reports/gates/B2_2026-07-10.md)
+- [V3 robustness, risk, and audit](../../reports/gates/V3_2026-07-10.md)
+- [P4 paper, automation, and reporting](../../reports/gates/P4_2026-07-10.md)
+- [L5-L6 locked boundary](../../reports/gates/L5_L6_LOCKED_2026-07-10.md)
+- [Final implementation audit](../../reports/FINAL_IMPLEMENTATION_AUDIT_2026-07-10.md)
 
 ## Local Completion Commands
 
 ```bash
 python3 scripts/validate_public_repo.py
-python3 -m unittest discover -s tests
+uv run --extra data --extra research python -m unittest discover -s tests
 the-pass validate-package examples/synthetic-breakout/package
 the-pass validate-package examples/synthetic-random-baseline/package
 the-pass validate examples/adapters/dummy-diagnostic.yaml --type adapter
@@ -36,13 +51,15 @@ the-pass validate examples/adapters/crypto-binance-spot-klines.yaml --type adapt
 the-pass validate examples/adapters/generic-futures-contract.yaml --type adapter
 the-pass validate examples/adapters/generic-prediction-market.yaml --type adapter
 the-pass validate examples/adapters/crypto-binance-spot-klines-source-note.json --type source_note
-the-pass receipts add examples/synthetic-breakout/package --ledger /tmp/the-pass-ledger.jsonl --gate research_gate
-the-pass receipts add examples/synthetic-random-baseline/package --ledger /tmp/the-pass-ledger.jsonl --gate research_gate
+the-pass receipts add examples/synthetic-breakout/package --ledger /tmp/the-pass-ledger.jsonl
+the-pass receipts add examples/synthetic-random-baseline/package --ledger /tmp/the-pass-ledger.jsonl
 the-pass receipts verify --ledger /tmp/the-pass-ledger.jsonl
 ```
 
 Codex plugin developers should also run the bundled `plugin-creator/scripts/validate_plugin.py`
 validator against the repo root from their local Codex install.
+
+The final local verification on Python 3.9 and 3.12 completed 92 tests on each interpreter.
 
 ## Safety Result
 

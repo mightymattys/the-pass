@@ -1,0 +1,17 @@
+schema_version: 2
+id: cme-futures-roll
+type: vendor-doc
+category: trend_futures
+priority: P1
+status: skimmed
+url: https://www.cmegroup.com/education/courses/introduction-to-futures/understanding-futures-expiration-contract-roll.html
+bibliography: "CME Group. Understanding Futures Expiration and Contract Roll."
+claim: Futures research must preserve contract expiry and execute in a specific contract.
+evidence: Official documentation page identified; detailed product-specific review remains pending.
+limitations: Educational documentation does not define a universal roll rule.
+market_applicability: [futures]
+required_tests: [roll_gap, contract_selection]
+failure_modes: [continuous_series_execution, expiry_mismatch]
+system_requirements: [instrument_registry, roll_manifest]
+evidence_classification: official_provider_backlog
+license_note: Official URL and summary only; provider content is not redistributed.

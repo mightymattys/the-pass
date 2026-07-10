@@ -1,0 +1,10 @@
+schema_version: 2
+id: locked-live-risk
+created_at: "2026-07-10T00:00:00Z"
+account_equity: 1
+micro_notional_cap: 0.0025
+daily_loss_cap: 0.001
+max_leverage: 1
+freeze_conditions: [loss breach, divergence breach, data health breach, operational safety breach]
+policy_hash: "0000000000000000000000000000000000000000000000000000000000000000"
+locked: true

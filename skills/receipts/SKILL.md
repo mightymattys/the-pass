@@ -51,10 +51,16 @@ the-pass receipts --ledger <ledger-path>
 the-pass validate <receipt-summary> --type receipt_summary
 ```
 
-When appending:
+When appending a run:
 
 ```bash
-the-pass receipts add <package-dir> --ledger <ledger-path> --gate <gate-name>
+the-pass receipts add <package-dir> --ledger <ledger-path>
+```
+
+When appending a separately evaluated gate decision:
+
+```bash
+the-pass receipts add-decision <gate-decision> --ledger <ledger-path>
 ```
 
 ## Outputs

@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://the-pass.dev/schemas/run_receipt.v2.schema.json",
+  "title": "RunReceipt",
+  "type": "object",
+  "required": ["schema_version", "id", "created_at", "strategy_spec", "code_version", "data_manifest", "outputs", "safety"],
+  "properties": {
+    "schema_version": { "const": 2 },
+    "id": { "type": "string", "minLength": 1 },
+    "created_at": { "type": "string", "format": "date-time" },
+    "owner": { "type": "string" },
+    "strategy_spec": { "type": "string" },
+    "code_version": { "type": "string" },
+    "data_manifest": { "type": "string" },
+    "command": { "type": "string" },
+    "config_hash": { "type": "string" },
+    "random_seed": {},
+    "inputs": { "type": "object" },
+    "outputs": { "type": "object" },
+    "safety": {
+      "type": "object",
+      "required": ["live_trading_enabled", "real_order_path_available", "credentials_available"],
+      "properties": {
+        "live_trading_enabled": { "type": "boolean" },
+        "real_order_path_available": { "type": "boolean" },
+        "credentials_available": {
+          "type": "boolean",
+          "description": "Whether credentials were present at run time."
+        }
+      },
+      "additionalProperties": false
+    },
+    "notes": { "type": "string" }
+  },
+  "additionalProperties": true
+}

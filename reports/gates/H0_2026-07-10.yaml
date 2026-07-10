@@ -1,0 +1,16 @@
+schema_version: 1
+milestone_id: H0
+gate_result: pass
+evaluated_at: "2026-07-10T00:00:00Z"
+reviewer: framework_auditor
+acceptance_checks:
+  - id: regression_suite
+    status: pass
+    evidence_paths: [tests/test_validator.py]
+  - id: ledger_v1_v2_compatibility
+    status: pass
+    evidence_paths: [src/the_pass/ledger.py, reports/gates/H0_2026-07-10.md]
+  - id: label_bypass_blocked
+    status: pass
+    evidence_paths: [src/the_pass/gates.py, tests/test_validator.py]
+open_p0_p1: []

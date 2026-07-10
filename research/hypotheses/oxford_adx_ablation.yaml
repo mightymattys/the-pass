@@ -1,0 +1,27 @@
+schema_version: 2
+id: oxford_adx_ablation
+created_at: "2026-07-10T00:00:00Z"
+status: ready_for_spec
+proposed_name: OxfordStrat ADX trend-filter ablation
+source_notes: [research/sources/oxfordstrat-adx.yaml]
+edge:
+  primary_family: filter_ablation
+  thesis: ADX may improve trend-system selectivity only if its incremental OOS effect survives costs and neighboring thresholds.
+  mechanism: Keep the trend signal fixed and compare no filter with predeclared ADX thresholds.
+market:
+  asset_classes: [futures]
+  venues: [licensed_provider_fixture_then_archive]
+  instruments: [diversified_liquid_futures]
+  timeframes: [daily]
+test:
+  next_test: Evaluate the ADX filter as an ablation on the frozen Donchian baseline.
+  required_data: [contract_bars, roll_manifest, costs]
+  null_or_random_baseline: The same Donchian strategy without ADX.
+  falsification_criteria: [no_incremental_net_benefit, threshold_cliff, fewer_trades_without_quality_gain]
+risks:
+  costs: [delayed_turnover]
+  execution: [late_entry]
+  data: [warmup, contract_roll]
+  regime: [chop, fast_reversal]
+kill_when: [ADX does not improve OOS net risk-adjusted performance versus the unchanged baseline.]
+blockers: []

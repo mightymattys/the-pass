@@ -27,6 +27,7 @@ source -> source_note -> hypothesis -> StrategySpec -> screen -> backtest packag
 | Paper plan | `paper_plan` | `paper` | no after observation starts | Required for paper observation |
 | Paper evidence | `observation_manifest`, `divergence_report` | `paper` | append/supersede | Required for risk review |
 | Approval evidence | `approval_pack` | `plate` | append/supersede | Human decision input only |
+| Gate decision | `gate_decision` | gate evaluator | append-only | Only artifact that can prove a passed gate |
 | Ledger | receipt index | `receipts` | append-only | Required for audit |
 
 ## Package Layout
@@ -76,9 +77,11 @@ The receipt ledger is JSONL and append-only. Each entry records the package path
 artifact paths, SHA-256 fingerprints, strategy ID, run ID, gate, verdict, cost report, data
 manifest, open blockers, `previous_hash`, and `entry_hash`.
 
-`the-pass receipts add` validates a package before appending it. `the-pass receipts verify`
-recomputes the hash chain, resolves every recorded package artifact, and fails if a receipt
-or referenced artifact was edited, removed, or moved silently.
+`the-pass receipts add` validates and records a run without claiming that a gate passed.
+`the-pass gate evaluate` creates a separate artifact-backed decision, and
+`the-pass receipts add-decision` records it. `the-pass receipts verify` recomputes the hash
+chain, resolves every recorded artifact, and fails if evidence was edited, removed, or moved
+silently. Legacy v1 entries remain readable but cannot prove a v2 promotion.
 
 ## Gate Inputs
 

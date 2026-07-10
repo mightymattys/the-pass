@@ -1,0 +1,24 @@
+schema_version: 1
+source: https://oxfordstrat.com/resources/
+classification: strategy-review
+review_policy: Baseline generator only; every rule needs independent specification, costs, OOS, and robustness tests.
+indexes:
+  - https://oxfordstrat.com/resources/articles/
+  - https://oxfordstrat.com/resources/books/
+  - https://oxfordstrat.com/resources/ideas/
+  - https://oxfordstrat.com/resources/links/
+  - https://oxfordstrat.com/resources/videos/
+  - https://oxfordstrat.com/rd-blog/
+strategy_families:
+  - {id: nr7, url: https://oxfordstrat.com/trading-strategies/nr7/, status: reviewed}
+  - {id: donchian_breakout, url: https://oxfordstrat.com/trading-strategies/donchian-channel-2/, status: reviewed}
+  - {id: opening_range_breakout, url: https://oxfordstrat.com/trading-strategies/opening-range-breakout/, status: reviewed}
+  - {id: turtle_soup_false_breakout, search_scope: OxfordStrat R&D blog, status: queued}
+  - {id: bollinger_keltner_squeeze, url: https://oxfordstrat.com/trading-strategies/volatility-squeeze/, status: reviewed}
+  - {id: aroon_vortex_adx, url: https://oxfordstrat.com/trading-strategies/adx/, status: reviewed}
+  - {id: rsi_macd, search_scope: OxfordStrat R&D blog, status: queued}
+  - {id: wyckoff_livermore, search_scope: OxfordStrat R&D blog, status: queued}
+pagination_review:
+  pages: 12
+  status: queued
+  done_when: Every public R&D post has an ID, URL, family, and review status in this backlog.

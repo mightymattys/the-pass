@@ -1,0 +1,10 @@
+{
+  "family": "buy_hold",
+  "registered_at": "2026-07-10T00:00:00Z",
+  "schema_version": 1,
+  "selected_variant_id": 0,
+  "selection_policy": "fixed diagnostic baseline chosen before event simulation",
+  "variants": [
+    {}
+  ]
+}

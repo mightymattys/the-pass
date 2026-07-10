@@ -1,0 +1,21 @@
+schema_version: 2
+id: market-microstructure-practice
+type: book
+category: execution_microstructure
+priority: P1
+status: reviewed
+url: https://books.google.com/books?id=Y0i7CgAAQBAJ
+bibliography: "Laruelle and Lehalle, eds. Market Microstructure in Practice. World Scientific, 2013."
+claim: Venue design, fragmentation, tick size, liquidity, order-book dynamics, and participant behavior materially change execution quality.
+evidence: The publisher preview and contents cover fragmentation, price discovery, smart routing, liquidity, impact, and optimal trading.
+limitations: Only legally available preview material was reviewed; venue-specific empirical claims require primary rulebooks and data.
+market_applicability: [crypto, futures, prediction_markets]
+tradable_implication: Adapters must own venue rules and the simulator must expose book, tick, queue, and adverse-selection assumptions.
+required_tests: [tick_size_rounding, crossed_book_rejection, queue_and_partial_fill_stress]
+failure_modes: [venue_agnostic_fill, ignored_tick_changes, hidden_fragmentation]
+system_requirements: [instrument metadata, venue policies, book-aware fill model]
+notes_owner: execution_skeptic
+review_date: "2026-07-10"
+evidence_classification: publisher_preview
+license_note: Copyrighted book; only metadata and preview-derived paraphrase are stored.
+

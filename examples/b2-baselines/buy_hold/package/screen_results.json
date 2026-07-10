@@ -1,0 +1,12 @@
+[
+  {
+    "cost_return": 0.001,
+    "gross_return": 0.22697559929751832,
+    "net_return": 0.22597559929751831,
+    "observations": 96,
+    "parameters": {},
+    "sharpe": 13.91684816656901,
+    "turnover": 1.0,
+    "variant_id": 0
+  }
+]

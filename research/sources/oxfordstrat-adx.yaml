@@ -1,0 +1,20 @@
+schema_version: 2
+id: oxfordstrat-adx
+type: strategy-review
+category: oxfordstrat
+priority: P1
+status: reviewed
+url: https://oxfordstrat.com/trading-strategies/adx/
+bibliography: "OxfordStrat. ADX Filter, public Donchian overlay review citing Wilder and Donchian."
+claim: ADX can be evaluated as a filter on channel breakout entries rather than as a standalone edge.
+evidence: The page publishes channel/ADX parameter ranges and concludes ADX did not add value to the base trend model.
+limitations: Secondary hypothetical results on a historical futures portfolio.
+market_applicability: [futures, crypto]
+tradable_implication: Require an explicit no-ADX ablation and reject the filter if net improvement is unstable.
+required_tests: [no_filter_ablation, threshold_sensitivity, sector_concentration]
+failure_modes: [indicator_redundancy, selection_bias, cost_omission]
+system_requirements: [donchian_baseline, adx_feature_manifest]
+notes_owner: head_researcher
+review_date: "2026-07-10"
+evidence_classification: secondary_strategy_review
+license_note: Public page reviewed; no chart or code redistribution.

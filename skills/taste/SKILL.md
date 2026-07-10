@@ -72,7 +72,10 @@ the-pass validate <findings> --type findings
 If a verdict changes, validate again and add a receipt:
 
 ```bash
-the-pass receipts add <package-dir> --gate <gate-name>
+the-pass receipts add <package-dir>
+the-pass gate evaluate <package-dir> --gate research_gate --reviewer <reviewer> \
+  --output <package-dir>/gate_decision.research_gate.yaml
+the-pass receipts add-decision <package-dir>/gate_decision.research_gate.yaml
 the-pass receipts verify
 ```
 

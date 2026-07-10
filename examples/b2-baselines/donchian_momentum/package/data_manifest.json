@@ -1,0 +1,64 @@
+{
+  "coverage": {
+    "end_time": "2024-01-01T01:35:00.000000Z",
+    "event_time_field": "event_time_ns",
+    "instruments": [
+      "BTCUSDT"
+    ],
+    "receive_time_field": "receive_time_ns",
+    "start_time": "2024-01-01T00:00:00.000000Z",
+    "timezone": "UTC"
+  },
+  "created_at": "2026-07-10T00:00:00Z",
+  "dataset_name": "crypto_spot_time_series_momentum_v1-synthetic-bars",
+  "fingerprint": {
+    "method": "sha256",
+    "value": "e22d47a0b450f3413548fe89e704e0550de00d579276d1c804b26f4e8bf37d39"
+  },
+  "id": "crypto_spot_time_series_momentum_v1-data",
+  "limitations": [
+    "synthetic diagnostic fixture"
+  ],
+  "owner": "data_steward",
+  "quality": {
+    "cross_source_checks": [
+      "synthetic generator fingerprint reproduced"
+    ],
+    "duplicate_policy": "duplicates block packaging",
+    "missing_intervals": [],
+    "row_count": 96,
+    "sequence_gap_policy": "gaps block packaging"
+  },
+  "schema": {
+    "fields": [
+      "asset_class",
+      "event_time_ns",
+      "event_type",
+      "ingest_id",
+      "instrument_id",
+      "payload",
+      "raw_fingerprint",
+      "receive_time_ns",
+      "schema_version",
+      "sequence",
+      "source",
+      "venue"
+    ],
+    "known_null_fields": [],
+    "primary_keys": [
+      "instrument_id",
+      "event_time_ns",
+      "sequence",
+      "ingest_id"
+    ]
+  },
+  "schema_version": 2,
+  "source": {
+    "endpoint_or_file": "deterministic in-process generator",
+    "license_note": "MIT public synthetic fixture",
+    "normalized_path": "",
+    "provider": "the-pass-synthetic",
+    "raw_path": "",
+    "venue": "synthetic"
+  }
+}

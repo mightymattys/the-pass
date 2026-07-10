@@ -1,0 +1,20 @@
+schema_version: 2
+id: trading-costs-anomalies
+type: academic
+category: execution_microstructure
+priority: P0
+status: reviewed
+url: https://pages.stern.nyu.edu/~afrazzin/pdf/Trading%20Cost%20of%20Asset%20Pricing%20Anomalies%20-%20Frazzini%2C%20Israel%20and%20Moskowitz.pdf
+bibliography: "Frazzini, Israel, and Moskowitz. Trading Costs of Asset Pricing Anomalies. Fama-Miller Working Paper, 2012."
+claim: Capacity and implementability depend on empirically measured cost and impact functions, and differ sharply by strategy turnover.
+evidence: The study uses live institutional trading data across developed equity markets to estimate costs and impact.
+limitations: Equity institutional execution estimates cannot be copied to crypto, futures, or prediction markets.
+market_applicability: [equities, futures, crypto]
+tradable_implication: Calibrate costs by venue, participation, style, and size; report capacity separately.
+required_tests: [cost_curve_calibration, participation_stress, opportunity_cost]
+failure_modes: [flat_bps_cost, cross_venue_transfer, ignored_missed_fills]
+system_requirements: [cost_waterfall, capacity_report, tca]
+notes_owner: execution_skeptic
+review_date: "2026-07-10"
+evidence_classification: primary_academic_fulltext
+license_note: Public author PDF reviewed; no redistribution.

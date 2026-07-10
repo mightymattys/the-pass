@@ -1,0 +1,12 @@
+schema_version: 2
+id: locked-human-decision
+created_at: "2026-07-10T00:00:00Z"
+venue: ""
+account_scope: ""
+adapter: ""
+config_hash: ""
+reviewer: safety_boundary
+decision: blocked
+accepted_live_capability_adr: false
+grants_live_approval: false
+blockers: [explicit user instruction and accepted venue-specific ADR required]

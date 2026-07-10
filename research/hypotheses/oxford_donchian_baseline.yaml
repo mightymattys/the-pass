@@ -1,0 +1,27 @@
+schema_version: 2
+id: oxford_donchian_baseline
+created_at: "2026-07-10T00:00:00Z"
+status: ready_for_spec
+proposed_name: OxfordStrat Donchian trend baseline
+source_notes: [research/sources/oxfordstrat-donchian.yaml]
+edge:
+  primary_family: time_series_trend
+  thesis: A predeclared Donchian breakout is a transparent reference strategy, not presumed edge.
+  mechanism: Enter only after a prior-window breakout and size independently through the risk policy.
+market:
+  asset_classes: [futures, crypto]
+  venues: [fixture_then_licensed_or_public_read_only]
+  instruments: [diversified_futures, BTCUSDT, ETHUSDT]
+  timeframes: [daily, four_hour]
+test:
+  next_test: Compare fixed Donchian windows with buy-and-hold and seeded random controls under walk-forward validation.
+  required_data: [bars, trades, instrument_registry, costs]
+  null_or_random_baseline: Seeded random direction matched by exposure and holding period.
+  falsification_criteria: [no_oos_net_edge, high_pbo, stress_failure]
+risks:
+  costs: [whipsaw_turnover, roll, funding]
+  execution: [gap_breakout, insufficient_depth]
+  data: [roll_lookahead, stale_bars]
+  regime: [sideways_market, violent_reversal]
+kill_when: [The fixed rule fails OOS, robustness, or conservative execution gates.]
+blockers: []

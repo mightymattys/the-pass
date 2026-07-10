@@ -1,0 +1,21 @@
+schema_version: 2
+id: white-reality-check
+type: academic
+category: overfitting_statistics
+priority: P0
+status: reviewed
+url: https://onlinelibrary.wiley.com/doi/abs/10.1111/1468-0262.00152
+bibliography: "White, Halbert. A Reality Check for Data Snooping. Econometrica 68(5), 2000."
+claim: The best model found in a specification search must be tested against the null that it has no predictive superiority over a benchmark.
+evidence: The paper provides a bootstrap-based procedure designed for repeated reuse of one time-series history during model search.
+limitations: Results depend on benchmark, loss function, bootstrap design, and stationarity assumptions; the test can be conservative.
+market_applicability: [crypto, futures, prediction_markets]
+tradable_implication: Strategy-zoo winners need family-level correction before promotion.
+required_tests: [define benchmark before search, preserve all alternatives, verify bootstrap under serial dependence]
+failure_modes: [post-hoc benchmark, omitted losing models, iid bootstrap on dependent returns]
+system_requirements: [strategy-family registry, bootstrap engine, reality-check report]
+notes_owner: stats_auditor
+review_date: "2026-07-10"
+evidence_classification: primary_academic_abstract
+license_note: Publisher abstract reviewed; full text is not redistributed.
+

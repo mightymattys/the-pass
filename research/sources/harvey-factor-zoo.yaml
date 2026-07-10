@@ -1,0 +1,21 @@
+schema_version: 2
+id: harvey-factor-zoo
+type: academic
+category: overfitting_statistics
+priority: P0
+status: reviewed
+url: https://www.nber.org/papers/w20592
+bibliography: "Harvey, Liu, and Zhu. ... and the Cross-Section of Expected Returns. NBER Working Paper 20592."
+claim: Conventional significance thresholds are inadequate after testing hundreds of factors; new findings require a materially higher hurdle.
+evidence: The paper models correlated multiple testing and reports historical significance cutoffs for a large factor literature.
+limitations: Exact cross-sectional factor thresholds do not transfer mechanically to every time-series strategy or market.
+market_applicability: [crypto, futures, equities]
+tradable_implication: Record research breadth and raise evidence thresholds as the strategy family grows.
+required_tests: [count effective trials, report family-wide false-discovery controls, compare pre- and post-publication evidence]
+failure_modes: [t_stat_two_rule, hidden researcher degrees of freedom, applying equity-factor cutoffs blindly]
+system_requirements: [global experiment ledger, multiple-testing metadata]
+notes_owner: stats_auditor
+review_date: "2026-07-10"
+evidence_classification: primary_academic
+license_note: NBER metadata/full working paper access; store only paraphrased findings.
+

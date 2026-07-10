@@ -1,0 +1,30 @@
+{
+  "automation_run": "reports/automation/automation-b52cbf58cd6599838c14e951780384f84cf899f80d0299c0b6b2908bc17e12fb.json",
+  "automation_status": "complete",
+  "created_at": "2026-07-10T00:00:00Z",
+  "credentials_present": false,
+  "dashboard_files": [
+    "reports/dashboard/research_backlog.html",
+    "reports/dashboard/strategy_status.html",
+    "reports/dashboard/experiments.html",
+    "reports/dashboard/robustness.html",
+    "reports/dashboard/cost_waterfall.html",
+    "reports/dashboard/risk.html",
+    "reports/dashboard/paper_divergence.html",
+    "reports/dashboard/incidents.html",
+    "reports/dashboard/receipt_ledger.html",
+    "reports/dashboard/index.html"
+  ],
+  "divergence_decision": "blocked",
+  "fills": 2,
+  "network_clients_loaded": false,
+  "paper_gate": "blocked",
+  "paper_gate_blockers": [
+    "0 of 30 calendar days",
+    "2 of 500 signals"
+  ],
+  "paper_status": "complete",
+  "process_isolated": true,
+  "schema_version": 1,
+  "signals": 2
+}

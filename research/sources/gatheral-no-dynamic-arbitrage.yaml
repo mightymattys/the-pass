@@ -1,0 +1,17 @@
+schema_version: 2
+id: gatheral-no-dynamic-arbitrage
+type: academic
+category: execution_microstructure
+priority: P2
+status: skimmed
+url: https://doi.org/10.1080/14697680903373692
+bibliography: "Gatheral, J. No-Dynamic-Arbitrage and Market Impact."
+claim: Impact models should avoid price-manipulation artifacts.
+evidence: Bibliographic record identified; proof and model implications remain pending review.
+limitations: A theoretical constraint does not calibrate practical fills.
+market_applicability: [cross_asset]
+required_tests: [round_trip_manipulation, impact_monotonicity]
+failure_modes: [negative_cost_loop, unstable_impact]
+system_requirements: [fill_model_properties, accounting_checks]
+evidence_classification: primary_academic_backlog
+license_note: Bibliographic metadata only; copyrighted text is not redistributed.

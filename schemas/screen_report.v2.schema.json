@@ -1,0 +1,119 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://the-pass.dev/schemas/screen_report.v2.schema.json",
+  "title": "ScreenReport",
+  "type": "object",
+  "required": ["schema_version", "id", "created_at", "strategy_spec", "mode", "sample", "variants", "baseline", "costs", "results", "decision", "safety"],
+  "properties": {
+    "schema_version": { "const": 2 },
+    "id": { "type": "string", "minLength": 1 },
+    "created_at": { "type": "string", "format": "date-time" },
+    "strategy_spec": { "type": "string", "minLength": 1 },
+    "data_manifest": { "type": "string" },
+    "mode": { "const": "diagnostic" },
+    "sample": {
+      "type": "object",
+      "required": ["start_time", "end_time", "instruments", "observations"],
+      "properties": {
+        "start_time": { "type": "string" },
+        "end_time": { "type": "string" },
+        "instruments": { "type": "array", "items": { "type": "string" } },
+        "observations": { "type": ["integer", "null"], "minimum": 0 }
+      }
+    },
+    "variants": {
+      "type": "object",
+      "required": ["tried", "selected", "rejected"],
+      "properties": {
+        "tried": { "type": "array" },
+        "selected": { "type": "string" },
+        "rejected": { "type": "array" }
+      }
+    },
+    "baseline": {
+      "type": "object",
+      "required": ["type", "result"],
+      "properties": {
+        "type": { "type": "string", "minLength": 1 },
+        "result": { "type": "string" }
+      }
+    },
+    "costs": {
+      "type": "object",
+      "required": ["fee_model", "spread_model", "slippage_model", "assumptions"],
+      "properties": {
+        "fee_model": { "type": "string" },
+        "spread_model": { "type": "string" },
+        "slippage_model": { "type": "string" },
+        "assumptions": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "results": {
+      "type": "object",
+      "required": ["gross_metrics", "net_metrics", "robustness_notes"],
+      "properties": {
+        "gross_metrics": { "type": "object" },
+        "net_metrics": { "type": "object" },
+        "robustness_notes": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "decision": {
+      "type": "object",
+      "required": ["status", "reason", "next_action"],
+      "properties": {
+        "status": { "enum": ["reject", "revise", "backtest_candidate", "blocked"] },
+        "reason": { "type": "string", "minLength": 1 },
+        "next_action": { "type": "string", "minLength": 1 }
+      }
+    },
+    "safety": {
+      "type": "object",
+      "required": ["promotion_claim", "live_trading_enabled", "real_order_path_available"],
+      "properties": {
+        "promotion_claim": { "const": false },
+        "live_trading_enabled": { "const": false },
+        "real_order_path_available": { "const": false }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "decision": { "properties": { "status": { "const": "backtest_candidate" } } } } },
+      "then": {
+        "properties": {
+          "baseline": { "properties": { "result": { "minLength": 1 } } },
+          "sample": {
+            "properties": {
+              "start_time": { "minLength": 1 },
+              "end_time": { "minLength": 1 },
+              "instruments": { "minItems": 1 },
+              "observations": { "type": "integer", "minimum": 1 }
+            }
+          },
+          "variants": {
+            "properties": {
+              "tried": { "minItems": 1 },
+              "selected": { "minLength": 1 }
+            }
+          },
+          "costs": {
+            "properties": {
+              "fee_model": { "minLength": 1 },
+              "spread_model": { "minLength": 1 },
+              "slippage_model": { "minLength": 1 },
+              "assumptions": { "minItems": 1 }
+            }
+          },
+          "results": {
+            "properties": {
+              "gross_metrics": { "minProperties": 1 },
+              "net_metrics": { "minProperties": 1 },
+              "robustness_notes": { "minItems": 1 }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "additionalProperties": true
+}

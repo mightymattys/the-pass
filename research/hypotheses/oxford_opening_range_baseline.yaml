@@ -1,0 +1,27 @@
+schema_version: 2
+id: oxford_opening_range_baseline
+created_at: "2026-07-10T00:00:00Z"
+status: ready_for_spec
+proposed_name: OxfordStrat opening-range breakout baseline
+source_notes: [research/sources/oxfordstrat-opening-range.yaml]
+edge:
+  primary_family: intraday_breakout
+  thesis: An opening stretch can define a testable volatility-expansion trigger.
+  mechanism: Freeze the opening window, decide after it closes, and execute only on subsequent evidence with pessimistic dual-trigger handling.
+market:
+  asset_classes: [futures]
+  venues: [licensed_provider_fixture_then_archive]
+  instruments: [liquid_session_futures]
+  timeframes: [intraday]
+test:
+  next_test: Reproduce the declared opening-range rule against unconditional and random-time breakouts.
+  required_data: [intraday_contract_bars, session_calendar, trades, costs]
+  null_or_random_baseline: Random trigger time matched by direction, session, and holding period.
+  falsification_criteria: [same_bar_dependency, no_oos_net_alpha, cost_stress_failure]
+risks:
+  costs: [opening_spread, slippage]
+  execution: [gap_through_trigger, dual_trigger_bar]
+  data: [session_boundary, missing_open]
+  regime: [overnight_news]
+kill_when: [The rule depends on optimistic intrabar ordering or loses its OOS edge after costs.]
+blockers: []

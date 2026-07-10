@@ -1,0 +1,17 @@
+schema_version: 2
+id: ""
+created_at: ""
+gate_id: research_gate # research_gate|paper_gate|risk_review|live_gate
+gate_result: blocked # pass|blocked|revise|kill
+policy_version: ""
+policy_hash: ""
+package_id: ""
+package_path: .
+reviewer: ""
+evidence: []
+blockers: []
+summary: ""
+safety:
+  grants_live_approval: false
+  live_trading_enabled: false
+  real_order_path_available: false

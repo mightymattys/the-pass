@@ -1,0 +1,13 @@
+schema_version: 2
+id: weekly-research-summary
+owner: head_researcher
+trigger: {schedule: "external-weekly"}
+command: weekly_research_summary
+inputs: {sources: research/sources.yaml, experiments: examples/b2-baselines}
+allowed_writes: [reports/automation]
+forbidden_actions: [gate_decision, live_transaction, credential_access]
+timeout_seconds: 600
+retry_policy: {max_attempts: 2, idempotent_only: true}
+alert_sink: local_incident_artifact
+freeze_procedure: preserve previous summary and record failure
+enabled: true

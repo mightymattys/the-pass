@@ -1,0 +1,64 @@
+policy_version: risk-policy-v1
+created_at: 2026-07-10T00:00:00Z
+global:
+  sizing:
+    allowed: [fixed_fraction, volatility_target]
+    default: fixed_fraction
+    kelly_use: analytical_upper_bound_only
+  limits:
+    research_capital: 0
+    paper_capital: virtual_only
+    max_position_units: 1
+    max_notional: 100000
+    max_daily_loss: 1000
+    max_leverage: 1.0
+  stress:
+    fee_multiple: 1.5
+    slippage_multiple: 2.0
+    latency_multiple: 2.0
+    depth_multiple: 0.5
+    severe_depth_multiple: 0.25
+    maker_fill_probability_multiple: 0.5
+    funding_window: worst_decile
+    scenarios: [exchange_outage, missing_interval, correlated_gap, forced_deleverage]
+asset_classes:
+  crypto_intraday:
+    minimum_history_months_screen: 12
+    preferred_history_months_promotion: 24
+    holdout_latest_fraction: 0.20
+    minimum_trades_intraday: 500
+    minimum_trades_4h_plus: 100
+    minimum_oos_net_sharpe: 1.0
+    minimum_dsr_or_psr: positive_vs_zero_after_multiple_tests
+    maximum_pbo: 0.10
+    stress: [fees_x1_5, slippage_x2, latency_x2, fill_rate_x0_7]
+    drawdown: max_historical_drawdown_le_2x_expected_annualized_net_return_or_risk_officer_exception
+    paper: 30_calendar_days_and_100_fills_or_500_signals_costs_within_25_percent_no_unresolved_outage
+  crypto_funding:
+    minimum_history_months: 18
+    minimum_funding_intervals: 200
+    minimum_regimes: 2
+    separate_directional_beta: true
+    stress: funding_sign_worst_10_percent_and_spot_perp_spread_depth_haircut
+    kill: net_pnl_mostly_directional_beta
+  listed_futures:
+    minimum_daily_years: 10
+    minimum_intraday_years: 3
+    production_minimum_instruments: 6
+    production_minimum_sectors: 3
+    minimum_oos_net_sharpe: 0.7
+    maximum_single_instrument_oos_pnl_fraction: 0.40
+    roll_policy_precommitted: true
+    paper: at_least_60_trading_days_or_30_trades_whichever_is_later
+  prediction_market:
+    mapping_semantics_manual_review: true
+    positive_edge_after_live_fee_and_executable_depth: true
+    minimum_paper_ready_signals: 1000
+    lower_signal_threshold_requires_adr: true
+    settlement_reconciled_to_source_of_truth: true
+    kill: edge_only_in_gross_mid_prices
+locked_live_defaults:
+  micro_live_cap: min_100_usd_or_0_25_percent_equity
+  daily_loss_cap: min_25_usd_or_0_10_percent_equity
+  max_leverage: 1.0
+  max_drawdown_before_freeze: min_3x_expected_daily_volatility_or_explicit_dollar_cap

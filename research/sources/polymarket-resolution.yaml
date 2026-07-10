@@ -1,0 +1,17 @@
+schema_version: 2
+id: polymarket-resolution
+type: vendor-doc
+category: prediction_markets
+priority: P0
+status: skimmed
+url: https://docs.polymarket.com/polymarket-learn/markets/how-are-markets-resolved
+bibliography: "Polymarket. How markets are resolved."
+claim: Fair-value research must bind every market to explicit resolution wording and source-of-truth evidence.
+evidence: Official documentation location identified; market-specific semantic review remains pending.
+limitations: General documentation cannot replace manual review of each market rule.
+market_applicability: [prediction_markets]
+required_tests: [resolution_semantics_review, settlement_cross_check]
+failure_modes: [ambiguous_resolution, wrong_outcome_mapping]
+system_requirements: [resolution_metadata, manual_review_gate]
+evidence_classification: official_provider_backlog
+license_note: Official URL and summary only; provider content is not redistributed.

@@ -1,0 +1,69 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://the-pass.dev/schemas/data_manifest.v2.schema.json",
+  "title": "DataManifest",
+  "type": "object",
+  "required": ["schema_version", "id", "dataset_name", "created_at", "source", "coverage", "schema", "quality", "fingerprint", "limitations"],
+  "properties": {
+    "schema_version": { "const": 2 },
+    "id": { "type": "string", "minLength": 1 },
+    "dataset_name": { "type": "string", "minLength": 1 },
+    "created_at": { "type": "string", "format": "date-time" },
+    "owner": { "type": "string" },
+    "source": {
+      "type": "object",
+      "required": ["provider", "venue", "endpoint_or_file", "license_note", "raw_path", "normalized_path"],
+      "properties": {
+        "provider": { "type": "string", "minLength": 1 },
+        "venue": { "type": "string", "minLength": 1 },
+        "endpoint_or_file": { "type": "string", "minLength": 1 },
+        "license_note": { "type": "string", "minLength": 1 },
+        "raw_path": { "type": "string" },
+        "normalized_path": { "type": "string" }
+      }
+    },
+    "coverage": {
+      "type": "object",
+      "required": ["instruments", "start_time", "end_time", "timezone", "event_time_field", "receive_time_field"],
+      "properties": {
+        "instruments": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+        "start_time": { "type": "string", "minLength": 1 },
+        "end_time": { "type": "string", "minLength": 1 },
+        "timezone": { "type": "string", "minLength": 1 },
+        "event_time_field": { "type": "string", "minLength": 1 },
+        "receive_time_field": { "type": "string" }
+      }
+    },
+    "schema": {
+      "type": "object",
+      "required": ["fields", "primary_keys", "known_null_fields"],
+      "properties": {
+        "fields": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+        "primary_keys": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+        "known_null_fields": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+      }
+    },
+    "quality": {
+      "type": "object",
+      "required": ["row_count", "missing_intervals", "duplicate_policy", "sequence_gap_policy", "cross_source_checks"],
+      "properties": {
+        "row_count": { "type": "integer", "minimum": 1 },
+        "missing_intervals": { "type": "array" },
+        "duplicate_policy": { "type": "string", "minLength": 1 },
+        "sequence_gap_policy": { "type": "string", "minLength": 1 },
+        "cross_source_checks": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+      }
+    },
+    "fingerprint": {
+      "type": "object",
+      "required": ["method", "value"],
+      "properties": {
+        "method": { "const": "sha256" },
+        "value": { "type": "string", "pattern": "^[A-Fa-f0-9]{64}$" }
+      },
+      "additionalProperties": true
+    },
+    "limitations": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+  },
+  "additionalProperties": true
+}

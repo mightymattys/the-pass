@@ -1,0 +1,21 @@
+schema_version: 2
+id: berkshire-2024-letter
+type: interview
+category: investor_operator
+priority: P2
+status: reviewed
+url: https://www.berkshirehathaway.com/2024ar/2024ar.pdf
+bibliography: "Berkshire Hathaway 2024 Annual Report and shareholder letter."
+claim: Capital allocation should preserve resilience, admit mistakes, avoid forced activity, and judge results over long horizons.
+evidence: The primary annual report discusses capital allocation, operating resilience, errors, liquidity, and long-term ownership.
+limitations: Berkshire operates businesses and long-duration investments; its process principles do not prove short-horizon systematic signals.
+market_applicability: [risk_governance, research_process]
+tradable_implication: No-trade is valid; size and survival constraints must dominate the desire to promote a strategy.
+required_tests: [capital_preservation_gate, no_trade_behavior, multi_period_review]
+failure_modes: [operator_quote_as_alpha, style_transfer_without_test, activity_bias]
+system_requirements: [independent risk owner, kill switches, no forced promotion]
+notes_owner: risk_officer
+review_date: "2026-07-10"
+evidence_classification: primary_operator_material
+license_note: Public company annual report; store only paraphrased process implications.
+

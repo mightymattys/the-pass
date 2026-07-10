@@ -1,0 +1,47 @@
+{
+  "created_at": "2026-07-10T00:00:00Z",
+  "evidence": {
+    "cost_waterfall": "cost_waterfall.json",
+    "data_manifest": "data_manifest.json",
+    "metrics_report": "metrics_report.json",
+    "source_notes": []
+  },
+  "gate_results": {
+    "asset_class_gates": [
+      "synthetic diagnostic only"
+    ],
+    "failed_gates": [
+      "V3 robustness and independent audit pending"
+    ],
+    "universal_hard_gates": [
+      "package validates",
+      "accounting identities hold",
+      "costs explicit"
+    ]
+  },
+  "id": "crypto_spot_time_series_momentum_v1-verdict",
+  "next_action": "Run V3 walk-forward, overfit diagnostics, stress, risk, and independent audit.",
+  "owner": "framework_auditor",
+  "review_required_by": [
+    "stats_auditor",
+    "execution_skeptic"
+  ],
+  "risks": {
+    "data": [
+      "generated fixture"
+    ],
+    "execution": [
+      "next-bar model is not order-book replay"
+    ],
+    "operational": [
+      "no external process"
+    ],
+    "statistical": [
+      "synthetic diagnostic sample"
+    ]
+  },
+  "run_receipt": "run_receipt.json",
+  "schema_version": 2,
+  "summary": "B2 baseline completed; robustness and independent audit are not yet run.",
+  "verdict": "blocked"
+}

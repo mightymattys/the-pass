@@ -1,0 +1,21 @@
+schema_version: 2
+id: trends-everywhere
+type: academic
+category: trend_futures
+priority: P2
+status: reviewed
+url: https://www.aqr.com/Insights/Research/Journal-Article/Trends-Everywhere
+bibliography: "Babu, Levine, Ooi, Pedersen, and Stamelos. Trends Everywhere. 2019."
+claim: Time-series momentum evidence extends to additional securities and long-short factors not used in earlier core studies.
+evidence: The study reports out-of-sample tests over 82 additional securities and 16 long-short equity factors across several horizons.
+limitations: Author affiliation, product context, instrument availability, and estimated costs require independent reproduction.
+market_applicability: [futures, macro]
+tradable_implication: Breadth is a robustness test, but every instrument must pass its own data, roll, liquidity, and cost gate.
+required_tests: [new_instrument_holdout, horizon_sensitivity, liquidity_capacity]
+failure_modes: [breadth_without_data_quality, unavailable_instrument_bias, cost_underestimate]
+system_requirements: [instrument-level attribution, capacity and liquidity reports]
+notes_owner: head_researcher
+review_date: "2026-07-10"
+evidence_classification: author_research
+license_note: Public author page; no redistribution.
+

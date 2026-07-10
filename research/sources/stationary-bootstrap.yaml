@@ -1,0 +1,20 @@
+schema_version: 2
+id: stationary-bootstrap
+type: academic
+category: overfitting_statistics
+priority: P0
+status: reviewed
+url: https://doi.org/10.1080/01621459.1994.10476870
+bibliography: "Politis and Romano. The Stationary Bootstrap. JASA 89(428), 1994."
+claim: Random-length block resampling can estimate uncertainty while preserving weak temporal dependence.
+evidence: The paper introduces the stationary bootstrap for standard errors and confidence regions under weak stationarity.
+limitations: Block-length selection and structural breaks remain material model choices.
+market_applicability: [crypto, futures, prediction_market]
+tradable_implication: Bootstrap return paths in blocks rather than shuffling individual observations.
+required_tests: [seed_reproducibility, block_length_sensitivity, dependence_preservation]
+failure_modes: [iid_resampling, unstable_block_length, regime_mixing]
+system_requirements: [deterministic_block_bootstrap, bootstrap_manifest]
+notes_owner: stats_auditor
+review_date: "2026-07-10"
+evidence_classification: primary_academic_abstract
+license_note: Publisher abstract reviewed; full text may require access.

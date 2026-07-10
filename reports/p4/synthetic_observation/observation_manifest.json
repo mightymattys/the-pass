@@ -1,0 +1,38 @@
+{
+  "created_at": "2026-07-10T00:00:00Z",
+  "data_capture": {
+    "decision_time_field": "decision_time_ns",
+    "event_time_field": "event_time_ns",
+    "receive_time_field": "receive_time_ns",
+    "storage_path": "paper_run.json"
+  },
+  "id": "diagnostic-observation-v1",
+  "paper_plan": "paper_plan.json",
+  "quality": {
+    "clock_skew_policy": "freeze",
+    "missing_data_policy": "freeze",
+    "outage_policy": "freeze"
+  },
+  "schema_version": 2,
+  "signals": {
+    "fields": [
+      "intent_id",
+      "decision_time_ns",
+      "side",
+      "quantity"
+    ],
+    "format": "json"
+  },
+  "simulated_orders": {
+    "cannot_reach_broker": true,
+    "fields": [
+      "intent_id",
+      "side",
+      "quantity",
+      "price",
+      "fee"
+    ],
+    "format": "json"
+  },
+  "source_package": "../../../examples/b2-baselines/donchian_momentum/package"
+}

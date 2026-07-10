@@ -1,0 +1,21 @@
+schema_version: 2
+id: perpetual-futures-pricing
+type: academic
+category: crypto_perpetuals
+priority: P0
+status: reviewed
+url: https://arxiv.org/abs/2310.11771
+bibliography: "Ackerer, Hugonnier, and Jermann. Perpetual Futures Pricing. Mathematical Finance, 2025."
+claim: Periodic funding specifications anchor perpetual futures to spot and are fundamental to pricing and replication.
+evidence: The paper derives pricing and identifies funding specifications under which perpetual and spot prices coincide.
+limitations: Frictionless theoretical results do not capture venue outages, liquidation cascades, margin rules, or executable basis trades.
+market_applicability: [crypto_perpetuals]
+tradable_implication: Funding, mark, index, collateral, and holding intervals are first-class PnL inputs rather than optional costs.
+required_tests: [funding_accrual, mark_index_divergence, funding_sign_stress, collateral_scenario]
+failure_modes: [ignored_funding, spot_perp_timestamp_mismatch, liquidation_unmodeled]
+system_requirements: [funding events, mark_index fields, perp instrument semantics]
+notes_owner: head_researcher
+review_date: "2026-07-10"
+evidence_classification: primary_academic
+license_note: Open arXiv paper; store only structured note.
+

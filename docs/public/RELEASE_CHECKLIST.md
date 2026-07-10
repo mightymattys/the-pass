@@ -24,7 +24,8 @@ Status: passed for `main` on 2026-07-09.
 
 ## Artifact Readiness
 
-- [x] Templates and schemas exist for all 18 research, core, adapter, and slash-workflow artifacts.
+- [x] Templates and versioned schemas exist for all registered research, core, adapter,
+  gate-decision, and slash-workflow artifacts.
 - [x] Artifact lifecycle is documented.
 - [x] Public examples are synthetic or public-safe.
 - [x] Synthetic golden path package is present and stays blocked from paper promotion.

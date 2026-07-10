@@ -1,0 +1,21 @@
+schema_version: 2
+id: afml-lecture
+type: academic
+category: financial_validation
+priority: P1
+status: reviewed
+url: https://papers.ssrn.com/sol3/papers.cfm?abstract_id=3257420
+bibliography: "Lopez de Prado. Advances in Financial Machine Learning, Lecture 4/10. Cornell ORIE 5256 slides."
+claim: Financial ML needs finance-specific experimental controls rather than generic random cross-validation and unconstrained feature search.
+evidence: The course material presents scientifically controlled ML workflows for asset-management problems and links them to point-in-time data and validation.
+limitations: Seminar slides cover a broad toolkit and are not evidence that every technique improves a given strategy.
+market_applicability: [crypto, futures, prediction_markets]
+tradable_implication: Introduce ML only after deterministic baselines and event-time controls pass.
+required_tests: [purged time splits, embargo by label horizon, point-in-time feature audit]
+failure_modes: [random_k_fold, label overlap, cargo-cult meta-labeling]
+system_requirements: [event horizons, purged splitter, feature manifests]
+notes_owner: head_researcher
+review_date: "2026-07-10"
+evidence_classification: primary_course_material
+license_note: Public SSRN course material; no redistribution.
+

@@ -1,0 +1,13 @@
+schema_version: 2
+id: corpus-refresh
+owner: head_researcher
+trigger: {schedule: "external-weekly"}
+command: corpus_refresh
+inputs: {registry: research/sources.yaml}
+allowed_writes: [reports/automation]
+forbidden_actions: [gate_decision, live_transaction, credential_access]
+timeout_seconds: 600
+retry_policy: {max_attempts: 2, idempotent_only: true}
+alert_sink: local_incident_artifact
+freeze_procedure: retain previous registry and mark refresh blocked
+enabled: true

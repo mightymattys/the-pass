@@ -1,0 +1,39 @@
+schema_version: 2
+id: crypto_spot_time_series_momentum_v1
+name: Crypto spot time-series momentum baseline
+status: research
+owner: head_researcher
+created_at: "2026-07-10"
+market: {asset_class: crypto_spot, venues: [binance], instruments: [BTCUSDT, ETHUSDT], timeframes: [1h, 4h, 1d]}
+edge:
+  primary_family: momentum
+  secondary_tags: [trend, breakout, long_flat]
+  thesis: Persistent crypto returns may survive as a simple long-flat trend baseline after conservative costs in sufficiently liquid regimes.
+  why_now: Academic futures trend evidence provides a falsifiable baseline, not proof of crypto transferability.
+  expected_failure_modes: [whipsaw, venue_transfer_failure, cost_dominance, parameter_cliff]
+data:
+  required_sources: [binance_spot_public, independent_spot_crosscheck]
+  required_fields: [event_time, receive_time, close, volume, bid, ask]
+  minimum_history: 24 months preferred and at least 12 months for screen
+  manifest_path: pending_D1
+signal:
+  inputs: [lagged_returns, realized_volatility]
+  transforms: [lookback_return_sign, volatility_scale]
+  decision_time_policy: Compute after bar close and trade no earlier than the next event.
+  lookahead_controls: [lag_all_features, locked_universe, point_in_time_costs]
+execution: {order_type: market, fill_model: next_quote_with_depth_haircut, latency_assumption_ms: 1000, fee_model: venue_taker_fee, slippage_model: spread_depth_and_volatility}
+risk: {sizing_rule: volatility_targeted_virtual, max_exposure: one_x_virtual_capital, max_drawdown: predefined_research_gate, kill_switches: [stale_data, cost_stress_failure, drawdown_breach]}
+validation:
+  train_test_split: Chronological train and validation followed by locked latest 20 percent.
+  holdout_policy: No parameter changes after holdout is opened.
+  null_baselines: [seeded_random, buy_and_hold, cash]
+  parameter_sweeps: [{lookback_bars: [24, 72, 168, 336], rebalance_bars: [1, 4, 24]}]
+  required_metrics: [net_sharpe, max_drawdown, turnover, expectancy, pbo, dsr_or_psr, stress_results]
+gates:
+  research_gate: [minimum_500_trades_if_intraday, oos_net_sharpe_at_least_1, pbo_at_most_0_10_or_limitation]
+  paper_gate: [30_days, 100_fills_or_500_signals, realized_cost_error_at_most_25_percent]
+  live_gate: [explicit_human_approval]
+done_when: [all variants recorded, OOS and cost stresses reported]
+kill_when: [edge disappears after costs, only one narrow parameter survives, cross_source_data_fails]
+notes: Source basis includes time-series-momentum and crypto microstructure notes.
+

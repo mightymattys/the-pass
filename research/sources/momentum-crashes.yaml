@@ -1,0 +1,17 @@
+schema_version: 2
+id: momentum-crashes
+type: academic
+category: trend_futures
+priority: P1
+status: skimmed
+url: https://doi.org/10.1016/j.jfineco.2015.12.002
+bibliography: "Daniel, K., and Moskowitz, T. J. Momentum Crashes."
+claim: Momentum risk assessment must include rebound and high-volatility crash regimes.
+evidence: Bibliographic record and abstract identified; full methodology review remains pending.
+limitations: Cross-sectional equity momentum may not map directly to time-series systems.
+market_applicability: [equities, cross_asset]
+required_tests: [rebound_stress, volatility_regime_split]
+failure_modes: [short_squeeze, leverage_procyclicality]
+system_requirements: [scenario_engine, regime_report]
+evidence_classification: primary_academic_backlog
+license_note: Bibliographic metadata only; copyrighted text is not redistributed.

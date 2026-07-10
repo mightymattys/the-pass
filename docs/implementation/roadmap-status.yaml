@@ -1,0 +1,96 @@
+schema_version: 1
+updated_at: 2026-07-10
+order: [H0, R0, D1, B2, V3, P4, L5_L6]
+allowed_statuses: [not_started, in_progress, blocked, gate_failed, complete]
+milestones:
+  - id: H0
+    name: framework_trust
+    owner: automation_engineer
+    status: complete
+    depends_on: []
+    gate_required: true
+    gate_result: pass
+    gate_evidence: reports/gates/H0_2026-07-10.yaml
+    evidence:
+      - reports/gates/H0_2026-07-10.md
+      - tests/test_validator.py
+  - id: R0
+    name: research_operating_system
+    owner: head_researcher
+    status: complete
+    depends_on: [H0]
+    gate_required: true
+    gate_result: pass
+    gate_evidence: reports/gates/R0_2026-07-10.yaml
+    evidence:
+      - reports/gates/R0_2026-07-10.md
+      - research/sources.yaml
+      - research/research_brief.yaml
+  - id: D1
+    name: canonical_data_and_adapters
+    owner: data_steward
+    status: complete
+    depends_on: [R0]
+    gate_required: true
+    gate_result: pass
+    gate_evidence: reports/gates/D1_2026-07-10.yaml
+    evidence:
+      - reports/gates/D1_2026-07-10.md
+      - reports/gates/D1_public_smoke_2026-07-10.json
+      - tests/test_data_foundation.py
+  - id: B2
+    name: screen_and_backtest_harness
+    owner: strategy_implementer
+    status: complete
+    depends_on: [D1]
+    gate_required: true
+    gate_result: pass
+    gate_evidence: reports/gates/B2_2026-07-10.yaml
+    evidence:
+      - reports/gates/B2_2026-07-10.md
+      - scripts/validate_b2_harness.py
+      - examples/b2-baselines/buy_hold/package/run_receipt.json
+      - examples/b2-baselines/seeded_random/package/verdict_report.json
+  - id: V3
+    name: robustness_risk_and_audit
+    owner: stats_auditor
+    status: complete
+    depends_on: [B2]
+    gate_required: true
+    gate_result: pass
+    gate_evidence: reports/gates/V3_2026-07-10.yaml
+    evidence:
+      - reports/gates/V3_2026-07-10.md
+      - reports/v3/donchian_momentum/robustness_report.json
+      - reports/v3/donchian_momentum/risk_report.json
+      - reports/v3/donchian_momentum/stats_audit.json
+      - reports/v3/donchian_momentum/execution_audit.json
+      - reports/v3/donchian_momentum/reproduction_report.json
+  - id: P4
+    name: paper_automation_and_reporting
+    owner: automation_engineer
+    status: blocked
+    depends_on: [V3]
+    gate_required: true
+    gate_result: blocked
+    evidence:
+      - reports/gates/P4_2026-07-10.md
+      - reports/p4/synthetic_observation/paper_run.json
+      - reports/p4/synthetic_observation/divergence_report.json
+      - reports/p4/synthetic_observation/p4_summary.json
+      - reports/dashboard/index.html
+    blocker: A real eligible candidate must complete its elapsed paper window and signal/fill minimums.
+  - id: L5_L6
+    name: locked_live_boundary
+    owner: risk_officer
+    status: blocked
+    depends_on: [P4]
+    gate_required: true
+    gate_result: blocked
+    evidence:
+      - reports/gates/L5_L6_LOCKED_2026-07-10.md
+      - docs/adr/ADR-0008-locked-live-boundary.md
+      - schemas/human_decision.v2.schema.json
+      - schemas/dry_run_proof.v2.schema.json
+      - tests/test_live_boundary.py
+    blocker: Explicit user approval and an accepted venue-specific live-capability ADR are required.

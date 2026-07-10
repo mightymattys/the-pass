@@ -1,0 +1,17 @@
+schema_version: 2
+id: databento-continuous-symbology
+type: vendor-doc
+category: trend_futures
+priority: P1
+status: skimmed
+url: https://databento.com/docs/standards-and-conventions/symbology#continuous
+bibliography: "Databento. Symbology and continuous contracts documentation."
+claim: Continuous symbols require an explicit roll convention and are distinct from raw contracts.
+evidence: Official documentation location identified; provider behavior review remains pending.
+limitations: Licensed data access is required for production research validation.
+market_applicability: [futures]
+required_tests: [fixture_roll_replay, raw_contract_traceability]
+failure_modes: [roll_lookahead, license_leak]
+system_requirements: [provider_interface, licensed_archive_boundary]
+evidence_classification: official_provider_backlog
+license_note: Official URL and summary only; licensed payloads are never redistributed.

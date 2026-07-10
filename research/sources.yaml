@@ -1,0 +1,61 @@
+schema_version: 1
+updated_at: 2026-07-10
+required_reviewed_by_category:
+  overfitting_statistics: 5
+  financial_validation: 3
+  execution_microstructure: 3
+  trend_futures: 3
+  crypto_perpetuals: 3
+  investor_operator: 2
+  oxfordstrat: 1
+sources:
+  - {id: pbo-cscv, category: overfitting_statistics, status: reviewed, path: research/sources/pbo-cscv.yaml, evidence_classification: primary_academic}
+  - {id: deflated-sharpe, category: overfitting_statistics, status: reviewed, path: research/sources/deflated-sharpe.yaml, evidence_classification: primary_academic}
+  - {id: white-reality-check, category: overfitting_statistics, status: reviewed, path: research/sources/white-reality-check.yaml, evidence_classification: primary_academic_abstract}
+  - {id: hansen-spa, category: overfitting_statistics, status: reviewed, path: research/sources/hansen-spa.yaml, evidence_classification: primary_academic}
+  - {id: harvey-factor-zoo, category: overfitting_statistics, status: reviewed, path: research/sources/harvey-factor-zoo.yaml, evidence_classification: primary_academic}
+  - {id: afml-lecture, category: financial_validation, status: reviewed, path: research/sources/afml-lecture.yaml, evidence_classification: primary_course_material}
+  - {id: ml-fund-failures, category: financial_validation, status: reviewed, path: research/sources/ml-fund-failures.yaml, evidence_classification: practitioner_academic}
+  - {id: oos-method-comparison, category: financial_validation, status: reviewed, path: research/sources/oos-method-comparison.yaml, evidence_classification: academic_working_paper}
+  - {id: almgren-chriss, category: execution_microstructure, status: reviewed, path: research/sources/almgren-chriss.yaml, evidence_classification: primary_academic}
+  - {id: market-microstructure-practice, category: execution_microstructure, status: reviewed, path: research/sources/market-microstructure-practice.yaml, evidence_classification: publisher_preview}
+  - {id: bis-arbitrage-costs, category: execution_microstructure, status: reviewed, path: research/sources/bis-arbitrage-costs.yaml, evidence_classification: institutional_working_paper}
+  - {id: time-series-momentum, category: trend_futures, status: reviewed, path: research/sources/time-series-momentum.yaml, evidence_classification: primary_academic}
+  - {id: century-trend, category: trend_futures, status: reviewed, path: research/sources/century-trend.yaml, evidence_classification: primary_academic_abstract}
+  - {id: trends-everywhere, category: trend_futures, status: reviewed, path: research/sources/trends-everywhere.yaml, evidence_classification: author_research}
+  - {id: perpetual-futures-pricing, category: crypto_perpetuals, status: reviewed, path: research/sources/perpetual-futures-pricing.yaml, evidence_classification: primary_academic}
+  - {id: crypto-systematic-mapping, category: crypto_perpetuals, status: reviewed, path: research/sources/crypto-systematic-mapping.yaml, evidence_classification: systematic_mapping}
+  - {id: crypto-microstructure-review, category: crypto_perpetuals, status: reviewed, path: research/sources/crypto-microstructure-review.yaml, evidence_classification: systematic_review}
+  - {id: berkshire-2024-letter, category: investor_operator, status: reviewed, path: research/sources/berkshire-2024-letter.yaml, evidence_classification: primary_operator_material}
+  - {id: bridgewater-all-weather, category: investor_operator, status: reviewed, path: research/sources/bridgewater-all-weather.yaml, evidence_classification: primary_operator_material}
+  - {id: oxfordstrat-nr7-corpus, category: oxfordstrat, status: reviewed, path: research/sources/oxfordstrat-nr7-corpus.yaml, evidence_classification: secondary_strategy_review}
+  - {id: lo-sharpe-statistics, category: overfitting_statistics, status: reviewed, path: research/sources/lo-sharpe-statistics.yaml, evidence_classification: primary_academic_abstract}
+  - {id: stationary-bootstrap, category: overfitting_statistics, status: reviewed, path: research/sources/stationary-bootstrap.yaml, evidence_classification: primary_academic_abstract}
+  - {id: data-snooping-technical-rules, category: overfitting_statistics, status: reviewed, path: research/sources/data-snooping-technical-rules.yaml, evidence_classification: primary_academic_fulltext}
+  - {id: trading-costs-anomalies, category: execution_microstructure, status: reviewed, path: research/sources/trading-costs-anomalies.yaml, evidence_classification: primary_academic_fulltext}
+  - {id: crypto-arbitrage-markets, category: crypto_perpetuals, status: reviewed, path: research/sources/crypto-arbitrage-markets.yaml, evidence_classification: primary_academic_abstract}
+  - {id: carry-cross-asset, category: trend_futures, status: reviewed, path: research/sources/carry-cross-asset.yaml, evidence_classification: accepted_academic_manuscript}
+  - {id: risks-returns-crypto, category: crypto_perpetuals, status: reviewed, path: research/sources/risks-returns-crypto.yaml, evidence_classification: institutional_working_paper}
+  - {id: oxfordstrat-opening-range, category: oxfordstrat, status: reviewed, path: research/sources/oxfordstrat-opening-range.yaml, evidence_classification: secondary_strategy_review}
+  - {id: oxfordstrat-volatility-squeeze, category: oxfordstrat, status: reviewed, path: research/sources/oxfordstrat-volatility-squeeze.yaml, evidence_classification: secondary_strategy_review}
+  - {id: oxfordstrat-adx, category: oxfordstrat, status: reviewed, path: research/sources/oxfordstrat-adx.yaml, evidence_classification: secondary_strategy_review}
+  - {id: oxfordstrat-donchian, category: oxfordstrat, status: reviewed, path: research/sources/oxfordstrat-donchian.yaml, evidence_classification: secondary_strategy_review}
+  - {id: novy-marx-trading-costs, category: financial_validation, status: skimmed, path: research/sources/novy-marx-trading-costs.yaml, evidence_classification: primary_academic_backlog}
+  - {id: fama-efficient-markets, category: financial_validation, status: skimmed, path: research/sources/fama-efficient-markets.yaml, evidence_classification: primary_academic_backlog}
+  - {id: brock-technical-rules, category: financial_validation, status: skimmed, path: research/sources/brock-technical-rules.yaml, evidence_classification: primary_academic_backlog}
+  - {id: jegadeesh-titman-momentum, category: trend_futures, status: skimmed, path: research/sources/jegadeesh-titman-momentum.yaml, evidence_classification: primary_academic_backlog}
+  - {id: value-momentum-everywhere, category: trend_futures, status: skimmed, path: research/sources/value-momentum-everywhere.yaml, evidence_classification: primary_academic_backlog}
+  - {id: momentum-crashes, category: trend_futures, status: skimmed, path: research/sources/momentum-crashes.yaml, evidence_classification: primary_academic_backlog}
+  - {id: currency-momentum, category: trend_futures, status: skimmed, path: research/sources/currency-momentum.yaml, evidence_classification: primary_academic_backlog}
+  - {id: vpin-flow-toxicity, category: execution_microstructure, status: skimmed, path: research/sources/vpin-flow-toxicity.yaml, evidence_classification: primary_academic_backlog}
+  - {id: cont-order-book-impact, category: execution_microstructure, status: skimmed, path: research/sources/cont-order-book-impact.yaml, evidence_classification: primary_academic_backlog}
+  - {id: obizhaeva-wang-optimal-execution, category: execution_microstructure, status: skimmed, path: research/sources/obizhaeva-wang-optimal-execution.yaml, evidence_classification: primary_academic_backlog}
+  - {id: gatheral-no-dynamic-arbitrage, category: execution_microstructure, status: skimmed, path: research/sources/gatheral-no-dynamic-arbitrage.yaml, evidence_classification: primary_academic_backlog}
+  - {id: cartea-algorithmic-trading, category: execution_microstructure, status: skimmed, path: research/sources/cartea-algorithmic-trading.yaml, evidence_classification: publisher_backlog}
+  - {id: cme-futures-roll, category: trend_futures, status: skimmed, path: research/sources/cme-futures-roll.yaml, evidence_classification: official_provider_backlog}
+  - {id: databento-continuous-symbology, category: trend_futures, status: skimmed, path: research/sources/databento-continuous-symbology.yaml, evidence_classification: official_provider_backlog}
+  - {id: binance-websocket-streams, category: crypto_perpetuals, status: skimmed, path: research/sources/binance-websocket-streams.yaml, evidence_classification: official_provider_backlog}
+  - {id: polymarket-market-channel, category: prediction_markets, status: skimmed, path: research/sources/polymarket-market-channel.yaml, evidence_classification: official_provider_backlog}
+  - {id: polymarket-resolution, category: prediction_markets, status: skimmed, path: research/sources/polymarket-resolution.yaml, evidence_classification: official_provider_backlog}
+  - {id: polymarket-fees, category: prediction_markets, status: skimmed, path: research/sources/polymarket-fees.yaml, evidence_classification: official_provider_backlog}
+  - {id: cftc-hypothetical-performance, category: investor_operator, status: skimmed, path: research/sources/cftc-hypothetical-performance.yaml, evidence_classification: official_regulatory_backlog}

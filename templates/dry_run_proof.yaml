@@ -1,0 +1,9 @@
+schema_version: 2
+id: locked-dry-run
+created_at: "2026-07-10T00:00:00Z"
+gateway: locked_public_core
+config_hash: "0000000000000000000000000000000000000000000000000000000000000000"
+intent_fingerprint: "0000000000000000000000000000000000000000000000000000000000000000"
+external_side_effects: false
+transport_available: false
+result: blocked

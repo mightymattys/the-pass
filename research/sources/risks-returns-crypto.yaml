@@ -1,0 +1,20 @@
+schema_version: 2
+id: risks-returns-crypto
+type: academic
+category: crypto_perpetuals
+priority: P0
+status: reviewed
+url: https://www.nber.org/papers/w24877
+bibliography: "Liu and Tsyvinski. Risks and Returns of Cryptocurrency. NBER Working Paper 24877, 2018."
+claim: Crypto return behavior differs from stocks, currencies, and precious metals and includes crypto-specific momentum predictors.
+evidence: The NBER paper studies Bitcoin, Ripple, and Ethereum risk-return characteristics and predictors.
+limitations: Early-asset sample, market maturation, and publication effects make recency and OOS-after-publication essential.
+market_applicability: [crypto_spot, crypto_perpetuals]
+tradable_implication: Use crypto-specific baselines but demand recent locked OOS evidence.
+required_tests: [oos_after_publication, asset_breadth, fee_funding_stress]
+failure_modes: [early_sample_bias, survivorship, stale_edge]
+system_requirements: [recency_tags, publication_date_holdout]
+notes_owner: head_researcher
+review_date: "2026-07-10"
+evidence_classification: institutional_working_paper
+license_note: NBER abstract and paper metadata reviewed; no redistribution.

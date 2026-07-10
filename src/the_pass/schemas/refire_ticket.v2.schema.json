@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://the-pass.dev/schemas/refire_ticket.v2.schema.json",
+  "title": "RefireTicket",
+  "type": "object",
+  "required": ["schema_version", "id", "created_at", "source_finding", "package", "target_gate", "scope", "fix_plan", "result"],
+  "properties": {
+    "schema_version": { "const": 2 },
+    "id": { "type": "string", "minLength": 1 },
+    "created_at": { "type": "string", "format": "date-time" },
+    "source_finding": { "type": "string", "minLength": 1 },
+    "package": { "type": "string", "minLength": 1 },
+    "target_gate": { "type": "string", "pattern": "^[a-z][a-z0-9_]{1,63}$" },
+    "scope": {
+      "type": "object",
+      "required": ["allowed_paths", "blocked_paths"],
+      "properties": {
+        "allowed_paths": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+        "blocked_paths": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } }
+      }
+    },
+    "fix_plan": {
+      "type": "object",
+      "required": ["issue", "intended_change", "verification_commands"],
+      "properties": {
+        "issue": { "type": "string", "minLength": 1 },
+        "intended_change": { "type": "string", "minLength": 1 },
+        "verification_commands": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } }
+      }
+    },
+    "result": {
+      "type": "object",
+      "required": ["status", "superseding_package", "evidence"],
+      "properties": {
+        "status": { "enum": ["fixed", "still_blocked"] },
+        "superseding_package": { "type": "string" },
+        "evidence": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "result": { "properties": { "status": { "const": "fixed" } } } } },
+      "then": { "properties": { "result": { "properties": { "evidence": { "minItems": 1 } } } } }
+    }
+  ],
+  "additionalProperties": true
+}

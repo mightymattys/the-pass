@@ -1,0 +1,39 @@
+schema_version: 2
+id: futures_diversified_trend_v1
+name: Diversified listed-futures trend baseline
+status: research
+owner: head_researcher
+created_at: "2026-07-10"
+market: {asset_class: listed_futures, venues: [licensed_provider], instruments: [six_or_more_across_three_sectors], timeframes: [1d]}
+edge:
+  primary_family: momentum
+  secondary_tags: [trend, diversified, futures]
+  thesis: A diversified volatility-scaled futures trend baseline may earn persistent returns across instruments and regimes after roll and trading costs.
+  why_now: Long-horizon trend is a documented benchmark against which more complex futures ideas should be judged.
+  expected_failure_modes: [roll_bias, concentration, whipsaw, reconstructed_history_bias]
+data:
+  required_sources: [licensed_futures_history]
+  required_fields: [contract_id, event_time, ohlcv, tick_size, multiplier, expiry, volume, open_interest]
+  minimum_history: 10 years daily or 3 years intraday per instrument
+  manifest_path: pending_D1
+signal:
+  inputs: [continuous_returns, realized_volatility]
+  transforms: [multi_horizon_trend, volatility_scale, sector_cap]
+  decision_time_policy: Signal on derived continuous series; execute only in the mapped actual contract next session.
+  lookahead_controls: [point_in_time_roll, no_future_volume, fixed_roll_policy]
+execution: {order_type: market, fill_model: next_session_quote_or_conservative_bar, latency_assumption_ms: 1000, fee_model: exchange_broker_and_roll, slippage_model: tick_spread_volume_and_roll}
+risk: {sizing_rule: volatility_targeted_sector_capped_virtual, max_exposure: one_x_effective, max_drawdown: risk_officer_gate, kill_switches: [roll_mapping_error, concentration_breach, data_gap]}
+validation:
+  train_test_split: Anchored walk-forward with locked final period.
+  holdout_policy: Latest 20 percent remains untouched until candidate review.
+  null_baselines: [seeded_random, equal_weight_buy_and_hold]
+  parameter_sweeps: [{lookback_months: [1, 3, 6, 12], rebalance: [daily, weekly]}]
+  required_metrics: [portfolio_net_sharpe, max_drawdown, instrument_contribution, turnover, pbo, dsr_or_psr]
+gates:
+  research_gate: [six_instruments_three_sectors, oos_net_sharpe_at_least_0_7, max_instrument_contribution_40_percent]
+  paper_gate: [60_trading_days_or_30_trades_whichever_later]
+  live_gate: [explicit_human_approval]
+done_when: [licensed manifest exists, roll and contribution reports reproduce]
+kill_when: [roll_policy_drives_edge, one_instrument_dominates, costs_remove_edge]
+notes: Public fixtures can test code but cannot support promotion.
+

@@ -1,0 +1,61 @@
+{
+  "created_at": "2026-07-10T00:00:00Z",
+  "scenarios": [
+    {
+      "net_pnl": 20.8965160125,
+      "pass": true,
+      "scenario": "fees_x1_5"
+    },
+    {
+      "net_pnl": 20.896510675,
+      "pass": true,
+      "scenario": "slippage_x2"
+    },
+    {
+      "net_pnl": 18.953198175,
+      "pass": true,
+      "scenario": "latency_x2"
+    },
+    {
+      "net_pnl": 18.896510675,
+      "pass": true,
+      "scenario": "depth_x0_5"
+    },
+    {
+      "net_pnl": 16.669760675,
+      "pass": true,
+      "scenario": "depth_x0_25"
+    },
+    {
+      "net_pnl": 17.009885675,
+      "pass": true,
+      "scenario": "maker_fill_probability_x0_5"
+    },
+    {
+      "net_pnl": 21.009885675,
+      "pass": true,
+      "scenario": "funding_worst_decile"
+    },
+    {
+      "net_pnl": 11.009885675,
+      "pass": true,
+      "scenario": "exchange_outage"
+    },
+    {
+      "net_pnl": 11.009885675,
+      "pass": true,
+      "scenario": "missing_interval"
+    },
+    {
+      "net_pnl": -8.990114325,
+      "pass": false,
+      "scenario": "correlated_gap"
+    },
+    {
+      "net_pnl": -18.990114325,
+      "pass": false,
+      "scenario": "forced_deleverage"
+    }
+  ],
+  "schema_version": 1
+}

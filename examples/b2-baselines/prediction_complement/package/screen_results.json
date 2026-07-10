@@ -1,0 +1,88 @@
+[
+  {
+    "opportunities": [
+      {
+        "ask_sum": "0.99",
+        "gross_edge": "0.01",
+        "index": 0
+      },
+      {
+        "ask_sum": "0.99",
+        "gross_edge": "0.01",
+        "index": 2
+      },
+      {
+        "ask_sum": "0.98",
+        "gross_edge": "0.02",
+        "index": 6
+      },
+      {
+        "ask_sum": "0.97",
+        "gross_edge": "0.03",
+        "index": 10
+      },
+      {
+        "ask_sum": "0.99",
+        "gross_edge": "0.01",
+        "index": 11
+      },
+      {
+        "ask_sum": "0.98",
+        "gross_edge": "0.02",
+        "index": 15
+      },
+      {
+        "ask_sum": "0.99",
+        "gross_edge": "0.01",
+        "index": 20
+      },
+      {
+        "ask_sum": "0.99",
+        "gross_edge": "0.01",
+        "index": 22
+      },
+      {
+        "ask_sum": "0.98",
+        "gross_edge": "0.02",
+        "index": 26
+      },
+      {
+        "ask_sum": "0.97",
+        "gross_edge": "0.03",
+        "index": 30
+      },
+      {
+        "ask_sum": "0.99",
+        "gross_edge": "0.01",
+        "index": 31
+      },
+      {
+        "ask_sum": "0.98",
+        "gross_edge": "0.02",
+        "index": 35
+      },
+      {
+        "ask_sum": "0.99",
+        "gross_edge": "0.01",
+        "index": 40
+      },
+      {
+        "ask_sum": "0.99",
+        "gross_edge": "0.01",
+        "index": 42
+      },
+      {
+        "ask_sum": "0.98",
+        "gross_edge": "0.02",
+        "index": 46
+      }
+    ],
+    "parameters": {
+      "gross_edge_threshold": "0.00"
+    },
+    "snapshots": 48,
+    "status": "diagnostic_only",
+    "strategy_id": "prediction_market_complement_or_fair_value_v1",
+    "variant_id": 0
+  }
+]

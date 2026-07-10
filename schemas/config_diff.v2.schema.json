@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://the-pass.dev/schemas/config_diff.v2.schema.json",
+  "title": "ConfigDiffV2",
+  "type": "object",
+  "required": ["schema_version", "id", "created_at", "before_hash", "after_hash", "changes", "review_required", "secrets_present"],
+  "properties": {
+    "schema_version": { "const": 2 },
+    "id": { "type": "string", "minLength": 1 },
+    "created_at": { "type": "string", "format": "date-time" },
+    "before_hash": { "type": "string", "pattern": "^[A-Fa-f0-9]{64}$" },
+    "after_hash": { "type": "string", "pattern": "^[A-Fa-f0-9]{64}$" },
+    "changes": { "type": "array", "items": { "type": "object" } },
+    "review_required": { "const": true },
+    "secrets_present": { "const": false }
+  },
+  "additionalProperties": false
+}

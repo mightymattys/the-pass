@@ -57,6 +57,7 @@ required before any artifact becomes promotion evidence.
 | `refire_ticket` | schema-backed |
 | `simmer_laps` | schema-backed |
 | `receipt_summary` | schema-backed |
+| `gate_decision` | schema-backed; required for any passed gate claim |
 
 ## Editable Paths
 
@@ -89,6 +90,7 @@ Skills must not write:
 - Null/random baseline exists or absence is justified.
 - Execution assumptions are explicit.
 - Safety flags say live trading is disabled and real order path is unavailable.
+- A separate `research_gate` decision is evaluated and recorded before `paper` can proceed.
 
 The `taste` exit state is the value written to `verdict_report.verdict`.
 `research_ready` is the `spec` command state; the matching StrategySpec state is `research`.

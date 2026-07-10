@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://the-pass.dev/schemas/adapter.v2.schema.json",
+  "title": "Adapter",
+  "type": "object",
+  "required": ["schema_version", "id", "name", "mode", "asset_classes", "providers", "provider_review", "engine", "policies", "safety"],
+  "properties": {
+    "schema_version": { "const": 2 },
+    "id": { "type": "string", "minLength": 1 },
+    "name": { "type": "string", "minLength": 1 },
+    "mode": { "type": "string", "enum": ["diagnostic", "research", "paper", "live-capable"] },
+    "asset_classes": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+    "owner": { "type": "string" },
+    "providers": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "type", "license", "fields", "limitations"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "type": { "type": "string", "minLength": 1 },
+          "license": { "type": "string", "minLength": 1 },
+          "url": { "type": "string" },
+          "fields": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+          "limitations": { "type": "array", "items": { "type": "string" } }
+        },
+        "additionalProperties": true
+      }
+    },
+    "provider_review": {
+      "type": "object",
+      "required": ["license", "redistribution", "authentication", "retention", "deterministic_replay", "limitations"],
+      "properties": {
+        "license": { "type": "string", "minLength": 1 },
+        "redistribution": { "type": "string", "minLength": 1 },
+        "authentication": { "type": "string", "minLength": 1 },
+        "retention": { "type": "string", "minLength": 1 },
+        "deterministic_replay": { "type": "boolean" },
+        "limitations": { "type": "array", "items": { "type": "string" } }
+      },
+      "additionalProperties": true
+    },
+    "engine": {
+      "type": "object",
+      "required": ["name", "role", "limitations"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "role": { "type": "string", "minLength": 1 },
+        "limitations": { "type": "array", "items": { "type": "string" } }
+      },
+      "additionalProperties": true
+    },
+    "policies": {
+      "type": "object",
+      "required": ["timestamp", "cost_model", "fill_model", "risk_model", "settlement"],
+      "properties": {
+        "timestamp": { "type": "string", "minLength": 1 },
+        "cost_model": { "type": "string", "minLength": 1 },
+        "fill_model": { "type": "string", "minLength": 1 },
+        "risk_model": { "type": "string", "minLength": 1 },
+        "settlement": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": true
+    },
+    "safety": {
+      "type": "object",
+      "required": ["live_trading_enabled", "real_order_path_available", "credentials_required"],
+      "properties": {
+        "live_trading_enabled": { "type": "boolean" },
+        "real_order_path_available": { "type": "boolean" },
+        "credentials_required": {
+          "type": "boolean",
+          "description": "Whether the adapter or strategy requires credentials."
+        }
+      },
+      "additionalProperties": false
+    },
+    "live_readiness": { "type": "object" }
+  },
+  "additionalProperties": true
+}

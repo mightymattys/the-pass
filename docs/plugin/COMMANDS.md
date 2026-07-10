@@ -55,12 +55,14 @@ The first concrete CLI commands are artifact validators:
 the-pass validate <artifact>
 the-pass validate-package <run-dir>
 the-pass validate <adapter.yaml> --type adapter
-the-pass receipts add <run-dir> --gate <gate-name> --ledger <path>
+the-pass receipts add <run-dir> --ledger <path>
+the-pass gate evaluate <run-dir> --gate <gate-name> --reviewer <reviewer> --output <decision>
+the-pass receipts add-decision <decision> --ledger <path>
 the-pass receipts verify --ledger <path>
 the-pass receipts
 ```
 
 They accept JSON or YAML, infer all core and workflow artifact types where possible, and
 return non-zero on missing or weak evidence. Receipt commands maintain an append-only,
-hash-chained JSONL ledger and verify referenced artifact fingerprints. The default gate
-for `receipts add` is `research_gate`.
+hash-chained JSONL ledger and verify referenced artifact fingerprints. Run receipts do not
+claim gate passage; only separately validated gate decisions can do that.

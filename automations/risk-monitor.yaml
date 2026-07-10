@@ -1,0 +1,13 @@
+schema_version: 2
+id: risk-monitor
+owner: risk_officer
+trigger: {schedule: "external-hourly"}
+command: risk_monitor
+inputs: {policy: config/risk-policies.v1.yaml}
+allowed_writes: [reports/automation]
+forbidden_actions: [gate_decision, live_transaction, credential_access]
+timeout_seconds: 300
+retry_policy: {max_attempts: 2, idempotent_only: true}
+alert_sink: local_incident_artifact
+freeze_procedure: freeze strategy on any policy breach
+enabled: true

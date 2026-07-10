@@ -1,0 +1,11 @@
+schema_version: 2
+id: ""
+created_at: ""
+topic: ""
+owner: ""
+objective: ""
+sources: []
+hypotheses: []
+evidence_gaps: []
+next_tests: []
+status: draft # draft|ready|blocked|closed

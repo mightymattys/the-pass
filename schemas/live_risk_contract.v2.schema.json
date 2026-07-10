@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://the-pass.dev/schemas/live_risk_contract.v2.schema.json",
+  "title": "LockedLiveRiskContractV2",
+  "type": "object",
+  "required": ["schema_version", "id", "created_at", "account_equity", "micro_notional_cap", "daily_loss_cap", "max_leverage", "freeze_conditions", "policy_hash", "locked"],
+  "properties": {
+    "schema_version": { "const": 2 },
+    "id": { "type": "string", "minLength": 1 },
+    "created_at": { "type": "string", "format": "date-time" },
+    "account_equity": { "type": "number", "exclusiveMinimum": 0 },
+    "micro_notional_cap": { "type": "number", "minimum": 0 },
+    "daily_loss_cap": { "type": "number", "minimum": 0 },
+    "max_leverage": { "type": "number", "minimum": 0, "maximum": 1 },
+    "freeze_conditions": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+    "policy_hash": { "type": "string", "pattern": "^[A-Fa-f0-9]{64}$" },
+    "locked": { "const": true }
+  },
+  "additionalProperties": false
+}

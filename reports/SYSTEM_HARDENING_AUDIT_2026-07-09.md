@@ -95,9 +95,9 @@ trading.
 - Public repository validator passes.
 - All 11 skills pass the canonical skill validator.
 - Plugin manifest passes the plugin validator.
-- All 18 artifact schemas pass Draft 2020-12 schema checks.
-- Thirty-three unit tests pass, including mutation tests for false links, duplicate artifacts,
-  unresolved blockers, invalid gates, ledger edits, and post-receipt artifact edits.
+- All registered v1/v2 artifact schemas pass Draft 2020-12 schema checks.
+- Ninety-two unit tests pass, including mutation tests for false links, duplicate artifacts,
+  unresolved blockers, chronology, false gate labels, ledger edits, and post-receipt artifact edits.
 - Both synthetic packages, all adapter descriptors, and the receipt CLI workflow pass.
 - GitHub Actions passes on Python 3.9 and 3.12 using Node 24-based action runtimes.
 

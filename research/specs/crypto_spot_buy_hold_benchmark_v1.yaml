@@ -1,0 +1,39 @@
+schema_version: 2
+id: crypto_spot_buy_hold_benchmark_v1
+name: Crypto spot buy-and-hold benchmark
+status: research
+owner: head_researcher
+created_at: "2026-07-10"
+market: {asset_class: crypto_spot, venues: [binance], instruments: [BTCUSDT, ETHUSDT], timeframes: [1h, 1d]}
+edge:
+  primary_family: benchmark
+  secondary_tags: [long_only, beta]
+  thesis: Passive spot exposure is the minimum benchmark that active crypto strategies must beat after incremental costs and risk.
+  why_now: Active signals are meaningless without a transparent market-beta comparator.
+  expected_failure_modes: [regime_drawdown, stablecoin_quote_risk, benchmark_cherry_pick]
+data:
+  required_sources: [binance_spot_public]
+  required_fields: [event_time, open, high, low, close, volume]
+  minimum_history: 24 months preferred
+  manifest_path: pending_D1
+signal:
+  inputs: [first_eligible_bar]
+  transforms: [enter_once_hold]
+  decision_time_policy: Enter on the next executable event after dataset start.
+  lookahead_controls: [no_terminal_price_use, fixed_universe]
+execution: {order_type: market, fill_model: next_opposite_quote_or_conservative_bar, latency_assumption_ms: 1000, fee_model: venue_taker_fee, slippage_model: spread_plus_depth_floor}
+risk: {sizing_rule: equal_virtual_notional, max_exposure: one_x_virtual_capital, max_drawdown: report_not_optimize, kill_switches: [data_gap, quote_asset_failure]}
+validation:
+  train_test_split: Benchmark has no fitted parameters; report common chronological windows.
+  holdout_policy: Same locked holdout as compared active strategies.
+  null_baselines: [cash]
+  parameter_sweeps: []
+  required_metrics: [total_return, volatility, sharpe, max_drawdown, turnover, expected_shortfall]
+gates:
+  research_gate: [valid_manifest, executable_entry_cost, complete_drawdown]
+  paper_gate: [benchmark_only]
+  live_gate: [forbidden_without_approval]
+done_when: [deterministic benchmark report exists for both instruments]
+kill_when: [dataset or quote semantics are unreliable]
+notes: Benchmark evidence is not a recommendation to hold crypto.
+

@@ -1,0 +1,21 @@
+schema_version: 2
+id: crypto-microstructure-review
+type: academic
+category: crypto_perpetuals
+priority: P1
+status: reviewed
+url: https://link.springer.com/article/10.1007/s10479-023-05627-5
+bibliography: "Almeida and Goncalves. Cryptocurrency Market Microstructure: A Systematic Literature Review. Annals of Operations Research 332, 2024."
+claim: Crypto investment evidence is inseparable from market efficiency, liquidity, fragmentation, and microstructure conditions.
+evidence: The systematic review uses a documented literature-selection process and synthesizes investor-oriented crypto microstructure research.
+limitations: The search window ends in 2021 and review-level evidence cannot replace current venue-specific books and trades.
+market_applicability: [crypto]
+tradable_implication: Require venue-specific timestamp, spread, depth, outage, and cross-venue robustness evidence.
+required_tests: [venue_split, liquidity_regime_split, outage_stress, cross_source_check]
+failure_modes: [single_venue_generalization, stale_literature, displayed_liquidity_as_fill]
+system_requirements: [venue-aware manifests, book archive, outage evidence]
+notes_owner: study_scout
+review_date: "2026-07-10"
+evidence_classification: systematic_review
+license_note: Publisher page/available article content reviewed; no redistribution.
+

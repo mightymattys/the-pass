@@ -1,0 +1,20 @@
+schema_version: 2
+id: oxfordstrat-opening-range
+type: strategy-review
+category: oxfordstrat
+priority: P1
+status: reviewed
+url: https://oxfordstrat.com/trading-strategies/opening-range-breakout/
+bibliography: "OxfordStrat. Opening Range Breakout, public strategy review citing Crabel (1990)."
+claim: A volatility-expansion rule can be specified through an opening stretch, time/target exits, ATR stop, and portfolio sizing.
+evidence: The page publishes rule definitions, parameter ranges, 42-futures scope, and zero/positive cost sensitivity cases.
+limitations: Secondary hypothetical backtest; source data and code were not independently reproduced.
+market_applicability: [futures]
+tradable_implication: Baseline hypothesis only; pessimistically resolve same-bar dual triggers and include costs.
+required_tests: [same_bar_ambiguity, stretch_sensitivity, fee_slippage_stress]
+failure_modes: [intrabar_lookahead, zero_cost_selection, parameter_zoo]
+system_requirements: [opening_session_data, bar_path_policy]
+notes_owner: head_researcher
+review_date: "2026-07-10"
+evidence_classification: secondary_strategy_review
+license_note: Public page reviewed; rules summarized, charts not redistributed.

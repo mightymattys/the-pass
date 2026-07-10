@@ -1,0 +1,13 @@
+schema_version: 2
+id: drift-report
+owner: stats_auditor
+trigger: {schedule: "external-daily"}
+command: drift_report
+inputs: {paper_root: reports/p4}
+allowed_writes: [reports/automation]
+forbidden_actions: [gate_decision, live_transaction, credential_access]
+timeout_seconds: 300
+retry_policy: {max_attempts: 2, idempotent_only: true}
+alert_sink: local_incident_artifact
+freeze_procedure: freeze when divergence exceeds policy
+enabled: true

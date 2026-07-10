@@ -1,0 +1,17 @@
+schema_version: 2
+id: currency-momentum
+type: academic
+category: trend_futures
+priority: P2
+status: skimmed
+url: https://doi.org/10.1016/j.jfineco.2010.07.010
+bibliography: "Menkhoff, L. et al. Currency Momentum Strategies."
+claim: Currency momentum is a useful cross-market comparator for trend hypotheses.
+evidence: Bibliographic record identified; complete empirical review remains pending.
+limitations: FX spot conventions and costs differ from listed futures.
+market_applicability: [fx, futures]
+required_tests: [venue_specific_costs, carry_control]
+failure_modes: [carry_confound, stale_quotes]
+system_requirements: [fx_data_contract, cost_model]
+evidence_classification: primary_academic_backlog
+license_note: Bibliographic metadata only; copyrighted text is not redistributed.

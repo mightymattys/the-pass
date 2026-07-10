@@ -1,0 +1,29 @@
+policy_version: gate-policy-v1
+gates:
+  research_gate:
+    requires:
+      - v2_run_package
+      - paper_candidate_verdict
+      - passed_independent_findings
+      - research_or_paper_adapter
+      - reviewed_source_notes
+      - no_open_blockers
+  paper_gate:
+    requires:
+      - passed_research_gate_for_exact_package
+      - paper_ready_plan
+      - observation_manifest
+      - risk_review_candidate_divergence_report
+      - completed_observation_minimums
+      - no_blocking_divergence
+  risk_review:
+    requires:
+      - passed_paper_gate_for_exact_package
+      - risk_report
+      - approval_pack
+      - config_diff
+      - monitoring_rollback_and_incident_plans
+  live_gate:
+    locked: true
+    reason: Explicit human approval and a venue-specific live-capability ADR are required.
+

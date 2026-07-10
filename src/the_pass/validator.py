@@ -16,25 +16,53 @@ from jsonschema.exceptions import ValidationError
 
 from .adapter_contract import validate_adapter_contract
 
+_VERSIONED_ARTIFACTS = (
+    "adapter",
+    "source_note",
+    "hypothesis",
+    "strategy_spec",
+    "data_manifest",
+    "run_receipt",
+    "metrics_report",
+    "cost_waterfall",
+    "verdict_report",
+    "screen_report",
+    "findings",
+    "refire_ticket",
+    "simmer_laps",
+    "paper_plan",
+    "observation_manifest",
+    "divergence_report",
+    "approval_pack",
+    "receipt_summary",
+)
+
+ARTIFACT_SCHEMAS = {
+    artifact_type: {
+        1: f"{artifact_type}.schema.json",
+        2: f"{artifact_type}.v2.schema.json",
+    }
+    for artifact_type in _VERSIONED_ARTIFACTS
+}
+ARTIFACT_SCHEMAS["gate_decision"] = {2: "gate_decision.v2.schema.json"}
+ARTIFACT_SCHEMAS["research_brief"] = {2: "research_brief.v2.schema.json"}
+ARTIFACT_SCHEMAS["audit_report"] = {2: "audit_report.v2.schema.json"}
+ARTIFACT_SCHEMAS["canonical_event"] = {2: "canonical_event.v2.schema.json"}
+ARTIFACT_SCHEMAS["instrument_registry"] = {2: "instrument_registry.v2.schema.json"}
+ARTIFACT_SCHEMAS["quality_report"] = {2: "quality_report.v2.schema.json"}
+ARTIFACT_SCHEMAS["feature_manifest"] = {2: "feature_manifest.v2.schema.json"}
+ARTIFACT_SCHEMAS["risk_policy"] = {2: "risk_policy.v2.schema.json"}
+ARTIFACT_SCHEMAS["risk_report"] = {2: "risk_report.v2.schema.json"}
+ARTIFACT_SCHEMAS["automation_spec"] = {2: "automation_spec.v2.schema.json"}
+ARTIFACT_SCHEMAS["automation_run"] = {2: "automation_run.v2.schema.json"}
+ARTIFACT_SCHEMAS["incident_report"] = {2: "incident_report.v2.schema.json"}
+ARTIFACT_SCHEMAS["human_decision"] = {2: "human_decision.v2.schema.json"}
+ARTIFACT_SCHEMAS["config_diff"] = {2: "config_diff.v2.schema.json"}
+ARTIFACT_SCHEMAS["dry_run_proof"] = {2: "dry_run_proof.v2.schema.json"}
+ARTIFACT_SCHEMAS["live_risk_contract"] = {2: "live_risk_contract.v2.schema.json"}
 ARTIFACT_TYPES = {
-    "adapter": "adapter.schema.json",
-    "source_note": "source_note.schema.json",
-    "hypothesis": "hypothesis.schema.json",
-    "strategy_spec": "strategy_spec.schema.json",
-    "data_manifest": "data_manifest.schema.json",
-    "run_receipt": "run_receipt.schema.json",
-    "metrics_report": "metrics_report.schema.json",
-    "cost_waterfall": "cost_waterfall.schema.json",
-    "verdict_report": "verdict_report.schema.json",
-    "screen_report": "screen_report.schema.json",
-    "findings": "findings.schema.json",
-    "refire_ticket": "refire_ticket.schema.json",
-    "simmer_laps": "simmer_laps.schema.json",
-    "paper_plan": "paper_plan.schema.json",
-    "observation_manifest": "observation_manifest.schema.json",
-    "divergence_report": "divergence_report.schema.json",
-    "approval_pack": "approval_pack.schema.json",
-    "receipt_summary": "receipt_summary.schema.json",
+    artifact_type: versions[max(versions)]
+    for artifact_type, versions in ARTIFACT_SCHEMAS.items()
 }
 
 PACKAGE_CORE_ARTIFACTS = (
@@ -146,10 +174,16 @@ def load_document(path: Path) -> Any:
     raise ArtifactValidationError(f"unsupported artifact extension for {path}")
 
 
-def load_schema(schema_dir: Path, artifact_type: str) -> dict[str, Any]:
-    schema_name = ARTIFACT_TYPES.get(artifact_type)
-    if schema_name is None:
+def load_schema(schema_dir: Path, artifact_type: str, schema_version: int) -> dict[str, Any]:
+    versions = ARTIFACT_SCHEMAS.get(artifact_type)
+    if versions is None:
         raise ArtifactValidationError(f"unknown artifact type: {artifact_type}")
+    schema_name = versions.get(schema_version)
+    if schema_name is None:
+        supported = ", ".join(str(version) for version in sorted(versions))
+        raise ArtifactValidationError(
+            f"unsupported schema_version {schema_version} for {artifact_type}; supported: {supported}"
+        )
     schema_path = schema_dir / schema_name
     if not schema_path.exists():
         raise ArtifactValidationError(f"missing schema: {schema_path}")
@@ -206,6 +240,38 @@ def detect_artifact_type(path: Path, document: Any) -> str | None:
         return "approval_pack"
     if {"ledger", "filters", "summary", "packages", "status"} <= keys:
         return "receipt_summary"
+    if {"gate_id", "gate_result", "policy_version", "policy_hash", "package_id", "evidence", "reviewer"} <= keys:
+        return "gate_decision"
+    if {"topic", "objective", "sources", "hypotheses", "evidence_gaps", "next_tests", "status"} <= keys:
+        return "research_brief"
+    if {"target", "reviewer", "findings", "verdict", "evidence", "limitations"} <= keys:
+        return "audit_report"
+    if {"source", "venue", "asset_class", "instrument_id", "event_type", "event_time_ns", "receive_time_ns", "ingest_id", "payload"} <= keys:
+        return "canonical_event"
+    if {"registry_id", "instruments", "fingerprint"} <= keys:
+        return "instrument_registry"
+    if {"dataset_id", "checks", "summary", "quarantine", "promotion_impact"} <= keys:
+        return "quality_report"
+    if {"dataset_fingerprint", "code_version", "config_hash", "features", "output_fingerprint"} <= keys:
+        return "feature_manifest"
+    if {"policy_id", "policy_version", "asset_class", "sizing", "limits", "stress", "policy_hash"} <= keys:
+        return "risk_policy"
+    if {"package_id", "policy_id", "policy_hash", "drawdown_distribution", "expected_shortfall", "scenario_losses", "verdict"} <= keys:
+        return "risk_report"
+    if {"owner", "trigger", "command", "inputs", "allowed_writes", "forbidden_actions", "timeout_seconds", "retry_policy", "alert_sink", "freeze_procedure"} <= keys:
+        return "automation_spec"
+    if {"automation_spec", "idempotency_key", "started_at", "finished_at", "attempts", "status", "outputs", "receipt"} <= keys:
+        return "automation_run"
+    if {"severity", "detected_at", "source", "summary", "timeline", "impact", "evidence", "actions", "status"} <= keys:
+        return "incident_report"
+    if {"venue", "account_scope", "adapter", "config_hash", "decision", "accepted_live_capability_adr", "grants_live_approval"} <= keys:
+        return "human_decision"
+    if {"before_hash", "after_hash", "changes", "review_required", "secrets_present"} <= keys:
+        return "config_diff"
+    if {"gateway", "config_hash", "intent_fingerprint", "external_side_effects", "transport_available", "result"} <= keys:
+        return "dry_run_proof"
+    if {"account_equity", "micro_notional_cap", "daily_loss_cap", "max_leverage", "freeze_conditions", "policy_hash"} <= keys:
+        return "live_risk_contract"
     return None
 
 
@@ -213,6 +279,26 @@ def validate_workflow_artifact(artifact_type: str, document: dict[str, Any]) -> 
     """Check workflow invariants that are awkward or unclear in JSON Schema."""
 
     issues: list[ValidationIssue] = []
+
+    if artifact_type == "metrics_report" and document.get("schema_version") == 2:
+        reasons = document["not_applicable_reasons"]
+        for group_name in ("gross_metrics", "net_metrics"):
+            for metric_name, value in document[group_name].items():
+                reason_key = f"{group_name}.{metric_name}"
+                if value is None and not reasons.get(reason_key):
+                    issues.append(
+                        ValidationIssue(
+                            f"$.not_applicable_reasons.{reason_key}",
+                            "must explain every null v2 metric",
+                        )
+                    )
+                if value is not None and not is_finite_number(value):
+                    issues.append(
+                        ValidationIssue(
+                            f"$.{group_name}.{metric_name}",
+                            "must be a finite number or null",
+                        )
+                    )
 
     if artifact_type == "screen_report":
         decision = document["decision"]
@@ -238,7 +324,7 @@ def validate_workflow_artifact(artifact_type: str, document: dict[str, Any]) -> 
         movement = [lap["moved_gate"] for lap in document["laps"]]
         if document["final"]["status"] == "passed" and not any(movement):
             issues.append(ValidationIssue("$.final.status", "cannot pass when no lap moved the target gate"))
-        if any(not movement[index] and not movement[index + 1] for index in range(len(movement) - 2)):
+        if any(not movement[index] and not movement[index + 1] for index in range(len(movement) - 1)):
             issues.append(ValidationIssue("$.laps", "must stop after two consecutive no-progress laps"))
 
     if artifact_type == "paper_plan":
@@ -321,8 +407,16 @@ def validate_artifact(
             detected_type,
         )
 
+    schema_version = document.get("schema_version")
+    if not isinstance(schema_version, int) or isinstance(schema_version, bool):
+        return ValidationResult(
+            False,
+            [ValidationIssue("$.schema_version", "must be an integer")],
+            detected_type,
+        )
+
     try:
-        schema = load_schema(schema_dir, detected_type)
+        schema = load_schema(schema_dir, detected_type, schema_version)
     except ArtifactValidationError as exc:
         return ValidationResult(False, [ValidationIssue(str(artifact_path), str(exc))], detected_type)
 
@@ -335,6 +429,7 @@ def validate_artifact(
             for issue in validate_adapter_contract(document):
                 issues.append(ValidationIssue(issue.path, issue.message, issue.severity))
         elif detected_type in {
+            "metrics_report",
             "screen_report",
             "findings",
             "refire_ticket",
@@ -392,6 +487,32 @@ def require_false_flag(document: dict[str, Any], section: str, field: str, issue
     section_value = document.get(section)
     if not isinstance(section_value, dict) or section_value.get(field) is not False:
         issues.append(ValidationIssue(f"$.{section}.{field}", "must be false"))
+
+
+def parse_timestamp(value: Any) -> datetime | None:
+    if not isinstance(value, str) or RFC3339_DATETIME.fullmatch(value) is None:
+        return None
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00").replace("z", "+00:00"))
+    except ValueError:
+        return None
+
+
+def require_ordered_interval(
+    start: Any,
+    end: Any,
+    path: str,
+    issues: list[ValidationIssue],
+) -> tuple[datetime, datetime] | None:
+    parsed_start = parse_timestamp(start)
+    parsed_end = parse_timestamp(end)
+    if parsed_start is None or parsed_end is None:
+        issues.append(ValidationIssue(path, "must contain RFC 3339 start and end timestamps"))
+        return None
+    if parsed_start >= parsed_end:
+        issues.append(ValidationIssue(path, "start must be earlier than end"))
+        return None
+    return parsed_start, parsed_end
 
 
 def validate_package(package_dir: Path, *, schema_dir: Path | None = None) -> ValidationResult:
@@ -457,6 +578,30 @@ def validate_package(package_dir: Path, *, schema_dir: Path | None = None) -> Va
     costs = documents["cost_waterfall"]
     data_manifest = documents["data_manifest"]
     verdict = documents["verdict_report"]
+
+    sample = metrics.get("sample", {})
+    sample_interval = require_ordered_interval(
+        sample.get("start_time") if isinstance(sample, dict) else None,
+        sample.get("end_time") if isinstance(sample, dict) else None,
+        "$.metrics_report.sample",
+        issues,
+    )
+    coverage = data_manifest.get("coverage", {})
+    coverage_interval = require_ordered_interval(
+        coverage.get("start_time") if isinstance(coverage, dict) else None,
+        coverage.get("end_time") if isinstance(coverage, dict) else None,
+        "$.data_manifest.coverage",
+        issues,
+    )
+    if sample_interval and coverage_interval and (
+        sample_interval[0] < coverage_interval[0] or sample_interval[1] > coverage_interval[1]
+    ):
+        issues.append(
+            ValidationIssue(
+                "$.metrics_report.sample",
+                "sample window must be contained by data manifest coverage",
+            )
+        )
 
     require_exact_artifact_link(
         package_dir,
@@ -557,6 +702,18 @@ def validate_package(package_dir: Path, *, schema_dir: Path | None = None) -> Va
             )
 
     if verdict.get("verdict") == "paper_candidate":
+        non_v2 = sorted(
+            artifact_type
+            for artifact_type in PACKAGE_CORE_ARTIFACTS
+            if documents[artifact_type].get("schema_version") != 2
+        )
+        if non_v2:
+            issues.append(
+                ValidationIssue(
+                    "$.schema_version",
+                    "paper_candidate requires v2 core artifacts: " + ", ".join(non_v2),
+                )
+            )
         if strategy_spec.get("status") not in {"research", "paper_candidate"}:
             issues.append(
                 ValidationIssue(
@@ -614,7 +771,7 @@ def validate_package(package_dir: Path, *, schema_dir: Path | None = None) -> Va
                     "paper_candidate requires non-negative numeric fees, spread, and slippage",
                 )
             )
-        else:
+        elif is_finite_number(costs.get("gross_pnl")) and is_finite_number(costs.get("net_pnl")):
             numeric_costs = [value for value in cost_components.values() if is_finite_number(value)]
             expected_net = costs["gross_pnl"] - sum(numeric_costs)
             if not math.isclose(costs["net_pnl"], expected_net, rel_tol=1e-9, abs_tol=1e-12):
@@ -638,13 +795,26 @@ def validate_package(package_dir: Path, *, schema_dir: Path | None = None) -> Va
                     "paper_candidate requires explicit fee, fill, latency, and depth assumptions",
                 )
             )
+        required_promotion_metrics = (
+            "pnl",
+            "total_return",
+            "sharpe",
+            "max_drawdown",
+            "turnover",
+            "expectancy",
+        )
         for metric_group in ("gross_metrics", "net_metrics"):
             values = metrics.get(metric_group, {})
-            if not isinstance(values, dict) or not any(is_finite_number(value) for value in values.values()):
+            missing_metrics = [
+                metric_name
+                for metric_name in required_promotion_metrics
+                if not isinstance(values, dict) or not is_finite_number(values.get(metric_name))
+            ]
+            if missing_metrics:
                 issues.append(
                     ValidationIssue(
                         f"$.metrics_report.{metric_group}",
-                        "paper_candidate requires at least one calculated metric",
+                        "paper_candidate requires numeric " + ", ".join(missing_metrics),
                     )
                 )
         robustness = metrics.get("robustness", {})
@@ -663,7 +833,6 @@ def validate_package(package_dir: Path, *, schema_dir: Path | None = None) -> Va
                     "paper_candidate requires a null or random baseline result",
                 )
             )
-        sample = metrics.get("sample", {})
         trades = sample.get("trades") if isinstance(sample, dict) else None
         if not isinstance(trades, int) or isinstance(trades, bool) or trades < 1:
             issues.append(ValidationIssue("$.metrics_report.sample.trades", "paper_candidate requires at least one trade"))
@@ -679,6 +848,22 @@ def validate_package(package_dir: Path, *, schema_dir: Path | None = None) -> Va
                     "paper_candidate requires an explicit out-of-sample or walk-forward holdout window",
                 )
             )
+        else:
+            holdout_interval = require_ordered_interval(
+                sample.get("holdout_start_time"),
+                sample.get("holdout_end_time"),
+                "$.metrics_report.sample.holdout",
+                issues,
+            )
+            if sample_interval and holdout_interval and (
+                holdout_interval[0] < sample_interval[0] or holdout_interval[1] > sample_interval[1]
+            ):
+                issues.append(
+                    ValidationIssue(
+                        "$.metrics_report.sample.holdout",
+                        "holdout window must be contained by the sample window",
+                    )
+                )
         if not isinstance(robustness, dict) or not any(
             is_finite_number(robustness.get(field)) for field in ("dsr_or_psr", "pbo")
         ):
@@ -735,8 +920,79 @@ def validate_package(package_dir: Path, *, schema_dir: Path | None = None) -> Va
                     "paper_candidate requires explicit train/test split and holdout policy",
                 )
             )
+        windows = validation_plan.get("windows") if isinstance(validation_plan, dict) else None
+        if not isinstance(windows, dict):
+            issues.append(
+                ValidationIssue(
+                    "$.strategy_spec.validation.windows",
+                    "paper_candidate requires explicit train, validation, and holdout windows",
+                )
+            )
+        else:
+            train = require_ordered_interval(
+                windows.get("train_start"), windows.get("train_end"), "$.strategy_spec.validation.windows.train", issues
+            )
+            validation = require_ordered_interval(
+                windows.get("validation_start"),
+                windows.get("validation_end"),
+                "$.strategy_spec.validation.windows.validation",
+                issues,
+            )
+            holdout = require_ordered_interval(
+                windows.get("holdout_start"),
+                windows.get("holdout_end"),
+                "$.strategy_spec.validation.windows.holdout",
+                issues,
+            )
+            if train and validation and holdout and not (
+                train[1] <= validation[0] and validation[1] <= holdout[0]
+            ):
+                issues.append(
+                    ValidationIssue(
+                        "$.strategy_spec.validation.windows",
+                        "train, validation, and holdout windows must be ordered and non-overlapping",
+                    )
+                )
+            if holdout and (
+                holdout[0] != parse_timestamp(sample.get("holdout_start_time"))
+                or holdout[1] != parse_timestamp(sample.get("holdout_end_time"))
+            ):
+                issues.append(
+                    ValidationIssue(
+                        "$.strategy_spec.validation.windows.holdout",
+                        "must match the metrics holdout window",
+                    )
+                )
         fingerprint = data_manifest.get("fingerprint", {})
         if fingerprint.get("method") != "sha256" or not isinstance(fingerprint.get("value"), str):
             issues.append(ValidationIssue("$.data_manifest.fingerprint", "paper_candidate requires a SHA-256 fingerprint"))
+
+        for metric_field, cost_field in (("pnl", "gross_pnl"),):
+            if (
+                is_finite_number(metrics.get("gross_metrics", {}).get(metric_field))
+                and is_finite_number(costs.get(cost_field))
+                and not math.isclose(
+                metrics["gross_metrics"][metric_field], costs.get(cost_field), rel_tol=1e-9, abs_tol=1e-12
+                )
+            ):
+                issues.append(
+                    ValidationIssue(
+                        "$.metrics_report.gross_metrics.pnl",
+                        "must equal cost_waterfall.gross_pnl",
+                    )
+                )
+        if (
+            is_finite_number(metrics.get("net_metrics", {}).get("pnl"))
+            and is_finite_number(costs.get("net_pnl"))
+            and not math.isclose(
+                metrics["net_metrics"]["pnl"], costs.get("net_pnl"), rel_tol=1e-9, abs_tol=1e-12
+            )
+        ):
+            issues.append(
+                ValidationIssue(
+                    "$.metrics_report.net_metrics.pnl",
+                    "must equal cost_waterfall.net_pnl",
+                )
+            )
 
     return ValidationResult(not issues, issues, "package")

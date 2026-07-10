@@ -1,0 +1,20 @@
+schema_version: 2
+id: oxfordstrat-donchian
+type: strategy-review
+category: oxfordstrat
+priority: P1
+status: reviewed
+url: https://oxfordstrat.com/trading-strategies/donchian-channel-2/
+bibliography: "OxfordStrat. Donchian Channel Entry and Exit 2, public strategy review."
+claim: Channel breakout, ATR stop, fixed-fraction sizing, and diversified futures scope form a reproducible trend baseline family.
+evidence: The page specifies channel entry, ATR stop, parameter sensitivity, portfolio scope, and cost cases.
+limitations: Secondary hypothetical evidence with no independent data/code reproduction.
+market_applicability: [futures, crypto]
+tradable_implication: Compare exotic strategies against a precommitted Donchian baseline with roll and cost controls.
+required_tests: [lookback_sensitivity, roll_costs, cross_sector_contribution]
+failure_modes: [single_market_overclaim, back_adjusted_execution, zero_cost_case]
+system_requirements: [volume_roll_policy, futures_registry, trend_baseline]
+notes_owner: head_researcher
+review_date: "2026-07-10"
+evidence_classification: secondary_strategy_review
+license_note: Public page reviewed; no chart or code redistribution.

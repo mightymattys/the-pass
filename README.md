@@ -47,12 +47,19 @@ See [docs/plugin/COMMANDS.md](docs/plugin/COMMANDS.md) for the full command cont
 ## Project Map
 
 - [Main plan](docs/research/the-pass-plan.md)
+- [Trading roadmap execution plan](docs/implementation/TRADING_ROADMAP_EXECUTION_PLAN.md)
+- [Machine-readable roadmap status](docs/implementation/roadmap-status.yaml)
 - [Implementation build plan](docs/implementation/BUILD_PLAN.md)
 - [Completion audit](docs/implementation/COMPLETION_AUDIT.md)
+- [Final implementation audit](reports/FINAL_IMPLEMENTATION_AUDIT_2026-07-10.md)
 - [Artifact lifecycle](docs/implementation/ARTIFACT_LIFECYCLE.md)
 - [Skill contracts](docs/implementation/SKILL_CONTRACTS.md)
 - [Validation and safety](docs/implementation/VALIDATION_AND_SAFETY.md)
 - [Adapter contract](docs/adapter-contract.md)
+- [Canonical data foundation](docs/adapters/DATA_FOUNDATION.md)
+- [Screen and backtest harness](docs/implementation/BACKTEST_HARNESS.md)
+- [Robustness, risk, and audit](docs/implementation/ROBUSTNESS_RISK_AUDIT.md)
+- [Paper, automation, and reporting](docs/implementation/PAPER_AUTOMATION_REPORTING.md)
 - [Adapter examples](examples/adapters/)
 - [ADR decisions](docs/adr/)
 - [Artifact schemas](schemas/)
@@ -67,7 +74,8 @@ The public framework is operational and ready for real research packages:
 
 - Plugin manifest and skills are present.
 - Core ADRs are accepted.
-- All 18 artifact templates have JSON Schemas and CLI validation.
+- All artifact templates have versioned JSON Schemas and CLI validation, including separate
+  artifact-backed gate decisions.
 - Public safety validation and CI are configured.
 - Synthetic golden path and killed baseline examples exercise the first end-to-end workflow target.
 - Adapter descriptors cover a dummy adapter, a concrete public crypto data adapter, and generic
@@ -75,10 +83,17 @@ The public framework is operational and ready for real research packages:
 - Package links must resolve to the exact canonical artifacts, and receipt verification checks
   both the hash chain and the current artifact bytes.
 
+The broader trading roadmap is tracked separately and must not be described as complete until
+its evidence gates pass.
+
+The H0, R0, D1, B2, and V3 framework gates have passed. P4 paper, automation, incident, and
+static-reporting capability is implemented, but `paper_gate` is blocked pending a real
+elapsed observation window. No strategy has been promoted.
+
 Run local validation:
 
 ```bash
-python3 -m pip install -e .
+python3 -m pip install -e ".[data,research]"
 python3 scripts/validate_public_repo.py
 python3 -m unittest discover -s tests
 the-pass validate-package examples/synthetic-breakout/package

@@ -1,0 +1,20 @@
+schema_version: 2
+id: carry-cross-asset
+type: academic
+category: trend_futures
+priority: P1
+status: reviewed
+url: https://research.cbs.dk/files/57294842/lasse_heje_pedersen_et_al_carry_acceptedmanuscript.pdf
+bibliography: "Koijen, Moskowitz, Pedersen, and Vrugt. Carry. Journal of Financial Economics 127(2), 2018."
+claim: Carry can be defined consistently across asset classes and has common return structure and crash exposure.
+evidence: The accepted manuscript studies carry across global asset classes and reports commonality in returns.
+limitations: Portfolio construction, financing, rolls, and tail exposure require market-specific implementation.
+market_applicability: [futures, currencies, crypto_perpetuals]
+tradable_implication: Treat funding/basis as carry only after separating directional beta and stressed financing.
+required_tests: [beta_decomposition, funding_sign_stress, cross_asset_breadth]
+failure_modes: [directional_beta_masquerading_as_carry, omitted_roll, crash_concentration]
+system_requirements: [funding_events, basis_data, carry_risk_report]
+notes_owner: head_researcher
+review_date: "2026-07-10"
+evidence_classification: accepted_academic_manuscript
+license_note: CBS accepted manuscript is CC-BY-NC-ND; link only.

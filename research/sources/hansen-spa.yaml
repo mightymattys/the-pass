@@ -1,0 +1,21 @@
+schema_version: 2
+id: hansen-spa
+type: academic
+category: overfitting_statistics
+priority: P1
+status: reviewed
+url: https://papers.ssrn.com/sol3/papers.cfm?abstract_id=264569
+bibliography: "Hansen, Peter Reinhard. A Test for Superior Predictive Ability. 2005."
+claim: A studentized, sample-dependent SPA test can be more powerful and less sensitive to poor alternatives than the original Reality Check.
+evidence: Monte Carlo and forecasting comparisons in the paper motivate reducing the influence of irrelevant or erratic alternatives.
+limitations: SPA still requires a defensible loss function, benchmark, dependence treatment, and complete model population.
+market_applicability: [crypto, futures, prediction_markets]
+tradable_implication: Use SPA when comparing many related strategy variants, not for a single isolated backtest.
+required_tests: [compare SPA and Reality Check on controlled alternatives, test block-bootstrap sensitivity]
+failure_modes: [cherry-picked alternatives, invalid studentization, benchmark selected after results]
+system_requirements: [model-comparison harness, bootstrap configuration receipt]
+notes_owner: stats_auditor
+review_date: "2026-07-10"
+evidence_classification: primary_academic
+license_note: SSRN metadata and public paper reviewed; no redistribution.
+

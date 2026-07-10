@@ -1,0 +1,21 @@
+schema_version: 2
+id: almgren-chriss
+type: academic
+category: execution_microstructure
+priority: P1
+status: reviewed
+url: https://papers.ssrn.com/sol3/papers.cfm?abstract_id=53501
+bibliography: "Almgren and Chriss. Optimal Execution of Portfolio Transactions. 2000."
+claim: Execution schedules trade off expected temporary/permanent market impact against price-risk variance.
+evidence: The model formulates an efficient frontier between expected transaction cost and execution risk for portfolio liquidation.
+limitations: The stylized linear-impact assumptions and large-order setting do not directly model queue position or crypto venue outages.
+market_applicability: [futures, crypto]
+tradable_implication: Capacity and impact must be explicit even when the first simulator uses a conservative approximation.
+required_tests: [impact_monotonicity, participation_stress, arrival_price_shortfall]
+failure_modes: [zero_impact_large_size, mid_price_fills, uncalibrated_coefficients]
+system_requirements: [impact component, capacity report, implementation shortfall]
+notes_owner: execution_skeptic
+review_date: "2026-07-10"
+evidence_classification: primary_academic
+license_note: Public paper metadata/full-text link; no redistribution.
+

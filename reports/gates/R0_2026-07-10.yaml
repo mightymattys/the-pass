@@ -1,0 +1,16 @@
+schema_version: 1
+milestone_id: R0
+gate_result: pass
+evaluated_at: "2026-07-10T00:00:00Z"
+reviewer: research_auditor
+acceptance_checks:
+  - id: reviewed_corpus
+    status: pass
+    evidence_paths: [research/sources.yaml, scripts/validate_research_corpus.py]
+  - id: initial_strategy_specs
+    status: pass
+    evidence_paths: [research/research_brief.yaml, scripts/validate_research_corpus.py]
+  - id: no_live_code
+    status: pass
+    evidence_paths: [scripts/validate_public_repo.py]
+open_p0_p1: []

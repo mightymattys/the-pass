@@ -1,0 +1,17 @@
+schema_version: 2
+id: obizhaeva-wang-optimal-execution
+type: academic
+category: execution_microstructure
+priority: P2
+status: skimmed
+url: https://doi.org/10.1016/j.finmar.2012.09.001
+bibliography: "Obizhaeva, A. A., and Wang, J. Optimal Trading Strategy and Supply/Demand Dynamics."
+claim: Resilient depth and transient impact belong in execution stress design.
+evidence: Bibliographic record identified; full model review remains pending.
+limitations: Theoretical assumptions require empirical venue calibration.
+market_applicability: [cross_asset]
+required_tests: [resilience_stress, schedule_sensitivity]
+failure_modes: [static_depth, model_misspecification]
+system_requirements: [depth_history, execution_simulator]
+evidence_classification: primary_academic_backlog
+license_note: Bibliographic metadata only; copyrighted text is not redistributed.

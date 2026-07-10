@@ -1,0 +1,36 @@
+{
+  "created_at": "2026-07-10T00:00:00Z",
+  "evidence": [
+    "robustness_report.json",
+    "risk_report.json",
+    "reproduction_report.json"
+  ],
+  "findings": [
+    {
+      "blocks_promotion": true,
+      "evidence": "risk_report.json",
+      "promotion_impact": "blocks_promotion",
+      "recommendation": "Collect the required history and at least 500 intraday trades before promotion review.",
+      "severity": "P2",
+      "status": "confirmed",
+      "title": "History and trade-count gates are not met"
+    },
+    {
+      "blocks_promotion": true,
+      "evidence": "robustness_report.json",
+      "promotion_impact": "blocks_promotion",
+      "recommendation": "Reduce the strategy zoo or add independent history before retesting.",
+      "severity": "P2",
+      "status": "confirmed",
+      "title": "PBO exceeds the asset policy threshold"
+    }
+  ],
+  "id": "donchian-stats-audit-v1",
+  "limitations": [
+    "synthetic fixture cannot establish market edge"
+  ],
+  "reviewer": "stats_auditor",
+  "schema_version": 2,
+  "target": "examples/b2-baselines/donchian_momentum/package",
+  "verdict": "blocked"
+}

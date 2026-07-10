@@ -1,0 +1,134 @@
+{
+  "created_at": "2026-07-10",
+  "data": {
+    "manifest_path": "data_manifest.json",
+    "minimum_history": "96 one-minute bars",
+    "required_fields": [
+      "event_time_ns",
+      "receive_time_ns",
+      "open",
+      "high",
+      "low",
+      "close",
+      "volume"
+    ],
+    "required_sources": [
+      "the-pass deterministic synthetic fixture"
+    ]
+  },
+  "done_when": [
+    "deterministic package validates and ledger entry verifies"
+  ],
+  "edge": {
+    "expected_failure_modes": [
+      "cost drag",
+      "small sample",
+      "synthetic regime dependence"
+    ],
+    "primary_family": "baseline",
+    "secondary_tags": [
+      "diagnostic",
+      "control"
+    ],
+    "thesis": "Measure reference behavior under explicit costs before evaluating promotion candidates.",
+    "why_now": "B2 harness accounting and execution validation."
+  },
+  "execution": {
+    "fee_model": "0.10 percent per fill",
+    "fill_model": "next bar open with conservative slippage",
+    "latency_assumption_ms": 1,
+    "order_type": "paper_only",
+    "slippage_model": "5 basis points adverse"
+  },
+  "gates": {
+    "live_gate": [
+      "blocked by public core"
+    ],
+    "paper_gate": [
+      "not eligible before V3"
+    ],
+    "research_gate": [
+      "complete B2 package",
+      "cost waterfall",
+      "V3 robustness pending"
+    ]
+  },
+  "id": "crypto_spot_time_series_momentum_v1",
+  "kill_when": [
+    "accounting identity fails",
+    "random control shows systematic repeatable net edge"
+  ],
+  "market": {
+    "asset_class": "crypto_spot",
+    "instruments": [
+      "BTCUSDT"
+    ],
+    "timeframes": [
+      "1m"
+    ],
+    "venues": [
+      "synthetic"
+    ]
+  },
+  "name": "Crypto Spot Time Series Momentum V1",
+  "notes": "StrategySpec copy is immutable after this run; changes require a new ID.",
+  "owner": "strategy_implementer",
+  "risk": {
+    "kill_switches": [
+      "accounting identity failure",
+      "invalid data quality"
+    ],
+    "max_drawdown": "diagnostic only",
+    "max_exposure": "one unit",
+    "sizing_rule": "fixed one-unit target"
+  },
+  "schema_version": 2,
+  "signal": {
+    "decision_time_policy": "decide only after receive_time; fill on subsequent bar",
+    "inputs": [
+      "canonical bars"
+    ],
+    "lookahead_controls": [
+      "no same-event fills",
+      "deterministic event ordering"
+    ],
+    "transforms": [
+      "strategy-specific deterministic baseline transform"
+    ]
+  },
+  "status": "research",
+  "validation": {
+    "holdout_policy": "promotion prohibited until V3",
+    "null_baselines": [
+      "seeded random control"
+    ],
+    "parameter_sweeps": [
+      {
+        "family": "donchian",
+        "registered_at": "2026-07-10T00:00:00Z",
+        "schema_version": 1,
+        "selected_variant_id": 1,
+        "selection_policy": "fixed diagnostic baseline chosen before event simulation",
+        "variants": [
+          {
+            "lookback": 5
+          },
+          {
+            "lookback": 10
+          },
+          {
+            "lookback": 20
+          }
+        ]
+      }
+    ],
+    "required_metrics": [
+      "net pnl",
+      "sharpe",
+      "max drawdown",
+      "turnover",
+      "trade count"
+    ],
+    "train_test_split": "diagnostic full sample"
+  }
+}

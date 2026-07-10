@@ -1,0 +1,39 @@
+{
+  "cost_components": {
+    "borrow": "0",
+    "fees": "3.398560160",
+    "funding": "0",
+    "rejects_or_missed_fills": "0",
+    "roll": "0",
+    "slippage": "1.699280",
+    "spread": "0"
+  },
+  "diagnostics": {
+    "fill_model_promotion_eligible": true,
+    "missed_fill_opportunity_cost": "not estimated",
+    "missed_intents": 0,
+    "rejected_intents": 0
+  },
+  "events_processed": 96,
+  "fills": 22,
+  "final_snapshot": {
+    "borrow": "0",
+    "cash": "99994.582159840",
+    "collateral": "0",
+    "equity": "99994.582159840",
+    "event_time_ns": 1704072900001000000,
+    "fees": "3.398560160",
+    "funding": "0",
+    "opportunity_cost": "0",
+    "positions": {
+      "BTCUSDT": "0"
+    },
+    "realized_pnl": "-2.019280",
+    "roll": "0",
+    "unrealized_pnl": "0.00"
+  },
+  "missed": [],
+  "rejected": [],
+  "signals": 22,
+  "strategy_id": "null_random_control_v1"
+}

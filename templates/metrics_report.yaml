@@ -1,4 +1,4 @@
-schema_version: 1
+schema_version: 2
 id: ""
 run_receipt: ""
 created_at: YYYY-MM-DDTHH:MM:SSZ
@@ -15,17 +15,45 @@ sample:
 
 gross_metrics:
   pnl: null
+  total_return: null
+  annualized_return: null
+  volatility: null
+  downside_volatility: null
   sharpe: null
+  sortino: null
+  calmar: null
   max_drawdown: null
+  average_drawdown: null
+  drawdown_duration: null
   win_rate: null
+  payoff_ratio: null
+  expectancy: null
   turnover: null
+  average_holding_period: null
+  expected_shortfall: null
+  capacity_estimate: null
 
 net_metrics:
   pnl: null
+  total_return: null
+  annualized_return: null
+  volatility: null
+  downside_volatility: null
   sharpe: null
+  sortino: null
+  calmar: null
   max_drawdown: null
+  average_drawdown: null
+  drawdown_duration: null
   win_rate: null
+  payoff_ratio: null
+  expectancy: null
   turnover: null
+  average_holding_period: null
+  expected_shortfall: null
+  capacity_estimate: null
+
+not_applicable_reasons: {}
 
 robustness:
   null_baseline_result: ""

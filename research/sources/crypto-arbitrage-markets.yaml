@@ -1,0 +1,20 @@
+schema_version: 2
+id: crypto-arbitrage-markets
+type: academic
+category: crypto_perpetuals
+priority: P0
+status: reviewed
+url: https://papers.ssrn.com/sol3/papers.cfm?abstract_id=3171204
+bibliography: "Makarov and Schoar. Trading and Arbitrage in Cryptocurrency Markets. Journal of Financial Economics 135(2), 2020."
+claim: Large cross-exchange crypto price deviations can persist because capital movement and institutional constraints limit arbitrage.
+evidence: The paper documents co-moving price deviations across countries and relates them to capital controls and order flow.
+limitations: Historical cross-country Bitcoin arbitrage does not imply executable current edge after transfer, custody, and venue risk.
+market_applicability: [crypto_spot, crypto_perpetuals]
+tradable_implication: Cross-venue signals require capital-friction, transfer-time, and venue-risk modeling.
+required_tests: [simultaneous_quotes, transfer_latency, venue_failure_stress]
+failure_modes: [stale_cross_exchange_quotes, impossible_transfer, custody_omission]
+system_requirements: [venue_specific_books, receive_time, capital_location_manifest]
+notes_owner: head_researcher
+review_date: "2026-07-10"
+evidence_classification: primary_academic_abstract
+license_note: SSRN abstract and bibliographic record reviewed.

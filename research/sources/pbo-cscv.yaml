@@ -1,0 +1,21 @@
+schema_version: 2
+id: pbo-cscv
+type: academic
+category: overfitting_statistics
+priority: P0
+status: reviewed
+url: https://papers.ssrn.com/sol3/papers.cfm?abstract_id=2326253
+bibliography: "Bailey, Borwein, Lopez de Prado, and Zhu. The Probability of Backtest Overfitting."
+claim: CSCV can estimate the probability that a strategy selected as best in sample will underperform out of sample.
+evidence: The paper defines combinatorially symmetric cross-validation and evaluates its ability to measure selection overfit in investment simulations.
+limitations: PBO needs the complete population of tried variants and enough independent partitions; it does not prove economic causality or executable edge.
+market_applicability: [crypto, futures, prediction_markets]
+tradable_implication: Treat a low PBO as one robustness input, never as a standalone promotion signal.
+required_tests: [record every tried variant, reproduce CSCV on controlled matrices, compare selected in-sample and out-of-sample ranks]
+failure_modes: [winner-only logging, too few variants, dependent partitions interpreted as independent]
+system_requirements: [experiment-family ledger, CSCV implementation, PBO report]
+notes_owner: stats_auditor
+review_date: "2026-07-10"
+evidence_classification: primary_academic
+license_note: Bibliographic metadata and paraphrased findings only; do not redistribute the paper.
+

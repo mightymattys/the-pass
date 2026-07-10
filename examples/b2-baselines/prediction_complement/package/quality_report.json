@@ -1,0 +1,107 @@
+{
+  "checks": [
+    {
+      "affected": [],
+      "code": "missing_intervals",
+      "count": 0,
+      "message": "missing intervals check found 0 issue(s)",
+      "severity": "error"
+    },
+    {
+      "affected": [],
+      "code": "duplicates",
+      "count": 0,
+      "message": "duplicates check found 0 issue(s)",
+      "severity": "error"
+    },
+    {
+      "affected": [],
+      "code": "timestamp_disorder",
+      "count": 0,
+      "message": "timestamp disorder check found 0 issue(s)",
+      "severity": "error"
+    },
+    {
+      "affected": [],
+      "code": "sequence_gaps",
+      "count": 0,
+      "message": "sequence gaps check found 0 issue(s)",
+      "severity": "error"
+    },
+    {
+      "affected": [],
+      "code": "invalid_price_size",
+      "count": 0,
+      "message": "invalid price size check found 0 issue(s)",
+      "severity": "critical"
+    },
+    {
+      "affected": [],
+      "code": "crossed_book",
+      "count": 0,
+      "message": "crossed book check found 0 issue(s)",
+      "severity": "critical"
+    },
+    {
+      "affected": [],
+      "code": "stale_book",
+      "count": 0,
+      "message": "stale book check found 0 issue(s)",
+      "severity": "error"
+    },
+    {
+      "affected": [],
+      "code": "outliers",
+      "count": 0,
+      "message": "outliers check found 0 issue(s)",
+      "severity": "warning"
+    },
+    {
+      "affected": [],
+      "code": "timezone",
+      "count": 0,
+      "message": "timezone check found 0 issue(s)",
+      "severity": "critical"
+    },
+    {
+      "affected": [],
+      "code": "session_gaps",
+      "count": 0,
+      "message": "session gaps check found 0 issue(s)",
+      "severity": "warning"
+    },
+    {
+      "affected": [],
+      "code": "roll_gaps",
+      "count": 0,
+      "message": "roll gaps check found 0 issue(s)",
+      "severity": "warning"
+    },
+    {
+      "affected": [],
+      "code": "provider_truncation",
+      "count": 0,
+      "message": "provider truncation check found 0 issue(s)",
+      "severity": "error"
+    },
+    {
+      "affected": [],
+      "code": "negative_receive_latency",
+      "count": 0,
+      "message": "negative receive latency check found 0 issue(s)",
+      "severity": "critical"
+    }
+  ],
+  "created_at": "2026-07-10T00:00:00Z",
+  "dataset_id": "prediction_market_complement_or_fair_value_v1",
+  "id": "quality-prediction_market_complement_or_fair_value_v1",
+  "promotion_impact": "none",
+  "quarantine": false,
+  "schema_version": 2,
+  "summary": {
+    "errors": 0,
+    "events": 48,
+    "status": "pass",
+    "warnings": 0
+  }
+}

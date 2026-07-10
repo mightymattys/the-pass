@@ -1,4 +1,4 @@
-schema_version: 1
+schema_version: 2
 id: ""
 name: ""
 status: draft # draft|research|killed|paper_candidate|paper|risk_review|live_candidate
@@ -49,6 +49,13 @@ validation:
   null_baselines: []
   parameter_sweeps: []
   required_metrics: []
+  windows:
+    train_start: ""
+    train_end: ""
+    validation_start: ""
+    validation_end: ""
+    holdout_start: ""
+    holdout_end: ""
 
 gates:
   research_gate: []

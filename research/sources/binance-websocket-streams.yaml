@@ -1,0 +1,17 @@
+schema_version: 2
+id: binance-websocket-streams
+type: vendor-doc
+category: crypto_perpetuals
+priority: P1
+status: skimmed
+url: https://developers.binance.com/docs/binance-spot-api-docs/web-socket-streams
+bibliography: "Binance. Spot WebSocket Streams documentation."
+claim: Public market-data ingestion needs reconnect, sequence, heartbeat, and timestamp handling tied to official semantics.
+evidence: Official documentation page identified; endpoint-by-endpoint review remains pending.
+limitations: Provider behavior and limits can change and require dated verification.
+market_applicability: [crypto]
+required_tests: [recorded_payload_replay, reconnect_sequence]
+failure_modes: [sequence_gap, stale_stream]
+system_requirements: [raw_archive, websocket_evidence]
+evidence_classification: official_provider_backlog
+license_note: Official URL and summary only; market-data licensing must be checked before use.

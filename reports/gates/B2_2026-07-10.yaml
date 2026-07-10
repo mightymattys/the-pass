@@ -1,0 +1,16 @@
+schema_version: 1
+milestone_id: B2
+gate_result: pass
+evaluated_at: "2026-07-10T00:00:00Z"
+reviewer: backtest_auditor
+acceptance_checks:
+  - id: required_baselines
+    status: pass
+    evidence_paths: [scripts/validate_b2_harness.py, examples/b2-baselines/seeded_random/package/verdict_report.json]
+  - id: conservative_execution_accounting
+    status: pass
+    evidence_paths: [tests/test_engine.py]
+  - id: complete_receipts_and_costs
+    status: pass
+    evidence_paths: [examples/b2-baselines/buy_hold/package/run_receipt.json, examples/b2-baselines/buy_hold/package/cost_waterfall.json]
+open_p0_p1: []

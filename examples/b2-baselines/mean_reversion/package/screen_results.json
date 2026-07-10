@@ -1,0 +1,41 @@
+[
+  {
+    "cost_return": 0.04300000000000001,
+    "gross_return": 0.020278317872776452,
+    "net_return": -0.022721682127223555,
+    "observations": 96,
+    "parameters": {
+      "entry_z": "0.8",
+      "lookback": 8
+    },
+    "sharpe": -5.537091688208002,
+    "turnover": 43.0,
+    "variant_id": 0
+  },
+  {
+    "cost_return": 0.022000000000000006,
+    "gross_return": 0.0015230085692166107,
+    "net_return": -0.02047699143078339,
+    "observations": 96,
+    "parameters": {
+      "entry_z": "1.0",
+      "lookback": 12
+    },
+    "sharpe": -7.008001621638289,
+    "turnover": 22.0,
+    "variant_id": 1
+  },
+  {
+    "cost_return": 0.020000000000000004,
+    "gross_return": 0.0015247844798437216,
+    "net_return": -0.01847521552015628,
+    "observations": 96,
+    "parameters": {
+      "entry_z": "1.2",
+      "lookback": 20
+    },
+    "sharpe": -6.579012747172838,
+    "turnover": 20.0,
+    "variant_id": 2
+  }
+]

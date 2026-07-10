@@ -1,0 +1,67 @@
+{
+  "created_at": "2026-07-10T00:00:00Z",
+  "gross_metrics": {
+    "annualized_return": 0.000659314310144,
+    "average_drawdown": 1.00360630634e-06,
+    "average_holding_period": 5640.0,
+    "calmar": 82.4176274945,
+    "capacity_estimate": 1000000.0,
+    "downside_volatility": 3.2230747028e-05,
+    "drawdown_duration": 3.0,
+    "expectancy": 0.258023246178,
+    "expected_shortfall": 7.99913202065e-06,
+    "max_drawdown": 7.99967592113e-06,
+    "payoff_ratio": 0.481570320978,
+    "pnl": 24.85,
+    "sharpe": 13.4875773633,
+    "sortino": 20.1738600661,
+    "total_return": 0.0002485,
+    "turnover": 0.00223237575,
+    "volatility": 4.82087007069e-05,
+    "win_rate": 0.915789473684
+  },
+  "id": "crypto_spot_buy_hold_benchmark_v1-metrics",
+  "limitations": [
+    "diagnostic synthetic baseline; no promotion claim"
+  ],
+  "net_metrics": {
+    "annualized_return": 0.000650428016094,
+    "average_drawdown": 1.00360630634e-06,
+    "average_holding_period": 5640.0,
+    "calmar": 81.3067957386,
+    "capacity_estimate": 1000000.0,
+    "downside_volatility": 3.2230747028e-05,
+    "drawdown_duration": 3.0,
+    "expectancy": 0.258023246178,
+    "expected_shortfall": 7.99913202065e-06,
+    "max_drawdown": 7.99967592113e-06,
+    "payoff_ratio": 0.481570320978,
+    "pnl": 24.515137425,
+    "sharpe": 13.4875773633,
+    "sortino": 20.1738600661,
+    "total_return": 0.00024515137425,
+    "turnover": 0.00223237575,
+    "volatility": 4.82087007069e-05,
+    "win_rate": 0.915789473684
+  },
+  "not_applicable_reasons": {},
+  "robustness": {
+    "dsr_or_psr": null,
+    "null_baseline_result": "not evaluated until V3",
+    "parameter_stability": "not evaluated until V3",
+    "pbo": null,
+    "stress_results": []
+  },
+  "run_receipt": "run_receipt.json",
+  "sample": {
+    "end_time": "2024-01-01T01:35:00.000000Z",
+    "evaluation_scope": "diagnostic",
+    "instruments": [
+      "BTCUSDT"
+    ],
+    "signals": 2,
+    "start_time": "2024-01-01T00:00:00.000000Z",
+    "trades": 2
+  },
+  "schema_version": 2
+}

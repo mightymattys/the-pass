@@ -1,0 +1,20 @@
+schema_version: 2
+id: lo-sharpe-statistics
+type: academic
+category: overfitting_statistics
+priority: P0
+status: reviewed
+url: https://alo.mit.edu/research-page/the-statistics-of-sharpe-ratios/
+bibliography: "Lo, Andrew W. The Statistics of Sharpe Ratios. Financial Analysts Journal 58(4), 2002. DOI 10.2469/faj.v58.n4.2453."
+claim: Sharpe-ratio uncertainty and annualization depend on the return process; square-root annualization is not generally valid under serial dependence.
+evidence: The paper derives asymptotic distributions for IID and stationary returns and discusses time aggregation.
+limitations: It does not solve multiple testing, execution bias, or nonstationarity by itself.
+market_applicability: [crypto, futures, prediction_market]
+tradable_implication: Report sampling uncertainty and avoid mechanical Sharpe annualization.
+required_tests: [serial_correlation_check, finite_psr, annualization_policy]
+failure_modes: [iid_assumption, short_sample, annualization_overstatement]
+system_requirements: [return_frequency_manifest, psr_dsr_report]
+notes_owner: stats_auditor
+review_date: "2026-07-10"
+evidence_classification: primary_academic_abstract
+license_note: Author publication page and DOI metadata reviewed; no redistribution.

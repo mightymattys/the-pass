@@ -1,0 +1,21 @@
+{
+  "family": "mean_reversion",
+  "registered_at": "2026-07-10T00:00:00Z",
+  "schema_version": 1,
+  "selected_variant_id": 1,
+  "selection_policy": "fixed diagnostic baseline chosen before event simulation",
+  "variants": [
+    {
+      "entry_z": "0.8",
+      "lookback": 8
+    },
+    {
+      "entry_z": "1.0",
+      "lookback": 12
+    },
+    {
+      "entry_z": "1.2",
+      "lookback": 20
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+schema_version: 2
+id: cont-order-book-impact
+type: academic
+category: execution_microstructure
+priority: P1
+status: skimmed
+url: https://doi.org/10.1080/14697688.2013.803148
+bibliography: "Cont, R., Kukanov, A., and Stoikov, S. The Price Impact of Order Book Events."
+claim: Fill and impact models should use order-book events rather than mid-price optimism.
+evidence: Bibliographic record identified; full estimator review remains pending.
+limitations: Venue-specific calibration is still required.
+market_applicability: [futures, crypto, prediction_markets]
+required_tests: [impact_calibration, depth_stress]
+failure_modes: [venue_transfer, hidden_liquidity]
+system_requirements: [book_events, impact_model]
+evidence_classification: primary_academic_backlog
+license_note: Bibliographic metadata only; copyrighted text is not redistributed.

@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://the-pass.dev/schemas/gate_decision.v2.schema.json",
+  "title": "GateDecisionV2",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "id",
+    "created_at",
+    "gate_id",
+    "gate_result",
+    "policy_version",
+    "policy_hash",
+    "package_id",
+    "package_path",
+    "reviewer",
+    "evidence",
+    "blockers",
+    "summary",
+    "safety"
+  ],
+  "properties": {
+    "schema_version": { "const": 2 },
+    "id": { "type": "string", "minLength": 1 },
+    "created_at": { "type": "string", "format": "date-time" },
+    "gate_id": { "enum": ["research_gate", "paper_gate", "risk_review", "live_gate"] },
+    "gate_result": { "enum": ["pass", "blocked", "revise", "kill"] },
+    "policy_version": { "type": "string", "minLength": 1 },
+    "policy_hash": { "type": "string", "pattern": "^[A-Fa-f0-9]{64}$" },
+    "package_id": { "type": "string", "pattern": "^pkg_[A-Fa-f0-9]{24}$" },
+    "package_path": { "type": "string", "minLength": 1 },
+    "reviewer": { "type": "string", "minLength": 1 },
+    "evidence": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["type", "path", "sha256"],
+        "properties": {
+          "type": { "type": "string", "minLength": 1 },
+          "path": { "type": "string", "minLength": 1 },
+          "sha256": { "type": "string", "pattern": "^[A-Fa-f0-9]{64}$" },
+          "id": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "blockers": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+    "summary": { "type": "string", "minLength": 1 },
+    "safety": {
+      "type": "object",
+      "required": ["grants_live_approval", "live_trading_enabled", "real_order_path_available"],
+      "properties": {
+        "grants_live_approval": { "const": false },
+        "live_trading_enabled": { "const": false },
+        "real_order_path_available": { "const": false }
+      },
+      "additionalProperties": false
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "gate_result": { "const": "pass" } } },
+      "then": { "properties": { "blockers": { "maxItems": 0 } } }
+    },
+    {
+      "if": { "properties": { "gate_id": { "const": "live_gate" } } },
+      "then": { "properties": { "gate_result": { "const": "blocked" }, "blockers": { "minItems": 1 } } }
+    }
+  ],
+  "additionalProperties": false
+}

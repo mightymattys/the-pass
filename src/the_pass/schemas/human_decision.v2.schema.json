@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://the-pass.dev/schemas/human_decision.v2.schema.json",
+  "title": "LockedHumanDecisionV2",
+  "type": "object",
+  "required": ["schema_version", "id", "created_at", "venue", "account_scope", "adapter", "config_hash", "reviewer", "decision", "accepted_live_capability_adr", "grants_live_approval", "blockers"],
+  "properties": {
+    "schema_version": { "const": 2 },
+    "id": { "type": "string", "minLength": 1 },
+    "created_at": { "type": "string", "format": "date-time" },
+    "venue": { "type": "string" },
+    "account_scope": { "type": "string" },
+    "adapter": { "type": "string" },
+    "config_hash": { "type": "string" },
+    "reviewer": { "type": "string", "minLength": 1 },
+    "decision": { "const": "blocked" },
+    "accepted_live_capability_adr": { "const": false },
+    "grants_live_approval": { "const": false },
+    "blockers": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } }
+  },
+  "additionalProperties": false
+}

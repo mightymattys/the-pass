@@ -1,0 +1,26 @@
+[
+  {
+    "cost_return": 0.001,
+    "gross_return": 0.19224130645946846,
+    "net_return": 0.19124130645946846,
+    "observations": 96,
+    "parameters": {
+      "lookback": 10
+    },
+    "sharpe": 11.528099220996866,
+    "turnover": 1.0,
+    "variant_id": 0
+  },
+  {
+    "cost_return": 0.001,
+    "gross_return": 0.1695355375479548,
+    "net_return": 0.1685355375479548,
+    "observations": 96,
+    "parameters": {
+      "lookback": 20
+    },
+    "sharpe": 10.754556163018018,
+    "turnover": 1.0,
+    "variant_id": 1
+  }
+]

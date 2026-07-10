@@ -18,12 +18,12 @@ from jsonschema.exceptions import SchemaError
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from the_pass.validator import ARTIFACT_TYPES, validate_artifact, validate_package  # noqa: E402
+from the_pass.validator import ARTIFACT_SCHEMAS, ARTIFACT_TYPES, validate_artifact, validate_package  # noqa: E402
 
 PLACEHOLDER_MARKER = "[" + "TO" + "DO:"
 
 FORBIDDEN_PATTERNS = [
-    re.compile(r"sk-[A-Za-z0-9_-]{20,}"),
+    re.compile(r"(?<![A-Za-z0-9])sk-[A-Za-z0-9_-]{20,}"),
     re.compile(r"ghp_[A-Za-z0-9_]{20,}"),
     re.compile(r"github_pat_[A-Za-z0-9_]{20,}"),
     re.compile(r"xox[baprs]-[A-Za-z0-9-]{20,}"),
@@ -254,7 +254,11 @@ def validate_skills() -> None:
 
 
 def validate_schemas() -> None:
-    required = set(ARTIFACT_TYPES.values())
+    required = {
+        schema_name
+        for versions in ARTIFACT_SCHEMAS.values()
+        for schema_name in versions.values()
+    }
     schemas_dir = ROOT / "schemas"
     present = {path.name for path in schemas_dir.glob("*.json")}
     missing = required - present
@@ -297,6 +301,29 @@ def validate_templates() -> None:
         artifact_type = Path(name).stem
         if artifact_type not in ARTIFACT_TYPES:
             fail(f"template has no registered artifact type: {name}")
+        document = yaml.safe_load((templates_dir / name).read_text(encoding="utf-8"))
+        expected_version = max(ARTIFACT_SCHEMAS[artifact_type])
+        if not isinstance(document, dict) or document.get("schema_version") != expected_version:
+            fail(f"template {name} must use latest schema_version {expected_version}")
+
+
+def validate_packaged_policy() -> None:
+    root_policy = ROOT / "config" / "gate-policies.v1.yaml"
+    packaged_policy = ROOT / "src" / "the_pass" / "policies" / "gate-policies.v1.yaml"
+    if not root_policy.is_file() or not packaged_policy.is_file():
+        fail("gate policy must exist in config and packaged policy directories")
+    validate_yaml(root_policy)
+    validate_yaml(packaged_policy)
+    if root_policy.read_bytes() != packaged_policy.read_bytes():
+        fail("packaged gate policy differs from config/gate-policies.v1.yaml")
+    root_risk_policy = ROOT / "config" / "risk-policies.v1.yaml"
+    packaged_risk_policy = ROOT / "src" / "the_pass" / "policies" / "risk-policies.v1.yaml"
+    if not root_risk_policy.is_file() or not packaged_risk_policy.is_file():
+        fail("risk policy must exist in config and packaged policy directories")
+    validate_yaml(root_risk_policy)
+    validate_yaml(packaged_risk_policy)
+    if root_risk_policy.read_bytes() != packaged_risk_policy.read_bytes():
+        fail("packaged risk policy differs from config/risk-policies.v1.yaml")
 
 
 def validate_workflow_directories() -> None:
@@ -461,12 +488,19 @@ def main() -> int:
     validate_skills()
     validate_schemas()
     validate_templates()
+    validate_packaged_policy()
     validate_workflow_directories()
     validate_adapter_examples()
     validate_example_packages()
     validate_markdown_links()
     validate_public_safety()
     validate_no_live_order_paths()
+    subprocess.run([sys.executable, str(ROOT / "scripts" / "validate_roadmap.py")], cwd=ROOT, check=True)
+    subprocess.run([sys.executable, str(ROOT / "scripts" / "validate_research_corpus.py")], cwd=ROOT, check=True)
+    subprocess.run([sys.executable, str(ROOT / "scripts" / "validate_data_foundation.py")], cwd=ROOT, check=True)
+    subprocess.run([sys.executable, str(ROOT / "scripts" / "validate_b2_harness.py")], cwd=ROOT, check=True)
+    subprocess.run([sys.executable, str(ROOT / "scripts" / "validate_v3_audit.py")], cwd=ROOT, check=True)
+    subprocess.run([sys.executable, str(ROOT / "scripts" / "validate_p4_framework.py")], cwd=ROOT, check=True)
     print("public repo validation passed")
     return 0
 

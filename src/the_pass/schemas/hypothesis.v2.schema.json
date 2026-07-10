@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://the-pass.dev/schemas/hypothesis.v2.schema.json",
+  "title": "ResearchHypothesis",
+  "type": "object",
+  "required": ["schema_version", "id", "created_at", "status", "proposed_name", "source_notes", "edge", "market", "test", "risks", "kill_when", "blockers"],
+  "properties": {
+    "schema_version": { "const": 2 },
+    "id": { "type": "string", "minLength": 1 },
+    "created_at": { "type": "string", "format": "date-time" },
+    "status": { "enum": ["proposed", "ready_for_spec", "rejected", "blocked"] },
+    "proposed_name": { "type": "string" },
+    "source_notes": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+    "edge": {
+      "type": "object",
+      "required": ["primary_family", "thesis", "mechanism"],
+      "properties": {
+        "primary_family": { "type": "string" },
+        "thesis": { "type": "string" },
+        "mechanism": { "type": "string" }
+      }
+    },
+    "market": {
+      "type": "object",
+      "required": ["asset_classes", "venues", "instruments", "timeframes"],
+      "properties": {
+        "asset_classes": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "venues": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "instruments": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "timeframes": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+      }
+    },
+    "test": {
+      "type": "object",
+      "required": ["next_test", "required_data", "null_or_random_baseline", "falsification_criteria"],
+      "properties": {
+        "next_test": { "type": "string" },
+        "required_data": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "null_or_random_baseline": { "type": "string" },
+        "falsification_criteria": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+      }
+    },
+    "risks": {
+      "type": "object",
+      "required": ["costs", "execution", "data", "regime"],
+      "properties": {
+        "costs": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "execution": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "data": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "regime": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+      }
+    },
+    "kill_when": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+    "blockers": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "status": { "const": "ready_for_spec" } } },
+      "then": {
+        "properties": {
+          "proposed_name": { "minLength": 1 },
+          "source_notes": { "minItems": 1 },
+          "edge": {
+            "properties": {
+              "primary_family": { "minLength": 1 },
+              "thesis": { "minLength": 1 },
+              "mechanism": { "minLength": 1 }
+            }
+          },
+          "market": { "properties": { "asset_classes": { "minItems": 1 }, "timeframes": { "minItems": 1 } } },
+          "test": {
+            "properties": {
+              "next_test": { "minLength": 1 },
+              "required_data": { "minItems": 1 },
+              "null_or_random_baseline": { "minLength": 1 },
+              "falsification_criteria": { "minItems": 1 }
+            }
+          },
+          "kill_when": { "minItems": 1 },
+          "blockers": { "maxItems": 0 }
+        }
+      }
+    }
+  ],
+  "additionalProperties": true
+}

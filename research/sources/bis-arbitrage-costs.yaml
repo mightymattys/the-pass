@@ -1,0 +1,21 @@
+schema_version: 2
+id: bis-arbitrage-costs
+type: academic
+category: execution_microstructure
+priority: P2
+status: reviewed
+url: https://www.bis.org/publ/work689.htm
+bibliography: "Funke, Loermann, and Tsang. Estimating Unknown Arbitrage Costs. BIS Working Paper 689."
+claim: Apparent price distortions become actionable only after exceeding transaction-cost thresholds and accounting for adjustment dynamics.
+evidence: The BIS paper develops and simulates a threshold error-correction model for unknown arbitrage costs.
+limitations: The empirical market and econometric setup are not a direct prediction-market or crypto execution model.
+market_applicability: [crypto, prediction_markets, futures]
+tradable_implication: Structural scanners must compare executable net edge to a cost/depth threshold, not flag gross price differences.
+required_tests: [net_threshold_gate, delayed_adjustment_stress, false_positive_rate_under_costs]
+failure_modes: [gross_only_arbitrage, static_cost_threshold, ignored_adjustment_speed]
+system_requirements: [cost-aware scanner, executable depth, threshold report]
+notes_owner: execution_skeptic
+review_date: "2026-07-10"
+evidence_classification: institutional_working_paper
+license_note: BIS public working-paper page; no redistribution.
+

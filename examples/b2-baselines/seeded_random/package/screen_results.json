@@ -1,0 +1,14 @@
+[
+  {
+    "cost_return": 0.08600000000000002,
+    "gross_return": -0.00039959969579261845,
+    "net_return": -0.08639959969579263,
+    "observations": 96,
+    "parameters": {
+      "seed": 7
+    },
+    "sharpe": -18.45679840339354,
+    "turnover": 86.0,
+    "variant_id": 0
+  }
+]

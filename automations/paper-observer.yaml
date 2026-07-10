@@ -1,0 +1,13 @@
+schema_version: 2
+id: paper-observer
+owner: operator
+trigger: {schedule: "external-continuous"}
+command: paper_observer
+inputs: {mode: simulated_only}
+allowed_writes: [reports/automation]
+forbidden_actions: [gate_decision, live_transaction, credential_access]
+timeout_seconds: 3600
+retry_policy: {max_attempts: 1, idempotent_only: true}
+alert_sink: local_incident_artifact
+freeze_procedure: freeze on stale data, outage, clock skew, or risk breach
+enabled: false

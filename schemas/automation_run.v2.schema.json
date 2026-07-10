@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://the-pass.dev/schemas/automation_run.v2.schema.json",
+  "title": "AutomationRunV2",
+  "type": "object",
+  "required": ["schema_version", "id", "automation_spec", "idempotency_key", "started_at", "finished_at", "attempts", "status", "outputs", "errors", "receipt"],
+  "properties": {
+    "schema_version": { "const": 2 },
+    "id": { "type": "string", "minLength": 1 },
+    "automation_spec": { "type": "string", "minLength": 1 },
+    "idempotency_key": { "type": "string", "pattern": "^[A-Fa-f0-9]{64}$" },
+    "started_at": { "type": "string", "format": "date-time" },
+    "finished_at": { "type": "string", "format": "date-time" },
+    "attempts": { "type": "integer", "minimum": 1 },
+    "status": { "enum": ["complete", "blocked", "failed", "frozen", "duplicate"] },
+    "outputs": { "type": "array", "items": { "type": "string" } },
+    "errors": { "type": "array", "items": { "type": "string" } },
+    "receipt": { "type": "object", "minProperties": 1 }
+  },
+  "additionalProperties": false
+}

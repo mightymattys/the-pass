@@ -51,7 +51,7 @@ Run the command named by the finding. For package issues, default to:
 
 ```bash
 the-pass validate-package <package-dir>
-the-pass receipts add <package-dir> --gate <gate-name>
+the-pass receipts add <package-dir>
 the-pass receipts verify
 ```
 

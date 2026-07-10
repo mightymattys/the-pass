@@ -1,0 +1,8 @@
+schema_version: 2
+id: ""
+created_at: ""
+dataset_id: ""
+checks: []
+summary: {events: 0, errors: 0, warnings: 0, status: fail}
+quarantine: true
+promotion_impact: blocked

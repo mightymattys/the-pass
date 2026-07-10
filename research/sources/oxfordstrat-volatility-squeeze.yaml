@@ -1,0 +1,20 @@
+schema_version: 2
+id: oxfordstrat-volatility-squeeze
+type: strategy-review
+category: oxfordstrat
+priority: P1
+status: reviewed
+url: https://oxfordstrat.com/trading-strategies/volatility-squeeze/
+bibliography: "OxfordStrat. Volatility Squeeze, public strategy review citing Bollinger (2002)."
+claim: A low-bandwidth filter can be tested as an overlay on a Bollinger trend model.
+evidence: The page defines lookback/memory sweeps and reports that the squeeze filter did not improve the simple base model.
+limitations: Secondary simulated evidence; exact data and implementation are not independently reproduced.
+market_applicability: [futures, crypto]
+tradable_implication: Use as a falsifiable negative/ablation baseline, not a presumed edge.
+required_tests: [base_model_ablation, neighboring_parameters, realistic_costs]
+failure_modes: [filter_story_bias, broad_sweep_selection, bar_fill_optimism]
+system_requirements: [bandwidth_feature, complete_sweep_ledger]
+notes_owner: head_researcher
+review_date: "2026-07-10"
+evidence_classification: secondary_strategy_review
+license_note: Public page reviewed; no chart or code redistribution.

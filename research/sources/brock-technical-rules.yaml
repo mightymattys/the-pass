@@ -1,0 +1,17 @@
+schema_version: 2
+id: brock-technical-rules
+type: academic
+category: financial_validation
+priority: P2
+status: skimmed
+url: https://doi.org/10.1111/j.1540-6261.1992.tb04681.x
+bibliography: "Brock, W., Lakonishok, J., and LeBaron, B. Simple Technical Trading Rules and the Stochastic Properties of Stock Returns."
+claim: Simple moving-average and support/resistance rules can be stated as reproducible null hypotheses.
+evidence: Bibliographic record identified; detailed data and bootstrap review remains pending.
+limitations: Legacy equity sample and not proof of modern net profitability.
+market_applicability: [equities, cross_asset]
+required_tests: [modern_oos_retest, cost_stress]
+failure_modes: [sample_age, data_snooping]
+system_requirements: [baseline_runner, bootstrap]
+evidence_classification: primary_academic_backlog
+license_note: Bibliographic metadata only; copyrighted text is not redistributed.

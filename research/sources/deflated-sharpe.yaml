@@ -1,0 +1,21 @@
+schema_version: 2
+id: deflated-sharpe
+type: academic
+category: overfitting_statistics
+priority: P0
+status: reviewed
+url: https://www.davidhbailey.com/dhbpapers/deflated-sharpe.pdf
+bibliography: "Bailey and Lopez de Prado. The Deflated Sharpe Ratio. Journal of Portfolio Management, 2014."
+claim: An observed Sharpe ratio must be adjusted for selection across trials, sample length, skewness, and kurtosis.
+evidence: The paper extends probabilistic Sharpe reasoning with an expected maximum Sharpe threshold induced by multiple trials.
+limitations: The effective number and dependence of trials are difficult to estimate; DSR is not a substitute for cost, drawdown, or capacity analysis.
+market_applicability: [crypto, futures, prediction_markets]
+tradable_implication: Report PSR or DSR against a predefined benchmark and the complete trial count.
+required_tests: [verify published formula examples, stress trial-count assumptions, reject non-finite or out-of-range probabilities]
+failure_modes: [underreported trials, annualized short samples, ignored skew and kurtosis]
+system_requirements: [trial registry, PSR_DSR implementation, probability bounds]
+notes_owner: stats_auditor
+review_date: "2026-07-10"
+evidence_classification: primary_academic
+license_note: Public author PDF; store only this structured note.
+

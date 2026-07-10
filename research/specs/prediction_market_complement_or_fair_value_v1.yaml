@@ -1,0 +1,38 @@
+schema_version: 2
+id: prediction_market_complement_or_fair_value_v1
+name: Prediction-market complement and fair-value diagnostic
+status: research
+owner: head_researcher
+created_at: "2026-07-10"
+market: {asset_class: prediction_market, venues: [polymarket], instruments: [binary_and_multi_outcome_public_markets], timeframes: [event_driven]}
+edge:
+  primary_family: structural_relative_value
+  secondary_tags: [complement, fair_value, no_arb_diagnostic]
+  thesis: Executable outcome prices may occasionally violate complement or reference-value constraints by more than fees, spread, depth, and settlement risk.
+  why_now: Structural checks provide transparent diagnostics without relying on opaque prediction models.
+  expected_failure_modes: [gross_mid_only_edge, resolution_mismatch, stale_book, insufficient_depth]
+data:
+  required_sources: [polymarket_public_market_data, verified_resolution_source]
+  required_fields: [condition_id, token_id, event_time, receive_time, bids, asks, fee_rate, tick_size, resolution_rules]
+  minimum_history: Own immutable archive with enough resolved markets and at least 1000 paper-ready signals before risk review
+  manifest_path: pending_D1
+signal:
+  inputs: [executable_outcome_books, dynamic_fee, settlement_mapping]
+  transforms: [complement_sum, depth_aware_net_edge, reference_probability_difference]
+  decision_time_policy: Use only synchronized books received before the decision and revalidate fees per token.
+  lookahead_controls: [no_resolution_data_before_event, snapshot_resync, point_in_time_fee]
+execution: {order_type: paper_only, fill_model: depth_walk_partial_fill_no_queue_priority, latency_assumption_ms: 500, fee_model: token_fee_rate_endpoint, slippage_model: executable_book_depth}
+risk: {sizing_rule: virtual_depth_capped, max_exposure: five_percent_visible_depth, max_drawdown: virtual_only, kill_switches: [settlement_mismatch, fee_unknown, stale_book, crossed_semantics]}
+validation:
+  train_test_split: Chronological markets with event-family holdout.
+  holdout_policy: Resolved holdout markets remain locked until mapping audit.
+  null_baselines: [zero_trade, randomized_market_pairing]
+  parameter_sweeps: [{minimum_net_edge_bps: [25, 50, 100], depth_fraction: [0.01, 0.025, 0.05]}]
+  required_metrics: [signals, executable_size, gross_edge, net_edge, settlement_errors, fill_rate, pbo]
+gates:
+  research_gate: [manual_semantics_review, dynamic_fees, positive_depth_aware_net_edge]
+  paper_gate: [1000_signals, settlement_reconciliation, no_unresolved_mapping_error]
+  live_gate: [explicit_human_approval]
+done_when: [scanner distinguishes gross from executable edge, resolved markets reconcile]
+kill_when: [edge_exists_only_at_mid, semantics_ambiguous, fee_or_depth_unknown]
+notes: No order endpoint or authenticated user channel is permitted.

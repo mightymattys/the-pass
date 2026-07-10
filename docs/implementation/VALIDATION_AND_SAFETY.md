@@ -37,6 +37,8 @@ Implemented CLI:
 the-pass validate <artifact>
 the-pass validate-package <run-dir>
 the-pass receipts add <run-dir>
+the-pass gate evaluate <run-dir> --gate <gate> --reviewer <reviewer> --output <decision>
+the-pass receipts add-decision <decision>
 the-pass receipts verify
 the-pass receipts
 ```
@@ -91,13 +93,13 @@ applicability, required tests, failure modes, and system requirements, and its s
 
 ## Receipt Ledger Validation
 
-The receipt ledger is append-only JSONL. Each entry includes:
+The receipt ledger is append-only JSONL. V2 entries distinguish immutable runs from gate
+decisions. Run entries include:
 
 - deterministic package ID,
 - artifact paths and SHA-256 fingerprints,
 - strategy ID,
 - run ID,
-- gate,
 - verdict,
 - data manifest reference,
 - cost waterfall reference,
@@ -105,9 +107,13 @@ The receipt ledger is append-only JSONL. Each entry includes:
 - previous entry hash,
 - entry hash.
 
-`the-pass receipts add` refuses to append when the existing ledger or any referenced artifact
-is invalid. `the-pass receipts verify` recomputes the chain and artifact hashes and fails if
-an entry or recorded artifact was edited silently.
+Gate-decision entries additionally include the canonical gate, computed result, policy
+version/hash, independent reviewer, exact package ID, and decision evidence. A run entry alone
+never proves gate passage. Legacy v1 entries remain verifiable but cannot prove a v2 gate.
+
+`the-pass receipts add` and `the-pass receipts add-decision` refuse to append when the
+existing ledger or any referenced artifact is invalid. `the-pass receipts verify` recomputes
+the chain and artifact hashes and fails if an entry or recorded artifact was edited silently.
 
 ## Public Safety Blocks
 

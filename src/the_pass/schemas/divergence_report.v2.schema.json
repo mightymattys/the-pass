@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://the-pass.dev/schemas/divergence_report.v2.schema.json",
+  "title": "DivergenceReport",
+  "type": "object",
+  "required": ["schema_version", "id", "created_at", "paper_plan", "observation_manifest", "sample", "comparisons", "breaches", "decision"],
+  "properties": {
+    "schema_version": { "const": 2 },
+    "id": { "type": "string", "minLength": 1 },
+    "created_at": { "type": "string", "format": "date-time" },
+    "paper_plan": { "type": "string", "minLength": 1 },
+    "observation_manifest": { "type": "string", "minLength": 1 },
+    "sample": {
+      "type": "object",
+      "required": ["start_time", "end_time", "signals", "simulated_orders"],
+      "properties": {
+        "start_time": { "type": "string" },
+        "end_time": { "type": "string" },
+        "signals": { "type": ["integer", "null"], "minimum": 0 },
+        "simulated_orders": { "type": ["integer", "null"], "minimum": 0 }
+      }
+    },
+    "comparisons": {
+      "type": "object",
+      "required": ["signal_divergence", "cost_divergence", "fill_divergence", "pnl_divergence"],
+      "properties": {
+        "signal_divergence": { "type": ["number", "null"] },
+        "cost_divergence": { "type": ["number", "null"] },
+        "fill_divergence": { "type": ["number", "null"] },
+        "pnl_divergence": { "type": ["number", "null"] }
+      }
+    },
+    "breaches": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["threshold", "observed", "blocks_promotion"],
+        "properties": {
+          "threshold": { "type": "string", "minLength": 1 },
+          "observed": { "type": "string", "minLength": 1 },
+          "blocks_promotion": { "type": "boolean" }
+        }
+      }
+    },
+    "decision": {
+      "type": "object",
+      "required": ["status", "reason", "next_action"],
+      "properties": {
+        "status": { "enum": ["risk_review_candidate", "blocked", "kill", "revise"] },
+        "reason": { "type": "string", "minLength": 1 },
+        "next_action": { "type": "string", "minLength": 1 }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "decision": { "properties": { "status": { "const": "risk_review_candidate" } } } } },
+      "then": {
+        "properties": {
+          "sample": {
+            "properties": {
+              "start_time": { "minLength": 1 },
+              "end_time": { "minLength": 1 },
+              "signals": { "type": "integer", "minimum": 1 },
+              "simulated_orders": { "type": "integer", "minimum": 1 }
+            }
+          },
+          "comparisons": {
+            "properties": {
+              "signal_divergence": { "type": "number" },
+              "cost_divergence": { "type": "number" },
+              "fill_divergence": { "type": "number" },
+              "pnl_divergence": { "type": "number" }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "additionalProperties": true
+}

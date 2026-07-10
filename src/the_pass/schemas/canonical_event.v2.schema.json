@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://the-pass.dev/schemas/canonical_event.v2.schema.json",
+  "title": "CanonicalEventV2",
+  "type": "object",
+  "required": ["schema_version", "source", "venue", "asset_class", "instrument_id", "event_type", "event_time_ns", "receive_time_ns", "ingest_id", "raw_fingerprint", "payload"],
+  "properties": {
+    "schema_version": { "const": 2 },
+    "source": { "type": "string", "minLength": 1 },
+    "venue": { "type": "string", "minLength": 1 },
+    "asset_class": { "type": "string", "minLength": 1 },
+    "instrument_id": { "type": "string", "minLength": 1 },
+    "event_type": { "enum": ["instrument_definition", "bar", "trade", "quote", "book_snapshot", "book_delta", "funding", "open_interest", "settlement", "decision", "simulated_order", "fill", "portfolio_snapshot"] },
+    "event_time_ns": { "type": "integer", "minimum": 0 },
+    "receive_time_ns": { "type": "integer", "minimum": 0 },
+    "sequence": { "type": ["integer", "null"], "minimum": 0 },
+    "ingest_id": { "type": "string", "minLength": 1 },
+    "raw_fingerprint": { "type": "string", "pattern": "^[A-Fa-f0-9]{64}$" },
+    "payload": { "type": "object" }
+  },
+  "additionalProperties": false
+}

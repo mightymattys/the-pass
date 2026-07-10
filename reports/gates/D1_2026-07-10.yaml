@@ -1,0 +1,16 @@
+schema_version: 1
+milestone_id: D1
+gate_result: pass
+evaluated_at: "2026-07-10T00:00:00Z"
+reviewer: data_auditor
+acceptance_checks:
+  - id: canonical_contracts
+    status: pass
+    evidence_paths: [tests/test_data_foundation.py, scripts/validate_data_foundation.py]
+  - id: public_read_only_smoke
+    status: pass
+    evidence_paths: [reports/gates/D1_public_smoke_2026-07-10.json]
+  - id: fixture_replay_and_determinism
+    status: pass
+    evidence_paths: [tests/fixtures/futures/events.json, tests/test_data_foundation.py]
+open_p0_p1: []

@@ -1,0 +1,17 @@
+schema_version: 2
+id: polymarket-market-channel
+type: vendor-doc
+category: prediction_markets
+priority: P1
+status: skimmed
+url: https://docs.polymarket.com/developers/CLOB/websocket/market-channel
+bibliography: "Polymarket. CLOB market channel documentation."
+claim: Prediction-market book replay requires official snapshot and update semantics.
+evidence: Official documentation page identified; full message-version review remains pending.
+limitations: Documentation must be cross-checked against archived public payloads.
+market_applicability: [prediction_markets]
+required_tests: [snapshot_delta_replay, rest_ws_cross_check]
+failure_modes: [desync, schema_drift]
+system_requirements: [book_resync, provider_error_evidence]
+evidence_classification: official_provider_backlog
+license_note: Official URL and summary only; payload terms remain subject to provider policy.

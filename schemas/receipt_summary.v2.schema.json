@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://the-pass.dev/schemas/receipt_summary.v2.schema.json",
+  "title": "ReceiptSummary",
+  "type": "object",
+  "required": ["schema_version", "id", "created_at", "ledger", "filters", "summary", "packages", "status"],
+  "properties": {
+    "schema_version": { "const": 2 },
+    "id": { "type": "string", "minLength": 1 },
+    "created_at": { "type": "string", "format": "date-time" },
+    "ledger": { "type": "string" },
+    "filters": {
+      "type": "object",
+      "required": ["strategy_id", "gate", "verdict", "date_range"],
+      "properties": {
+        "strategy_id": { "type": "string" },
+        "gate": { "type": "string" },
+        "verdict": { "type": "string" },
+        "date_range": { "type": "string" }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "required": ["entries", "strategies", "verdicts", "open_blockers"],
+      "properties": {
+        "entries": { "type": "integer", "minimum": 0 },
+        "strategies": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "verdicts": { "type": "object" },
+        "open_blockers": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+      }
+    },
+    "packages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["package_id", "strategy_id", "run_id", "gate", "verdict", "package_path", "blockers"],
+        "properties": {
+          "package_id": { "type": "string", "minLength": 1 },
+          "strategy_id": { "type": "string", "minLength": 1 },
+          "run_id": { "type": "string", "minLength": 1 },
+          "gate": { "type": "string", "pattern": "^[a-z][a-z0-9_]{1,63}$" },
+          "verdict": { "enum": ["kill", "revise", "paper_candidate", "blocked"] },
+          "package_path": { "type": "string", "minLength": 1 },
+          "blockers": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+        }
+      }
+    },
+    "status": { "enum": ["summarized", "blocked"] }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "status": { "const": "summarized" } } },
+      "then": { "properties": { "ledger": { "minLength": 1 } } }
+    }
+  ],
+  "additionalProperties": true
+}

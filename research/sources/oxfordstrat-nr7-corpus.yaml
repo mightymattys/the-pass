@@ -1,0 +1,20 @@
+schema_version: 2
+id: oxfordstrat-nr7-corpus
+type: strategy-review
+category: oxfordstrat
+priority: P1
+status: reviewed
+url: https://oxfordstrat.com/trading-strategies/nr7/
+bibliography: "Oxford Capital Strategies. NR7 Pattern: Trading Strategy, Setup and Exit."
+claim: Public rule-based strategy reviews are useful reproducible baseline generators, and the NR7 example shows how costs can overturn an apparently positive gross result.
+evidence: The page specifies setup, entry, exits, sizing, parameter ranges, futures universe, sensitivity charts, and a separate commission/slippage test.
+limitations: OxfordStrat is secondary strategy-review material; its charts and historical setup are not independent academic proof or current executable evidence.
+market_applicability: [futures, crypto]
+tradable_implication: Reproduce NR7, Donchian, ORB, squeeze, and related rules as transparent baseline families and expect many to be killed after costs.
+required_tests: [exact_rule_replication, all_parameter_variants, gross_vs_net, out_of_sample, conservative_same_bar_fill]
+failure_modes: [review_page_as_proof, zero_cost_promotion, ambiguous_intrabar_ordering, best_parameter_only]
+system_requirements: [strategy-zoo backlog, parameter ledger, bar-path conservative fills]
+notes_owner: study_scout
+review_date: "2026-07-10"
+evidence_classification: secondary_strategy_review
+license_note: Public review page; no proprietary code or media is copied.

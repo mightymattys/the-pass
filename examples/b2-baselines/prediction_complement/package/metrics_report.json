@@ -1,0 +1,80 @@
+{
+  "created_at": "2026-07-10T00:00:00Z",
+  "gross_metrics": {
+    "annualized_return": 0.0,
+    "average_drawdown": 0.0,
+    "average_holding_period": null,
+    "calmar": null,
+    "capacity_estimate": 1000000.0,
+    "downside_volatility": null,
+    "drawdown_duration": 0.0,
+    "expectancy": 0.0,
+    "expected_shortfall": 0.0,
+    "max_drawdown": 0.0,
+    "payoff_ratio": null,
+    "pnl": 0.0,
+    "sharpe": null,
+    "sortino": null,
+    "total_return": 0.0,
+    "turnover": 0.0,
+    "volatility": 0.0,
+    "win_rate": 0.0
+  },
+  "id": "prediction_market_complement_or_fair_value_v1-metrics",
+  "limitations": [
+    "diagnostic synthetic baseline; no promotion claim"
+  ],
+  "net_metrics": {
+    "annualized_return": 0.0,
+    "average_drawdown": 0.0,
+    "average_holding_period": null,
+    "calmar": null,
+    "capacity_estimate": 1000000.0,
+    "downside_volatility": null,
+    "drawdown_duration": 0.0,
+    "expectancy": 0.0,
+    "expected_shortfall": 0.0,
+    "max_drawdown": 0.0,
+    "payoff_ratio": null,
+    "pnl": 0.0,
+    "sharpe": null,
+    "sortino": null,
+    "total_return": 0.0,
+    "turnover": 0.0,
+    "volatility": 0.0,
+    "win_rate": 0.0
+  },
+  "not_applicable_reasons": {
+    "gross_metrics.average_holding_period": "insufficient observations for diagnostic metric",
+    "gross_metrics.calmar": "insufficient observations for diagnostic metric",
+    "gross_metrics.downside_volatility": "insufficient observations for diagnostic metric",
+    "gross_metrics.payoff_ratio": "insufficient observations for diagnostic metric",
+    "gross_metrics.sharpe": "insufficient observations for diagnostic metric",
+    "gross_metrics.sortino": "insufficient observations for diagnostic metric",
+    "net_metrics.average_holding_period": "insufficient observations for diagnostic metric",
+    "net_metrics.calmar": "insufficient observations for diagnostic metric",
+    "net_metrics.downside_volatility": "insufficient observations for diagnostic metric",
+    "net_metrics.payoff_ratio": "insufficient observations for diagnostic metric",
+    "net_metrics.sharpe": "insufficient observations for diagnostic metric",
+    "net_metrics.sortino": "insufficient observations for diagnostic metric"
+  },
+  "robustness": {
+    "dsr_or_psr": null,
+    "null_baseline_result": "not evaluated until V3",
+    "parameter_stability": "not evaluated until V3",
+    "pbo": null,
+    "stress_results": []
+  },
+  "run_receipt": "run_receipt.json",
+  "sample": {
+    "end_time": "2024-01-01T00:47:00.000000Z",
+    "evaluation_scope": "diagnostic",
+    "instruments": [
+      "DIAGNOSTIC"
+    ],
+    "signals": 15,
+    "start_time": "2024-01-01T00:00:00.000000Z",
+    "trades": 0
+  },
+  "schema_version": 2
+}

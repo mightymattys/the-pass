@@ -1,0 +1,27 @@
+schema_version: 2
+id: oxford_nr7_baseline
+created_at: "2026-07-10T00:00:00Z"
+status: ready_for_spec
+proposed_name: OxfordStrat NR7 compression baseline
+source_notes: [research/sources/oxfordstrat-nr7-corpus.yaml]
+edge:
+  primary_family: volatility_breakout
+  thesis: A narrowest-of-seven range may identify compression before a directional expansion.
+  mechanism: Rank daily ranges, then test a predeclared next-session breakout without using the secondary backtest as edge evidence.
+market:
+  asset_classes: [futures]
+  venues: [licensed_provider_fixture_then_archive]
+  instruments: [diversified_liquid_futures]
+  timeframes: [daily]
+test:
+  next_test: Compare the exact NR7 rule with random-entry and unconditional breakout baselines.
+  required_data: [individual_contract_bars, sessions, roll_manifest, costs]
+  null_or_random_baseline: Seeded entries matched by holding period and exposure.
+  falsification_criteria: [no_oos_net_improvement, unstable_neighbor_parameters, stress_failure]
+risks:
+  costs: [turnover, roll]
+  execution: [next_bar_gap, same_bar_ambiguity]
+  data: [session_definition, continuous_series_bias]
+  regime: [persistent_high_volatility]
+kill_when: [Net OOS performance does not exceed the matched baseline after conservative costs.]
+blockers: []
