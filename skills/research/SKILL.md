@@ -39,6 +39,15 @@ research-to-spec sequence.
 - Source status or StrategySpec history rewritten to conceal prior assumptions.
 - Backtest implementation or result files; use `/the-pass:test` after `research_ready`.
 
+## Agent Delegation
+
+- A native or cross-provider `researcher` may gather and classify sources in read-only mode.
+  Cross-provider work follows `docs/plugin/CROSS_RUNTIME.md`.
+- Require evidence URLs, claim classification, limitations, and unresolved uncertainty in the
+  structured result. Agent synthesis is not statistical evidence and cannot prove an edge.
+- The delegate cannot write the source registry, StrategySpec, package, ledger, or gate decision;
+  the caller verifies and records accepted evidence.
+
 ## Procedure
 
 ### Source mode

@@ -15,6 +15,15 @@ schema-backed artifacts and actual CLI results; prose is never promotion evidenc
   fingerprints, no blockers, and a reviewer independent of the StrategySpec and run owners.
 - Structured artifacts must validate before they are returned as successful output.
 
+## Agent Delegation
+
+The seven skills are shared by Codex and Claude Code. A host runtime may use its native bounded
+subagents, while cross-provider work must pass a validated `agent_task` through `the-pass agents`.
+Research and review delegation is read-only. Implementation delegation runs in a disposable Git
+worktree and returns an unapplied patch. Delegation depth is one; agents cannot retry, recurse,
+write protected authority paths, alter ledgers, decide a gate, or represent human approval. The
+caller validates every result and remains accountable for applying and testing changes.
+
 ## Skill Matrix
 
 | Skill | Owns | May Invoke | Must Not Do | Exit States |

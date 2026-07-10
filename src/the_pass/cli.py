@@ -11,6 +11,13 @@ from pathlib import Path
 
 from . import __version__
 from .automation import run_automation_spec
+from .agent_orchestration import (
+    AgentOrchestrationError,
+    AgentSafetyError,
+    dispatch_agent_task,
+    doctor_agents,
+    inspect_agent_task,
+)
 from .data.contracts import CanonicalEvent
 from .data.features import build_bar_features
 from .data.quality import QualityPolicy, build_quality_report
@@ -368,6 +375,32 @@ def build_parser() -> argparse.ArgumentParser:
     automation_run.add_argument("--scheduled-for", required=True)
     automation_run.add_argument("--workspace-root", type=Path, default=Path.cwd())
     automation_run.add_argument("--format", choices=("text", "json"), default="text")
+
+    agents_parser = subparsers.add_parser(
+        "agents", help="Inspect or run bounded Codex/Claude delegation."
+    )
+    agents_subparsers = agents_parser.add_subparsers(
+        dest="agents_command", required=True
+    )
+    agents_doctor = agents_subparsers.add_parser(
+        "doctor", help="Check local provider binaries without model calls."
+    )
+    agents_doctor.add_argument(
+        "--provider", choices=("codex", "claude", "all"), default="all"
+    )
+    agents_doctor.add_argument("--format", choices=("text", "json"), default="text")
+    agents_inspect = agents_subparsers.add_parser(
+        "inspect", help="Validate a task and preview its safe invocation."
+    )
+    agents_inspect.add_argument("task", type=Path)
+    agents_inspect.add_argument("--format", choices=("text", "json"), default="text")
+    agents_dispatch = agents_subparsers.add_parser(
+        "dispatch", help="Execute one bounded external-agent task."
+    )
+    agents_dispatch.add_argument("task", type=Path)
+    agents_dispatch.add_argument("--output-dir", type=Path, required=True)
+    agents_dispatch.add_argument("--execute", action="store_true")
+    agents_dispatch.add_argument("--format", choices=("text", "json"), default="text")
 
     report_parser = subparsers.add_parser(
         "report", help="Build a read-only static evidence report bundle."
@@ -875,6 +908,62 @@ def main(argv: list[str] | None = None) -> int:
                 ok=False,
                 status="error",
                 issues=[{"path": str(args.spec), "message": str(exc)}],
+            )
+            return 1
+
+    if args.command == "agents":
+        try:
+            if args.agents_command == "doctor":
+                document = doctor_agents(args.provider)
+                print_envelope(
+                    output_format=args.format,
+                    ok=True,
+                    status="complete",
+                    details=document,
+                )
+                return 0
+            if args.agents_command == "inspect":
+                document = inspect_agent_task(args.task)
+                print_envelope(
+                    output_format=args.format,
+                    ok=True,
+                    status="complete",
+                    artifact_paths=[args.task.resolve()],
+                    details={"inspection": document},
+                )
+                return 0
+            run, run_path, exit_code = dispatch_agent_task(
+                args.task,
+                output_dir=args.output_dir,
+                execute=args.execute,
+            )
+            artifact_paths = [run_path]
+            if run["patch"] is not None:
+                artifact_paths.append(Path(run["patch"]["path"]))
+            print_envelope(
+                output_format=args.format,
+                ok=exit_code == 0,
+                status=run["status"],
+                artifact_paths=artifact_paths,
+                issues=[{"path": str(args.task), "message": issue} for issue in run["issues"]],
+                receipt_id=run["run_id"],
+                details={"agent_run": run},
+            )
+            return exit_code
+        except AgentSafetyError as exc:
+            print_envelope(
+                output_format=args.format,
+                ok=False,
+                status="forbidden",
+                issues=[{"path": str(getattr(args, "task", "agents")), "message": str(exc)}],
+            )
+            return 3
+        except (AgentOrchestrationError, OSError, TypeError, ValueError) as exc:
+            print_envelope(
+                output_format=args.format,
+                ok=False,
+                status="error",
+                issues=[{"path": str(getattr(args, "task", "agents")), "message": str(exc)}],
             )
             return 1
 

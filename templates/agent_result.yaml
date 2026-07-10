@@ -1,0 +1,9 @@
+schema_version: 1
+task_id: example-agent-task
+status: complete
+summary: Review completed without a blocking finding.
+findings: []
+changed_paths: []
+next_actions: []
+assumptions: []
+issues: []

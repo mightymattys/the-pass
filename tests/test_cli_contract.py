@@ -71,6 +71,9 @@ class CliEnvelopeContractTests(unittest.TestCase):
                     "automation", "run", str(missing), "--output-dir", str(root / "automation"),
                     "--scheduled-for", "2026-07-10T00:00:00Z", "--format", "json",
                 ],
+                "agents": [
+                    "agents", "inspect", str(missing), "--format", "json",
+                ],
                 "incident": [
                     "incident", "create", "--id", "bad", "--severity", "P2", "--detected-at", "bad",
                     "--source", "test", "--summary", "test", "--evidence", "test", "--freeze-reason",

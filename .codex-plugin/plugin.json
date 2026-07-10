@@ -1,7 +1,7 @@
 {
   "name": "the-pass",
-  "version": "0.8.0",
-  "description": "A public research line for trading strategies: one bounded run from hypothesis through independent evidence gates.",
+  "version": "0.9.0",
+  "description": "A public research line for trading strategies with bounded native subagents and optional audited Codex/Claude delegation.",
   "author": {
     "name": "The Pass contributors"
   },
@@ -13,7 +13,9 @@
     "risk",
     "audit",
     "automation",
-    "codex"
+    "codex",
+    "claude-code",
+    "multi-agent"
   ],
   "skills": "./skills/",
   "interface": {

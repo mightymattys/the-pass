@@ -31,9 +31,25 @@ the-pass receipts add path/to/package --ledger receipts.jsonl
 the-pass receipts verify --ledger receipts.jsonl
 ```
 
-For a guided end-to-end research line, install the bundled Codex plugin and use
-`/the-pass:run`. The Python `workflow` group exposes the same validated state primitives for
-automation; it does not bypass independent gate evaluation.
+For a guided end-to-end research line, install either bundled plugin and use
+`/the-pass:run`. Both runtimes consume the same seven skills. A local Claude Code checkout can be
+loaded directly:
+
+```bash
+claude --plugin-dir /path/to/the-pass
+```
+
+After the `v0.9.0` tag is published, the pinned marketplace manifest supports:
+
+```text
+/plugin marketplace add matk0shub/the-pass
+/plugin install the-pass@the-pass-tools
+```
+
+The Python `workflow` group exposes the same validated state primitives for automation; it does
+not bypass independent gate evaluation. Cross-provider delegation is opt-in through
+`the-pass agents inspect` followed by `the-pass agents dispatch --execute`; see
+[Cross-Runtime Orchestration](../plugin/CROSS_RUNTIME.md).
 
 Packaged schemas and policies are loaded from the installed wheel. A source checkout is not
 required. No command needs or loads venue credentials.

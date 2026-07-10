@@ -21,6 +21,7 @@ sys.path.insert(0, str(ROOT / "src"))
 from the_pass.validator import ARTIFACT_SCHEMAS, ARTIFACT_TYPES, validate_artifact, validate_package  # noqa: E402
 from the_pass.cli import build_parser  # noqa: E402
 from the_pass.orchestration import load_pipeline_policy  # noqa: E402
+from the_pass.agent_orchestration import critical_paths_are_protected  # noqa: E402
 
 PLACEHOLDER_MARKER = "[" + "TO" + "DO:"
 
@@ -48,8 +49,9 @@ LIVE_ORDER_PATTERNS = [
         r"\balpaca_trade_api\b",
     )
 ]
-LIVE_SCAN_DIRS = {"src", "scripts", ".github", ".codex-plugin"}
-LIVE_SCAN_SUFFIXES = {".py", ".toml", ".yaml", ".yml", ".json"}
+LIVE_SCAN_DIRS = {"src", "scripts", ".github", ".codex-plugin", ".claude-plugin", "agents"}
+AUXILIARY_SCHEMAS = {"agent_result.provider.schema.json"}
+LIVE_SCAN_SUFFIXES = {".py", ".toml", ".yaml", ".yml", ".json", ".md"}
 PAID_OR_PRIVATE_DATA_SUFFIXES = {".parquet", ".feather", ".h5", ".hdf5", ".duckdb", ".sqlite", ".db", ".pkl", ".pickle"}
 ALLOWED_DATA_DIR_FILES = {"README.md", ".gitkeep"}
 
@@ -164,14 +166,69 @@ def validate_plugin_manifest() -> None:
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     if manifest.get("name") != "the-pass":
         fail("plugin name must be the-pass")
-    if manifest.get("version") != "0.8.0":
-        fail("plugin version must be 0.8.0")
+    if manifest.get("version") != "0.9.0":
+        fail("plugin version must be 0.9.0")
     if manifest.get("skills") != "./skills/":
         fail("plugin must point skills to ./skills/")
     interface = manifest.get("interface") or {}
     for field in ("displayName", "shortDescription", "longDescription", "developerName", "category"):
         if not interface.get(field):
             fail(f"plugin interface missing {field}")
+
+    claude_manifest_path = ROOT / ".claude-plugin" / "plugin.json"
+    marketplace_path = ROOT / ".claude-plugin" / "marketplace.json"
+    for path in (claude_manifest_path, marketplace_path):
+        if not path.is_file():
+            fail(f"missing {path.relative_to(ROOT)}")
+        validate_json(path)
+    claude_manifest = json.loads(claude_manifest_path.read_text(encoding="utf-8"))
+    if claude_manifest.get("name") != "the-pass" or claude_manifest.get("version") != "0.9.0":
+        fail("Claude plugin name/version must be the-pass 0.9.0")
+    marketplace = json.loads(marketplace_path.read_text(encoding="utf-8"))
+    if marketplace.get("name") != "the-pass-tools" or marketplace.get("version") != "0.9.0":
+        fail("Claude marketplace name/version is invalid")
+    plugins = marketplace.get("plugins")
+    if not isinstance(plugins, list) or len(plugins) != 1:
+        fail("Claude marketplace must contain exactly one plugin")
+    entry = plugins[0]
+    if not isinstance(entry, dict):
+        fail("Claude marketplace plugin entry must be an object")
+    source = entry.get("source")
+    if (
+        entry.get("name") != "the-pass"
+        or entry.get("version") != "0.9.0"
+        or not isinstance(source, dict)
+        or source.get("source") != "github"
+        or source.get("repo") != "matk0shub/the-pass"
+        or source.get("ref") != "v0.9.0"
+    ):
+        fail("Claude marketplace plugin must pin matk0shub/the-pass at v0.9.0")
+
+    expected_agents = {"coordinator", "researcher", "implementer", "reviewer"}
+    agents_dir = ROOT / "agents"
+    present_agents = {path.stem for path in agents_dir.glob("*.md")}
+    if present_agents != expected_agents:
+        fail("Claude plugin must expose coordinator, researcher, implementer, and reviewer agents")
+    for name in sorted(expected_agents):
+        path = agents_dir / f"{name}.md"
+        parts = path.read_text(encoding="utf-8").split("---", 2)
+        if len(parts) != 3:
+            fail(f"Claude agent has malformed front matter: {name}")
+        metadata = yaml.safe_load(parts[1])
+        if not isinstance(metadata, dict) or metadata.get("name") != name:
+            fail(f"Claude agent name is invalid: {name}")
+        if not isinstance(metadata.get("maxTurns"), int) or metadata["maxTurns"] < 1:
+            fail(f"Claude agent must have finite maxTurns: {name}")
+        tools = str(metadata.get("tools", ""))
+        disallowed = {value.strip() for value in str(metadata.get("disallowedTools", "")).split(",")}
+        if name in {"researcher", "reviewer"} and not {"Write", "Edit", "Bash", "Agent"} <= disallowed:
+            fail(f"Claude {name} agent must deny write, shell, and nested-agent tools")
+        if name == "implementer" and (
+            metadata.get("isolation") != "worktree" or not {"Bash", "Agent"} <= disallowed
+        ):
+            fail("Claude implementer must use worktree isolation and deny Bash/Agent")
+        if name == "coordinator" and "Agent(" not in tools:
+            fail("Claude coordinator must use a named Agent allowlist")
 
 
 def validate_python_package() -> None:
@@ -294,7 +351,10 @@ def validate_schemas() -> None:
     missing = required - present
     if missing:
         fail(f"missing schemas: {', '.join(sorted(missing))}")
-    unexpected = present - required
+    missing_auxiliary = AUXILIARY_SCHEMAS - present
+    if missing_auxiliary:
+        fail(f"missing auxiliary schemas: {', '.join(sorted(missing_auxiliary))}")
+    unexpected = present - required - AUXILIARY_SCHEMAS
     if unexpected:
         fail(f"schemas without registered artifact types: {', '.join(sorted(unexpected))}")
     for path in schemas_dir.glob("*.json"):
@@ -354,6 +414,16 @@ def validate_packaged_policy() -> None:
     validate_yaml(packaged_risk_policy)
     if root_risk_policy.read_bytes() != packaged_risk_policy.read_bytes():
         fail("packaged risk policy differs from config/risk-policies.v1.yaml")
+    root_agent_policy = ROOT / "config" / "agent-orchestration.v1.yaml"
+    packaged_agent_policy = ROOT / "src" / "the_pass" / "policies" / "agent-orchestration.v1.yaml"
+    if not root_agent_policy.is_file() or not packaged_agent_policy.is_file():
+        fail("agent orchestration policy must exist in config and packaged policy directories")
+    validate_yaml(root_agent_policy)
+    validate_yaml(packaged_agent_policy)
+    if root_agent_policy.read_bytes() != packaged_agent_policy.read_bytes():
+        fail("packaged agent policy differs from config/agent-orchestration.v1.yaml")
+    if not critical_paths_are_protected(yaml.safe_load(root_agent_policy.read_text(encoding="utf-8"))):
+        fail("agent policy does not protect every declared critical authority path")
     validate_skill_pipeline()
 
 

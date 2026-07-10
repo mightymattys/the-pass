@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-marketplace.json",
+  "name": "the-pass-tools",
+  "owner": {
+    "name": "The Pass contributors"
+  },
+  "description": "Auditable trading-strategy research workflows for Claude Code.",
+  "version": "0.9.0",
+  "plugins": [
+    {
+      "name": "the-pass",
+      "source": {
+        "source": "github",
+        "repo": "matk0shub/the-pass",
+        "ref": "v0.9.0"
+      },
+      "description": "Research, test, independently review, and paper-observe trading strategies without live execution.",
+      "version": "0.9.0",
+      "author": {
+        "name": "The Pass contributors"
+      },
+      "homepage": "https://github.com/matk0shub/the-pass",
+      "repository": "https://github.com/matk0shub/the-pass",
+      "license": "MIT",
+      "category": "development",
+      "tags": ["trading", "research", "backtesting", "risk", "multi-agent"],
+      "strict": true
+    }
+  ]
+}

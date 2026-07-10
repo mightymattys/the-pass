@@ -37,6 +37,14 @@ for `risk_review`; it does not perform that independent gate and never approves 
   real order code, and approved human-decision state.
 - `live_gate` evaluation or any pack claiming to grant approval.
 
+## Agent Delegation
+
+- Delegation is limited to read-only review of completed risk and approval inputs under
+  `docs/plugin/CROSS_RUNTIME.md`.
+- No agent may set a human decision to accepted, modify limits, write approval state, authorize a
+  live capability, or alter the exact package.
+- Treat delegated analysis as a finding input, never as approval or gate passage.
+
 ## Procedure
 
 - Verify exact passed `paper_gate` membership for the source package and verify the ledger.

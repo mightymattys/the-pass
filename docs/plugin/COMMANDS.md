@@ -1,8 +1,8 @@
 # The Pass Commands
 
-The plugin exposes seven public skills. `/the-pass:run` is the whole-line front door; the other
-six commands are focused stations that it may invoke. The Python CLI remains the validation and
-state-transition authority.
+The Codex and Claude Code plugins expose the same seven public skills. `/the-pass:run` is the
+whole-line front door; the other six commands are focused stations that it may invoke. The Python
+CLI remains the validation and state-transition authority.
 
 ## Public Commands
 
@@ -62,6 +62,14 @@ are separate append-only governance attachments and cannot be overwritten or ret
 
 ## Shared Rules
 
+- Native runtime subagents may be used within their declared read/write restrictions. Cross-runtime
+  work must use `the-pass agents inspect` and an explicit `agents dispatch --execute` call.
+- Delegation depth is one. Delegated agents cannot spawn another provider task or recursively invoke
+  the coordinator.
+- Read-only delegates return evidence only. Write delegates return an unapplied worktree patch; the
+  caller reviews and applies it.
+- No agent may write gate decisions, approval state, ledgers, orchestration policy, protected safety
+  code, credentials, or live paths. Agent output is never human approval or gate passage.
 - Every promotion claim comes from a valid v2 `gate_decision` for the exact package ID.
 - A reviewer must be named and differ from both the StrategySpec owner and run owner.
 - Every finalized run is added to the ledger, including `kill`, `revise`, and `blocked` results.

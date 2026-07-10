@@ -34,6 +34,12 @@ evidence is required next. It replaces the public `receipts` skill; the Python r
   approval state.
 - Credentials, private data, and live logs.
 
+## Agent Delegation
+
+- Status may summarize already validated `agent_run` receipts and unapplied patch metadata.
+- It must not dispatch an agent, apply a patch, infer success from provider prose, or mutate agent
+  receipts. Cross-runtime semantics are defined in `docs/plugin/CROSS_RUNTIME.md`.
+
 ## Procedure
 
 - Validate workflow state when supplied.

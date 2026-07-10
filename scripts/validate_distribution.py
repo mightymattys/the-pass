@@ -96,6 +96,49 @@ def main() -> int:
         if not REQUIRED_ENVELOPE <= set(envelope) or not envelope["ok"]:
             fail("installed CLI validation envelope is invalid")
 
+        agent_task = root / "agent_task.json"
+        agent_task.write_text(
+            json.dumps(
+                {
+                    "schema_version": 1,
+                    "task_id": "wheel-agent-task",
+                    "created_at": "2026-07-10T00:00:00Z",
+                    "caller_provider": "codex",
+                    "target_provider": "claude",
+                    "role": "reviewer",
+                    "objective": "Review the supplied artifact without changing files.",
+                    "acceptance_criteria": ["Return schema-valid evidence."],
+                    "workspace_root": ".",
+                    "input_paths": ["human_decision.yaml"],
+                    "mode": "read_only",
+                    "allowed_write_paths": [],
+                    "timeout_seconds": 30,
+                    "max_output_bytes": 65536,
+                    "max_budget_usd": 1.0,
+                    "allow_native_subagents": False,
+                    "forbidden_actions": [
+                        "gate_decision",
+                        "live_transaction",
+                        "credential_access",
+                        "permission_bypass",
+                        "recursive_cross_provider",
+                        "apply_patch",
+                        "git_commit",
+                        "git_push",
+                    ],
+                }
+            ),
+            encoding="utf-8",
+        )
+        run([str(executable), "validate", str(agent_task), "--type", "agent_task"], cwd=root)
+        inspection = run(
+            [str(executable), "agents", "inspect", str(agent_task), "--format", "json"],
+            cwd=root,
+        )
+        agent_envelope = json.loads(inspection.stdout)
+        if not REQUIRED_ENVELOPE <= set(agent_envelope) or not agent_envelope["ok"]:
+            fail("installed agent inspect envelope is invalid")
+
         package = root / "package"
         shutil.copytree(ROOT / "examples" / "synthetic-breakout" / "package", package)
         run([str(executable), "validate-package", str(package)], cwd=root)

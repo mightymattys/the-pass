@@ -62,7 +62,7 @@ policy hash.
 The framework is operational. All capability milestones in the machine-readable roadmap pass,
 while candidate promotion remains deliberately separate.
 
-The source tree and Codex plugin are versioned `0.8.0`. The release badge above remains the
+The source tree and Codex/Claude Code plugins are versioned `0.9.0`. The release badge above remains the
 authority for the latest published tag; source-version readiness is recorded in the
 [`v0.8.0` release audit](reports/RELEASE_AUDIT_0.8.0.md) and
 [post-release verification](reports/POST_RELEASE_AUDIT_0.8.0.md).
@@ -149,6 +149,7 @@ uv run the-pass <group> --help
 | `report`, `dashboard` | Build static, read-only evidence bundles |
 | `receipts` | Append and semantically replay run and gate-decision ledgers |
 | `workflow` | Start, advance, inspect, or supersede a bounded slash-skill run |
+| `agents` | Inspect or explicitly dispatch bounded Codex/Claude agent tasks |
 
 All commands support `--format text|json`. Stable JSON responses contain `ok`, `status`,
 `artifact_paths`, `issues`, and `receipt_id`. See the full [CLI contract](docs/public/CLI_CONTRACT.md).
@@ -165,11 +166,11 @@ All commands support `--format text|json`. Stable JSON responses contain `ok`, `
 Exit code `2` is a successful research evaluation, not a software crash. `live_gate` is locked
 and returns `3` in the public implementation.
 
-## Codex Plugin
+## Codex and Claude Code Plugins
 
-The repository also contains a Codex plugin manifest and seven focused slash-command skills.
-The plugin is the guided research surface; the Python CLI remains the machine interface and
-source of validation truth.
+The repository contains validated Codex and Claude Code plugin manifests backed by the same seven
+focused slash-command skills. The plugins are guided research surfaces; the Python CLI remains the
+machine interface and source of validation truth.
 
 | Slash command | Purpose |
 | --- | --- |
@@ -203,6 +204,22 @@ The complete behavioral contract is in [The Pass Commands](docs/plugin/COMMANDS.
 [Skill Contracts](docs/implementation/SKILL_CONTRACTS.md). The consolidation rationale and
 verified implementation plan are in the
 [Slash Skill Consolidation Plan](docs/implementation/SLASH_SKILL_CONSOLIDATION_PLAN.md).
+
+Claude Code also exposes four bounded native agents: `coordinator`, `researcher`, `implementer`,
+and `reviewer`. Codex or Claude may delegate to the other provider through a provider-neutral,
+depth-one broker. Delegation is inspect-first and never runs implicitly:
+
+```bash
+the-pass agents doctor --format json
+the-pass agents inspect templates/agent_task.yaml --format json
+the-pass agents dispatch templates/agent_task.yaml --output-dir reports/agents \
+  --execute --format json
+```
+
+Read-only tasks cannot write. Implementation tasks run in a disposable Git worktree and return an
+unapplied patch for the caller to review. Agents cannot apply patches, write protected governance
+paths, decide gates, approve live trading, recursively delegate, or retry a failed model call. See
+[Cross-Runtime Orchestration](docs/plugin/CROSS_RUNTIME.md).
 
 ## Evidence Model
 
@@ -295,6 +312,8 @@ See [Paper, Automation, and Reporting](docs/implementation/PAPER_AUTOMATION_REPO
 | [`reports/`](reports/) | Capability gates, audits, benchmark evidence, and generated reports |
 | [`tests/`](tests/) | Unit, contract, mutation, safety, and end-to-end tests |
 | [`.codex-plugin/`](.codex-plugin/) | Codex plugin manifest |
+| [`.claude-plugin/`](.claude-plugin/) | Claude Code plugin and marketplace manifests |
+| [`agents/`](agents/) | Bounded Claude Code native subagent definitions |
 | [`skills/`](skills/) | Slash-command skill implementations |
 
 ## Development
@@ -305,6 +324,8 @@ Keep changes scoped and preserve the fail-closed boundary.
 uv lock --check
 uv run ruff check .
 uv run python scripts/validate_public_repo.py
+claude plugin validate .claude-plugin/plugin.json --strict
+claude plugin validate . --strict
 uv run python -m unittest discover -s tests -v
 DIST_DIR="$(mktemp -d)"
 uv build --out-dir "$DIST_DIR"
@@ -338,6 +359,10 @@ Report vulnerabilities according to [SECURITY.md](SECURITY.md).
 - [Artifact lifecycle](docs/implementation/ARTIFACT_LIFECYCLE.md)
 - [Validation and safety](docs/implementation/VALIDATION_AND_SAFETY.md)
 - [Plugin command contract](docs/plugin/COMMANDS.md)
+- [Cross-runtime orchestration](docs/plugin/CROSS_RUNTIME.md)
+- [Cross-agent implementation plan](docs/implementation/CROSS_AGENT_ORCHESTRATION_PLAN.md)
+- [Portable orchestration ADR](docs/adr/ADR-0010-portable-agent-orchestration.md)
+- [`v0.9.0` cross-agent audit](reports/CROSS_AGENT_ORCHESTRATION_AUDIT_0.9.0.md)
 - [CLI contract](docs/public/CLI_CONTRACT.md)
 - [Release process](docs/public/RELEASE_PROCESS.md)
 - [`v0.8.0` release audit](reports/RELEASE_AUDIT_0.8.0.md)
