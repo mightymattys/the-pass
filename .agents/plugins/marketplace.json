@@ -1,0 +1,20 @@
+{
+  "name": "the-pass-tools",
+  "interface": {
+    "displayName": "The Pass"
+  },
+  "plugins": [
+    {
+      "name": "the-pass",
+      "source": {
+        "source": "local",
+        "path": "."
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

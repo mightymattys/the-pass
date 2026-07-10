@@ -62,12 +62,12 @@ policy hash.
 The framework is operational. All capability milestones in the machine-readable roadmap pass,
 while candidate promotion remains deliberately separate.
 
-The source tree, latest published release, and Codex/Claude Code plugins are versioned `0.9.0`.
-The release badge above remains the authority for the latest published tag. Readiness is recorded in the
+The source tree and Codex/Claude Code plugins are versioned `0.9.1`. The release badge above
+remains the authority for the latest published tag. Readiness is recorded in the
 [`v0.9.0` cross-agent audit](reports/CROSS_AGENT_ORCHESTRATION_AUDIT_0.9.0.md) and the
 [full repository stability audit](reports/FULL_REPOSITORY_STABILITY_AUDIT_2026-07-10.md). Versioned
-publication evidence is tracked in the [`v0.9.0` release audit](reports/RELEASE_AUDIT_0.9.0.md) and
-[post-release verification](reports/POST_RELEASE_AUDIT_0.9.0.md).
+publication readiness for the installation fix is tracked in the
+[`v0.9.1` release audit](reports/RELEASE_AUDIT_0.9.1.md).
 
 | Area | Framework capability | Bundled candidate state |
 | --- | --- | --- |
@@ -110,6 +110,10 @@ The base package only needs PyYAML and JSON Schema. Optional extras add:
 For wheel installation and clean-package verification, see
 [Installation](docs/public/INSTALLATION.md). Packaged schemas and policies work without a source
 checkout.
+
+For the complete workflow from CLI/plugin installation through a real research run, independent
+gate review, paper observation, external engines, and agent delegation, follow the
+[Usage Guide](docs/public/USAGE_GUIDE.md).
 
 ## First Evidence Check
 
@@ -174,6 +178,17 @@ and returns `3` in the public implementation.
 The repository contains validated Codex and Claude Code plugin manifests backed by the same seven
 focused slash-command skills. The plugins are guided research surfaces; the Python CLI remains the
 machine interface and source of validation truth.
+
+Install the Codex plugin from the pinned marketplace:
+
+```bash
+codex plugin marketplace add matk0shub/the-pass --ref v0.9.1
+codex plugin add the-pass@the-pass-tools
+```
+
+For Claude Code, add `matk0shub/the-pass` as a marketplace and install
+`the-pass@the-pass-tools`. Install the Python CLI separately in both cases; see the
+[Usage Guide](docs/public/USAGE_GUIDE.md).
 
 | Slash command | Purpose |
 | --- | --- |
@@ -385,7 +400,10 @@ Report vulnerabilities according to [SECURITY.md](SECURITY.md).
 - [`v0.9.0` release notes](docs/public/RELEASE_NOTES_v0.9.0.md)
 - [`v0.9.0` release audit](reports/RELEASE_AUDIT_0.9.0.md)
 - [`v0.9.0` post-release verification](reports/POST_RELEASE_AUDIT_0.9.0.md)
+- [`v0.9.1` release notes](docs/public/RELEASE_NOTES_v0.9.1.md)
+- [`v0.9.1` release audit](reports/RELEASE_AUDIT_0.9.1.md)
 - [CLI contract](docs/public/CLI_CONTRACT.md)
+- [Usage guide](docs/public/USAGE_GUIDE.md)
 - [Release process](docs/public/RELEASE_PROCESS.md)
 - [`v0.8.0` release audit](reports/RELEASE_AUDIT_0.8.0.md)
 - [`v0.8.0` post-release verification](reports/POST_RELEASE_AUDIT_0.8.0.md)

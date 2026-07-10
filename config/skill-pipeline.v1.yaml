@@ -1,5 +1,5 @@
 schema_version: 1
-interface_version: 0.9.0
+interface_version: 0.9.1
 public_skills:
   run: [complete, waiting, blocked, killed]
   research: [research_ready, rejected, blocked]

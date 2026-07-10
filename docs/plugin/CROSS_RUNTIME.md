@@ -8,9 +8,15 @@ model call, and `the-pass agents inspect` never executes a provider.
 
 ### Codex
 
-Use the repository's `.codex-plugin/plugin.json` through the normal Codex plugin installation
-flow. The commands are namespaced as `/the-pass:run`, `/the-pass:research`, and the other five
-shared skills.
+Install the pinned repository marketplace and plugin:
+
+```bash
+codex plugin marketplace add matk0shub/the-pass --ref v0.9.1
+codex plugin add the-pass@the-pass-tools
+```
+
+Start a new task after installation. The commands are namespaced as `/the-pass:run`,
+`/the-pass:research`, and the other five shared skills.
 
 ### Claude Code development checkout
 
@@ -27,7 +33,7 @@ claude plugin validate . --strict
 
 ### Claude Code pinned release
 
-For the published `v0.9.0` release:
+For the published release:
 
 ```text
 /plugin marketplace add matk0shub/the-pass

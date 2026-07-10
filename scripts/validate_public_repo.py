@@ -19,6 +19,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
 from the_pass.validator import ARTIFACT_SCHEMAS, ARTIFACT_TYPES, validate_artifact, validate_package  # noqa: E402
+from the_pass import __version__  # noqa: E402
 from the_pass.cli import build_parser  # noqa: E402
 from the_pass.orchestration import load_pipeline_policy  # noqa: E402
 from the_pass.agent_orchestration import critical_paths_are_protected  # noqa: E402
@@ -49,7 +50,15 @@ LIVE_ORDER_PATTERNS = [
         r"\balpaca_trade_api\b",
     )
 ]
-LIVE_SCAN_DIRS = {"src", "scripts", ".github", ".codex-plugin", ".claude-plugin", "agents"}
+LIVE_SCAN_DIRS = {
+    "src",
+    "scripts",
+    ".github",
+    ".agents",
+    ".codex-plugin",
+    ".claude-plugin",
+    "agents",
+}
 AUXILIARY_SCHEMAS = {"agent_result.provider.schema.json"}
 LIVE_SCAN_SUFFIXES = {".py", ".toml", ".yaml", ".yml", ".json", ".md"}
 PAID_OR_PRIVATE_DATA_SUFFIXES = {".parquet", ".feather", ".h5", ".hdf5", ".duckdb", ".sqlite", ".db", ".pkl", ".pickle"}
@@ -166,14 +175,41 @@ def validate_plugin_manifest() -> None:
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     if manifest.get("name") != "the-pass":
         fail("plugin name must be the-pass")
-    if manifest.get("version") != "0.9.0":
-        fail("plugin version must be 0.9.0")
+    if manifest.get("version") != __version__:
+        fail(f"plugin version must be {__version__}")
     if manifest.get("skills") != "./skills/":
         fail("plugin must point skills to ./skills/")
     interface = manifest.get("interface") or {}
     for field in ("displayName", "shortDescription", "longDescription", "developerName", "category"):
         if not interface.get(field):
             fail(f"plugin interface missing {field}")
+
+    codex_marketplace_path = ROOT / ".agents" / "plugins" / "marketplace.json"
+    if not codex_marketplace_path.is_file():
+        fail("missing .agents/plugins/marketplace.json")
+    validate_json(codex_marketplace_path)
+    codex_marketplace = json.loads(codex_marketplace_path.read_text(encoding="utf-8"))
+    if codex_marketplace.get("name") != "the-pass-tools":
+        fail("Codex marketplace name must be the-pass-tools")
+    codex_interface = codex_marketplace.get("interface") or {}
+    if codex_interface.get("displayName") != "The Pass":
+        fail("Codex marketplace display name must be The Pass")
+    codex_plugins = codex_marketplace.get("plugins")
+    if not isinstance(codex_plugins, list) or len(codex_plugins) != 1:
+        fail("Codex marketplace must contain exactly one plugin")
+    codex_entry = codex_plugins[0]
+    if not isinstance(codex_entry, dict):
+        fail("Codex marketplace plugin entry must be an object")
+    codex_source = codex_entry.get("source") or {}
+    codex_policy = codex_entry.get("policy") or {}
+    if (
+        codex_entry.get("name") != "the-pass"
+        or codex_source != {"source": "local", "path": "."}
+        or codex_policy
+        != {"installation": "AVAILABLE", "authentication": "ON_INSTALL"}
+        or codex_entry.get("category") != "Productivity"
+    ):
+        fail("Codex marketplace entry is invalid")
 
     claude_manifest_path = ROOT / ".claude-plugin" / "plugin.json"
     marketplace_path = ROOT / ".claude-plugin" / "marketplace.json"
@@ -182,10 +218,10 @@ def validate_plugin_manifest() -> None:
             fail(f"missing {path.relative_to(ROOT)}")
         validate_json(path)
     claude_manifest = json.loads(claude_manifest_path.read_text(encoding="utf-8"))
-    if claude_manifest.get("name") != "the-pass" or claude_manifest.get("version") != "0.9.0":
-        fail("Claude plugin name/version must be the-pass 0.9.0")
+    if claude_manifest.get("name") != "the-pass" or claude_manifest.get("version") != __version__:
+        fail(f"Claude plugin name/version must be the-pass {__version__}")
     marketplace = json.loads(marketplace_path.read_text(encoding="utf-8"))
-    if marketplace.get("name") != "the-pass-tools" or marketplace.get("version") != "0.9.0":
+    if marketplace.get("name") != "the-pass-tools" or marketplace.get("version") != __version__:
         fail("Claude marketplace name/version is invalid")
     plugins = marketplace.get("plugins")
     if not isinstance(plugins, list) or len(plugins) != 1:
@@ -196,13 +232,13 @@ def validate_plugin_manifest() -> None:
     source = entry.get("source")
     if (
         entry.get("name") != "the-pass"
-        or entry.get("version") != "0.9.0"
+        or entry.get("version") != __version__
         or not isinstance(source, dict)
-        or source.get("source") != "github"
-        or source.get("repo") != "matk0shub/the-pass"
-        or source.get("ref") != "v0.9.0"
+        or source.get("source") != "url"
+        or source.get("url") != "https://github.com/matk0shub/the-pass.git"
+        or source.get("ref") != f"v{__version__}"
     ):
-        fail("Claude marketplace plugin must pin matk0shub/the-pass at v0.9.0")
+        fail(f"Claude marketplace plugin must pin the public HTTPS repository at v{__version__}")
 
     expected_agents = {"coordinator", "researcher", "implementer", "reviewer"}
     agents_dir = ROOT / "agents"
@@ -258,6 +294,12 @@ def validate_python_package() -> None:
         fail("missing src/the_pass/ledger.py")
     if not adapter_contract_path.exists():
         fail("missing src/the_pass/adapter_contract.py")
+    project_text = pyproject_path.read_text(encoding="utf-8")
+    version_match = re.search(
+        r'^version\s*=\s*"([^"]+)"\s*$', project_text, flags=re.MULTILINE
+    )
+    if version_match is None or version_match.group(1) != __version__:
+        fail(f"pyproject version must match package version {__version__}")
 
 
 def validate_skills() -> None:
@@ -337,6 +379,8 @@ def validate_skill_pipeline() -> None:
         fail(f"invalid skill pipeline policy: {exc}")
     if {name: tuple(states) for name, states in policy["public_skills"].items()} != SKILL_EXIT_STATES:
         fail("skill pipeline public skills differ from validator contracts")
+    if policy.get("interface_version") != __version__:
+        fail(f"skill pipeline interface_version must be {__version__}")
     parser = build_parser()
     for name, contract in policy["cli_contracts"].items():
         try:
@@ -440,6 +484,8 @@ def validate_packaged_policy() -> None:
     if not critical_paths_are_protected(yaml.safe_load(root_agent_policy.read_text(encoding="utf-8"))):
         fail("agent policy does not protect every declared critical authority path")
     agent_policy = yaml.safe_load(root_agent_policy.read_text(encoding="utf-8"))
+    if agent_policy.get("interface_version") != __version__:
+        fail(f"agent orchestration interface_version must be {__version__}")
     if (
         agent_policy["limits"].get("max_concurrent_external_dispatches") != 1
         or agent_policy["safety"].get("exclusive_external_dispatch") is not True

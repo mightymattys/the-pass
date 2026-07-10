@@ -5,6 +5,21 @@ and the Keep a Changelog structure.
 
 ## [Unreleased]
 
+## [0.9.1] - 2026-07-10
+
+### Added
+
+- A repository-backed Codex marketplace catalog with a validated remote installation path.
+- A complete usage guide covering CLI setup, both plugins, first smoke, guided runs, direct
+  workflow operation, external engines, paper observation, and agent delegation.
+
+### Fixed
+
+- Claude marketplace installation now clones the public repository over HTTPS instead of
+  requiring a configured GitHub SSH key.
+- Package, plugin, marketplace, and orchestration-policy versions are validated from one source
+  version during public repository checks.
+
 ## [0.9.0] - 2026-07-10
 
 ### Added
@@ -94,7 +109,8 @@ and the Keep a Changelog structure.
 
 - Initial public plugin, slash skills, artifact schemas, validators, and synthetic examples.
 
-[Unreleased]: https://github.com/matk0shub/the-pass/compare/v0.9.0...HEAD
+[Unreleased]: https://github.com/matk0shub/the-pass/compare/v0.9.1...HEAD
+[0.9.1]: https://github.com/matk0shub/the-pass/compare/v0.9.0...v0.9.1
 [0.9.0]: https://github.com/matk0shub/the-pass/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/matk0shub/the-pass/compare/v0.7.1...v0.8.0
 [0.7.1]: https://github.com/matk0shub/the-pass/compare/v0.7.0...v0.7.1

@@ -11,10 +11,12 @@ python -m pip install ".[data,research,paper]"
 the-pass --version
 ```
 
-From a downloaded wheel:
+As a user-level tool from the published wheel:
 
 ```bash
-python -m pip install "the_pass-0.9.0-py3-none-any.whl[data,research,paper]"
+uv tool install \
+  "the-pass[data,research,paper] @ https://github.com/matk0shub/the-pass/releases/download/v0.9.1/the_pass-0.9.1-py3-none-any.whl"
+uv tool update-shell
 the-pass --version
 ```
 
@@ -39,17 +41,27 @@ loaded directly:
 claude --plugin-dir /path/to/the-pass
 ```
 
-The published `v0.9.0` pinned marketplace manifest supports:
+The published pinned Claude marketplace supports:
 
 ```text
 /plugin marketplace add matk0shub/the-pass
 /plugin install the-pass@the-pass-tools
 ```
 
+Codex installation uses the repository's Codex marketplace catalog:
+
+```bash
+codex plugin marketplace add matk0shub/the-pass --ref v0.9.1
+codex plugin add the-pass@the-pass-tools
+```
+
 The Python `workflow` group exposes the same validated state primitives for automation; it does
 not bypass independent gate evaluation. Cross-provider delegation is opt-in through
 `the-pass agents inspect` followed by `the-pass agents dispatch --execute`; see
 [Cross-Runtime Orchestration](../plugin/CROSS_RUNTIME.md).
+
+The complete setup, smoke test, first guided run, direct CLI workflow, and common failure modes are
+documented in [USAGE_GUIDE.md](USAGE_GUIDE.md).
 
 Packaged schemas and policies are loaded from the installed wheel. A source checkout is not
 required. No command needs or loads venue credentials.

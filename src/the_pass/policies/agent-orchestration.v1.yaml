@@ -1,5 +1,5 @@
 schema_version: 1
-interface_version: 0.9.0
+interface_version: 0.9.1
 
 limits:
   max_cross_provider_depth: 1
@@ -118,6 +118,7 @@ forbidden_objective_patterns:
 protected_paths:
   - .git
   - .github
+  - .agents
   - .codex-plugin
   - .claude-plugin
   - SECURITY.md
@@ -156,6 +157,7 @@ protected_paths:
 critical_authority_paths:
   - .github/workflows/ci.yml
   - .github/workflows/release.yml
+  - .agents/plugins/marketplace.json
   - .codex-plugin/plugin.json
   - .claude-plugin/plugin.json
   - SECURITY.md
