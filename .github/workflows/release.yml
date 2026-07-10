@@ -48,13 +48,14 @@ jobs:
         run: |
           uv build
           uv run python scripts/validate_distribution.py dist/the_pass-*.whl
-          sha256sum dist/* > SHA256SUMS
+          (cd dist && sha256sum * > ../SHA256SUMS)
       - name: Publish GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          VERSION="${GITHUB_REF_NAME#v}"
           gh release create "$GITHUB_REF_NAME" \
-            dist/* SHA256SUMS reports/RELEASE_AUDIT_0.7.0.md \
+            dist/* SHA256SUMS "reports/RELEASE_AUDIT_${VERSION}.md" \
             --title "The Pass $GITHUB_REF_NAME" \
-            --notes-file docs/public/RELEASE_NOTES_v0.7.0.md \
+            --notes-file "docs/public/RELEASE_NOTES_${GITHUB_REF_NAME}.md" \
             --verify-tag

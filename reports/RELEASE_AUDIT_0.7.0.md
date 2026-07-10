@@ -1,7 +1,7 @@
 # The Pass v0.7.0 Release Audit
 
 Audit date: 2026-07-10
-Audit verdict: `pass`
+Audit verdict: superseded by `v0.7.1`
 Open P0/P1 findings: none
 Candidate promotion claim: none
 Live capability: locked
@@ -71,3 +71,9 @@ The repository is authorized for the annotated `v0.7.0` tag after protected-bran
 request review pass. The tag workflow must build the release artifacts, verify their installed
 behavior, publish SHA-256 checksums, and attach this report. Failure of any workflow step blocks
 publication without changing prior evidence.
+
+## Post-release Finding
+
+The artifact digests were correct, but `SHA256SUMS` stored `dist/` path prefixes that are not
+present after GitHub asset download. The release is preserved as evidence and superseded by
+the fix-forward `v0.7.1` release.

@@ -54,6 +54,7 @@ See [docs/plugin/COMMANDS.md](docs/plugin/COMMANDS.md) for the full command cont
 - [Completion audit](docs/implementation/COMPLETION_AUDIT.md)
 - [Final implementation audit](reports/FINAL_IMPLEMENTATION_AUDIT_2026-07-10.md)
 - [v0.7.0 release audit](reports/RELEASE_AUDIT_0.7.0.md)
+- [v0.7.1 release audit](reports/RELEASE_AUDIT_0.7.1.md)
 - [Artifact lifecycle](docs/implementation/ARTIFACT_LIFECYCLE.md)
 - [Skill contracts](docs/implementation/SKILL_CONTRACTS.md)
 - [Validation and safety](docs/implementation/VALIDATION_AND_SAFETY.md)

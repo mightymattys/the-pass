@@ -5,6 +5,13 @@ and the Keep a Changelog structure.
 
 ## [Unreleased]
 
+## [0.7.1] - 2026-07-10
+
+### Fixed
+
+- Release checksums now use asset basenames and verify after downloading assets from GitHub.
+- The release workflow resolves audit and release-note files from the pushed tag version.
+
 ## [0.7.0] - 2026-07-10
 
 ### Added
@@ -35,5 +42,6 @@ and the Keep a Changelog structure.
 
 - Initial public plugin, slash skills, artifact schemas, validators, and synthetic examples.
 
-[Unreleased]: https://github.com/matk0shub/the-pass/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/matk0shub/the-pass/compare/v0.7.1...HEAD
+[0.7.1]: https://github.com/matk0shub/the-pass/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/matk0shub/the-pass/compare/f9fb5e0...v0.7.0

@@ -1,8 +1,8 @@
 # The Pass Remaining Work Plan
 
-Status: implementation complete; `v0.7.0` publication authorized
+Status: implementation complete; `v0.7.1` fix-forward publication authorized
 Updated: 2026-07-10
-Target release: `v0.7.0`
+Target release: `v0.7.1`
 
 ## 1. Purpose and Boundary
 
@@ -38,7 +38,7 @@ Current baseline:
 | RW1 | P0 | Enforce automation runtime contracts | yes | RW0 |
 | RW2 | P0 | Distribution and CI hardening | yes | RW1 |
 | RW3 | P1 | Public API and release documentation | yes | RW2 |
-| RW4 | P1 | GitHub governance and `v0.7.0` release | yes | RW3 |
+| RW4 | P1 | GitHub governance and `v0.7.1` release | yes | RW3 |
 | RW5 | P1 | Maintenance and drift workflows | no | RW4 |
 | RW6 | P2 | Performance and scale evidence | no | RW2 |
 
@@ -197,7 +197,7 @@ Acceptance:
 - a new user can install the wheel and validate an example using only documented commands
 - candidate and framework gate terminology remains explicit throughout
 
-## 7. RW4: GitHub Governance and v0.7.0 Release
+## 7. RW4: GitHub Governance and v0.7.1 Release
 
 Owner: repository maintainer
 
@@ -211,9 +211,9 @@ Tasks:
 3. Protect `main` with required CI, no force-push, no deletion, and resolved review threads.
 4. Add a pull-request template requiring scope, evidence, safety impact, and validation commands.
 5. Add Dependabot updates for GitHub Actions and Python dependencies on a monthly cadence.
-6. Version the release as `0.7.0`; update package version, changelog, audit, and release notes in
+6. Version the release as `0.7.1`; update package version, changelog, audit, and release notes in
    one commit.
-7. Create an annotated `v0.7.0` tag only after protected-branch CI passes.
+7. Create an annotated `v0.7.1` tag only after protected-branch CI passes.
 8. Publish a GitHub Release with checksums and CI-built wheel/sdist artifacts.
 9. Install the release artifact in a fresh environment and run the documented smoke workflow.
 10. Keep PyPI publication out of scope until separately and explicitly approved.
@@ -222,7 +222,7 @@ Acceptance:
 
 - working tree is clean and local `main` matches `origin/main`
 - required protected-branch checks are green
-- tag, changelog, package version, and GitHub release agree on `0.7.0`
+- tag, changelog, package version, and GitHub release agree on `0.7.1`
 - release assets match CI-generated checksums
 - post-release installed-package smoke passes
 
@@ -303,7 +303,7 @@ Mandatory remaining work is complete when:
 - checkout and installed-wheel tests pass on Python 3.9 and 3.12
 - public validation, Ruff, lock check, wheel, and sdist checks are required in CI
 - branch protection is active and the release was merged through review
-- `v0.7.0` has matching code, tag, changelog, checksums, and GitHub release assets
+- `v0.7.1` has matching code, tag, changelog, checksums, and GitHub release assets
 - the repository is clean, public, secret-free, and contains no live order path
 - candidate outcomes remain independent from framework completion
 

@@ -14,7 +14,7 @@ the-pass --version
 From a downloaded wheel:
 
 ```bash
-python -m pip install "the_pass-0.7.0-py3-none-any.whl[data,research,paper]"
+python -m pip install "the_pass-0.7.1-py3-none-any.whl[data,research,paper]"
 the-pass --version
 ```
 
