@@ -46,8 +46,10 @@ No strategy candidate was promoted by this audit. Live execution remains technic
 | Paper and risk packaging | Codex balanced/deep |
 | Preflight and gate recording | deterministic supervisor |
 
-Codex requests use `gpt-5.4-mini`, `gpt-5.4`, and `gpt-5.5`. Claude requests use `haiku`,
-`sonnet`, and `opus`. Arbitrary model IDs cannot enter through an AgentTask.
+Codex requests use only `gpt-5.6-luna`, `gpt-5.6-terra`, and `gpt-5.6-sol`. Claude requests use
+only `claude-sonnet-5`, `claude-opus-4-8`, and `claude-fable-5`. The policy enforces two-to-three
+current models per provider and rejects older Codex families. Arbitrary model IDs cannot enter
+through an AgentTask.
 
 ## Verification Matrix
 
@@ -55,17 +57,17 @@ Codex requests use `gpt-5.4-mini`, `gpt-5.4`, and `gpt-5.5`. Claude requests use
 | --- | --- |
 | Ruff | pass |
 | Public repository validator | pass |
-| Python default environment | 196 tests pass |
-| Python 3.9 isolated | 196 tests pass |
-| Python 3.12 isolated | 196 tests pass |
+| Python default environment | 197 tests pass |
+| Python 3.9 isolated | 197 tests pass |
+| Python 3.12 isolated | 197 tests pass |
 | Roadmap/corpus/D1/B2/V3/P4 validation | pass |
 | `uv lock --check` | pass |
 | Wheel and sdist `0.10.0` | pass |
 | Clean installed-wheel validation | pass |
 | Claude plugin and marketplace strict validation | pass |
 | Supervisor inspect no-side-effect smoke | pass |
-| Codex `gpt-5.5` authenticated smoke | pass |
-| Claude `opus` authenticated smoke | blocked: local Claude CLI returned HTTP 401 |
+| Codex GPT-5.6 authenticated smoke | Luna, Terra, and Sol pass |
+| Claude current-model authenticated smoke | Sonnet 5, Opus 4.8, and Fable 5 blocked: local Claude CLI returned HTTP 401 |
 
 The Claude result is an external account state, not a framework defect. `agents doctor` correctly
 reports `authentication_checked: false`; it never converts binary availability into an access

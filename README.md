@@ -242,6 +242,10 @@ provider for gate review. It selects the cheapest profile satisfying the stage's
 capability floor. Preflight and gate recording are deterministic and never ask a model to approve
 itself.
 
+The reviewed `0.10.0` catalog contains only GPT-5.6 Luna, Terra, and Sol for Codex, plus Claude
+Sonnet 5, Opus 4.8, and Fable 5. Policy validation rejects a Codex model below GPT-5.6, more than
+three provider models, and any model outside the current allowlist; there is no legacy fallback.
+
 The auto driver is an explicitly trusted local mode: selected provider CLIs receive workspace
 tools so they can produce evidence and run tests. The supervisor validates state and gate authority
 after every turn, but it is not an OS sandbox for an arbitrary local command. A custom trusted

@@ -203,6 +203,19 @@ def _validate_model_routing_policy(routing: Any) -> None:
     if not isinstance(providers, dict) or set(providers) != {"codex", "claude"}:
         raise AgentOrchestrationError("model catalog must define codex and claude")
     allowed_efforts = {None, "low", "medium", "high", "xhigh"}
+    current_models = routing.get("current_models")
+    distinct_limits = routing.get("distinct_models_per_provider")
+    if (
+        not isinstance(current_models, dict)
+        or set(current_models) != {"codex", "claude"}
+        or not isinstance(distinct_limits, dict)
+        or distinct_limits != {"minimum": 2, "maximum": 3}
+    ):
+        raise AgentOrchestrationError(
+            "model routing must define two-to-three current models per provider"
+        )
+    if routing.get("codex_minimum_family") != "gpt-5.6":
+        raise AgentSafetyError("Codex model floor must remain gpt-5.6")
     for provider, catalog in providers.items():
         if not isinstance(catalog, dict) or set(catalog) != set(profiles):
             raise AgentOrchestrationError(
@@ -230,6 +243,23 @@ def _validate_model_routing_policy(routing: Any) -> None:
                 raise AgentOrchestrationError(
                     f"model capabilities are missing: {provider}/{profile}"
                 )
+        catalog_models = {str(entry["model"]) for entry in catalog.values()}
+        allowed_models = current_models.get(provider)
+        if (
+            not isinstance(allowed_models, list)
+            or any(not isinstance(model, str) or not model for model in allowed_models)
+            or len(allowed_models) != len(set(allowed_models))
+            or not 2 <= len(allowed_models) <= 3
+            or catalog_models != set(allowed_models)
+        ):
+            raise AgentSafetyError(
+                f"model catalog for {provider} must use exactly its current two-to-three models"
+            )
+    if any(
+        re.fullmatch(r"gpt-5\.6(?:-[a-z0-9]+)?", model) is None
+        for model in current_models["codex"]
+    ):
+        raise AgentSafetyError("Codex catalog cannot use a model older than gpt-5.6")
     if routing.get("default_profile") != "auto" or routing.get(
         "default_workload_class"
     ) != "auto":

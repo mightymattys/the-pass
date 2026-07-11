@@ -188,6 +188,9 @@ It stops normally with exit `2` for valid `blocked`, `waiting`, or `killed` rese
 or constrain routing with one or more `--available-provider` options. A provider authentication or
 model-access failure is not automatically retried through another provider.
 
+The current catalog is limited to GPT-5.6 Luna/Terra/Sol and Claude Sonnet 5/Opus 4.8/Fable 5.
+The framework intentionally does not fall back to an older model family.
+
 For independent review, `--author-provider` identifies the provider that produced the candidate.
 The route fails closed if no different provider is available. A custom trusted executable may be
 placed after `--driver` instead of `auto`; it receives documented `THE_PASS_WORKFLOW_*` and

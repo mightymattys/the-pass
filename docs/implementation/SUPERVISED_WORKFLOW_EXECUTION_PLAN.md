@@ -113,8 +113,9 @@ providers and returns the alternate provider only if its selected catalog entry 
 capabilities. `agents doctor` continues to distinguish binary availability from authentication and
 model access.
 
-The public Codex catalog uses stable public request aliases. Claude uses the provider's stable
-`haiku`, `sonnet`, and `opus` aliases. Every route exposes the policy fingerprint and rationale.
+The public Codex catalog uses only GPT-5.6 Luna, Terra, and Sol. Claude uses only Sonnet 5, Opus
+4.8, and Fable 5. The policy enforces two-to-three current models per provider and rejects older
+Codex families. Every route exposes the policy fingerprint and rationale.
 
 ## 5. Slash Skill Integration
 

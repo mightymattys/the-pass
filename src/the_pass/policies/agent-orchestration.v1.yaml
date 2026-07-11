@@ -10,7 +10,12 @@ limits:
   max_concurrent_external_dispatches: 1
 
 model_routing:
-  catalog_reviewed_at: "2026-07-10"
+  catalog_reviewed_at: "2026-07-11"
+  current_models:
+    codex: [gpt-5.6-luna, gpt-5.6-terra, gpt-5.6-sol]
+    claude: [claude-sonnet-5, claude-opus-4-8, claude-fable-5]
+  distinct_models_per_provider: {minimum: 2, maximum: 3}
+  codex_minimum_family: gpt-5.6
   profile_order: [economy, balanced, deep]
   default_profile: auto
   default_workload_class: auto
@@ -33,33 +38,33 @@ model_routing:
   providers:
     codex:
       economy:
-        model: gpt-5.4-mini
+        model: gpt-5.6-luna
         effort: low
         critical_effort: xhigh
         capabilities: [structured_output, repository_read, repository_write, coding, research, review]
       balanced:
-        model: gpt-5.4
+        model: gpt-5.6-terra
         effort: medium
         critical_effort: xhigh
         capabilities: [structured_output, repository_read, repository_write, coding, research, review]
       deep:
-        model: gpt-5.5
+        model: gpt-5.6-sol
         effort: high
         critical_effort: xhigh
         capabilities: [structured_output, repository_read, repository_write, coding, research, review]
     claude:
       economy:
-        model: haiku
+        model: claude-sonnet-5
         effort: null
         critical_effort: null
         capabilities: [structured_output, repository_read, repository_write, coding, research, review]
       balanced:
-        model: sonnet
+        model: claude-opus-4-8
         effort: medium
         critical_effort: high
         capabilities: [structured_output, repository_read, repository_write, coding, research, review, native_subagents]
       deep:
-        model: opus
+        model: claude-fable-5
         effort: high
         critical_effort: xhigh
         capabilities: [structured_output, repository_read, repository_write, coding, research, review, native_subagents]

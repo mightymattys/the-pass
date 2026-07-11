@@ -18,6 +18,8 @@ and the Keep a Changelog structure.
 
 ### Changed
 
+- Raised the Codex routing floor to GPT-5.6 and limited each provider to three reviewed current
+  models: Luna/Terra/Sol for Codex and Sonnet 5/Opus 4.8/Fable 5 for Claude.
 - Replaced preview-style Codex routing labels with public capability-tier aliases and preserved
   explicit entitlement uncertainty in agent diagnostics.
 - Added asset-calendar annualization and distinct timestamped gross/net equity metrics.

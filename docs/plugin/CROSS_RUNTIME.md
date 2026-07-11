@@ -83,9 +83,9 @@ conservatively `standard`. The profile is a minimum rather than an override.
 
 | Resolved profile | Codex request | Claude request |
 | --- | --- | --- |
-| `economy` | `gpt-5.4-mini`, low effort | `haiku`, default effort |
-| `balanced` | `gpt-5.4`, medium effort | `sonnet`, medium effort |
-| `deep` | `gpt-5.5`, high effort | `opus`, high effort |
+| `economy` | `gpt-5.6-luna`, low effort | `claude-sonnet-5`, default effort |
+| `balanced` | `gpt-5.6-terra`, medium effort | `claude-opus-4-8`, medium effort |
+| `deep` | `gpt-5.6-sol`, high effort | `claude-fable-5`, high effort |
 
 `critical` raises the selected deep model to its critical effort. A worktree task or native
 subagent call cannot resolve below `balanced`. Role capability requirements are checked before
@@ -93,6 +93,8 @@ process creation. Claude agents inherit the broker-selected model and effort; no
 may override them.
 
 The catalog lives in the packaged orchestration policy. Tasks cannot supply arbitrary model IDs.
+The policy permits only two or three current models per provider and rejects any Codex catalog
+below the GPT-5.6 family; there is no legacy economy fallback.
 `inspect` and every `agent_run` expose the requested model, effort, resolved profile, capabilities,
 rationale, and routing-policy fingerprint. The receipt describes the requested provider model;
 `doctor` and offline CI do not test account entitlement or provider alias resolution.

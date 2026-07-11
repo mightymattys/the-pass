@@ -16,6 +16,8 @@ Status: source implementation complete; release tag pending protected review.
 - Independent review routes fail closed unless the author provider is known and a different
   provider is available.
 - Preflight and all gate recording remain deterministic and outside model authority.
+- Routing contains no Codex model older than GPT-5.6 and keeps exactly three reviewed current
+  models per provider.
 - Timeout, no progress, illegal state jumps, invalid evidence, and budget exhaustion cannot produce
   a false `complete` result.
 

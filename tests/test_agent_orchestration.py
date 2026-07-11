@@ -17,11 +17,13 @@ from the_pass.agent_orchestration import (
     AgentSafetyError,
     _build_prompt,
     _exclusive_dispatch_lock,
+    _validate_model_routing_policy,
     _write_create_only,
     build_provider_argv,
     critical_paths_are_protected,
     dispatch_agent_task,
     inspect_agent_task,
+    load_agent_policy,
     route_workflow_stage,
     select_model,
     validate_agent_task_file,
@@ -148,7 +150,7 @@ class AgentOrchestrationTests(unittest.TestCase):
                     self.assertNotIn("--add-dir", argv)
                     self.assertIn("read-only" if target == "codex" else "plan", argv)
                     if target == "codex":
-                        self.assertIn("gpt-5.4", argv)
+                        self.assertIn("gpt-5.6-terra", argv)
                         self.assertIn('model_reasoning_effort="medium"', argv)
                         self.assertIn("--ignore-user-config", argv)
                         self.assertIn("--ignore-rules", argv)
@@ -156,7 +158,7 @@ class AgentOrchestrationTests(unittest.TestCase):
                         self.assertIn("project_doc_max_bytes=0", argv)
                         self.assertIn("plugins", argv)
                     else:
-                        self.assertIn("sonnet", argv)
+                        self.assertIn("claude-opus-4-8", argv)
                         self.assertIn("--effort", argv)
                         self.assertIn("medium", argv)
                         self.assertIn("--strict-mcp-config", argv)
@@ -166,13 +168,13 @@ class AgentOrchestrationTests(unittest.TestCase):
 
     def test_capability_aware_model_router_uses_profiles_and_safety_floors(self) -> None:
         cases = [
-            ("claude", "researcher", "read_only", "routine", "auto", False, "economy", "haiku", None),
-            ("claude", "reviewer", "read_only", "standard", "auto", False, "balanced", "sonnet", "medium"),
-            ("codex", "reviewer", "read_only", "complex", "auto", False, "deep", "gpt-5.5", "high"),
-            ("codex", "reviewer", "read_only", "critical", "auto", False, "deep", "gpt-5.5", "xhigh"),
-            ("codex", "implementer", "worktree_patch", "routine", "economy", False, "balanced", "gpt-5.4", "medium"),
-            ("claude", "researcher", "read_only", "routine", "auto", True, "balanced", "sonnet", "medium"),
-            ("claude", "researcher", "read_only", "routine", "deep", False, "deep", "opus", "high"),
+            ("claude", "researcher", "read_only", "routine", "auto", False, "economy", "claude-sonnet-5", None),
+            ("claude", "reviewer", "read_only", "standard", "auto", False, "balanced", "claude-opus-4-8", "medium"),
+            ("codex", "reviewer", "read_only", "complex", "auto", False, "deep", "gpt-5.6-sol", "high"),
+            ("codex", "reviewer", "read_only", "critical", "auto", False, "deep", "gpt-5.6-sol", "xhigh"),
+            ("codex", "implementer", "worktree_patch", "routine", "economy", False, "balanced", "gpt-5.6-terra", "medium"),
+            ("claude", "researcher", "read_only", "routine", "auto", True, "balanced", "claude-opus-4-8", "medium"),
+            ("claude", "researcher", "read_only", "routine", "deep", False, "deep", "claude-fable-5", "high"),
         ]
         for target, role, mode, workload, profile, native, resolved, model, effort in cases:
             with self.subTest(target=target, role=role, workload=workload, profile=profile):
@@ -206,11 +208,11 @@ class AgentOrchestrationTests(unittest.TestCase):
 
         self.assertEqual(
             (research["provider"], research["requested_model"], research["role"]),
-            ("claude", "opus", "researcher"),
+            ("claude", "claude-fable-5", "researcher"),
         )
         self.assertEqual(
             (backtest["provider"], backtest["requested_model"], backtest["role"]),
-            ("codex", "gpt-5.5", "implementer"),
+            ("codex", "gpt-5.6-sol", "implementer"),
         )
         self.assertEqual((review["provider"], review["role"]), ("claude", "reviewer"))
         self.assertEqual(deterministic["execution"], "deterministic")
@@ -259,6 +261,18 @@ class AgentOrchestrationTests(unittest.TestCase):
             )
             with self.assertRaisesRegex(AgentSafetyError, "required capabilities"):
                 select_model(broken)
+
+    def test_model_policy_rejects_legacy_or_expanded_catalogs(self) -> None:
+        policy = load_agent_policy()["model_routing"]
+        legacy = deepcopy(policy)
+        legacy["providers"]["codex"]["economy"]["model"] = "gpt-5.5"
+        with self.assertRaisesRegex(AgentSafetyError, "current two-to-three"):
+            _validate_model_routing_policy(legacy)
+
+        expanded = deepcopy(policy)
+        expanded["current_models"]["claude"].append("claude-haiku-4-5")
+        with self.assertRaisesRegex(AgentSafetyError, "current two-to-three"):
+            _validate_model_routing_policy(expanded)
 
     def test_provider_prompt_defines_structured_finding_items(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -763,7 +777,7 @@ class AgentOrchestrationTests(unittest.TestCase):
                     for issue in validation.issues
                 )
             )
-            run["model_selection"]["requested_model"] = "sonnet"
+            run["model_selection"]["requested_model"] = "claude-opus-4-8"
             run["model_selection"]["routing_policy_sha256"] = "0" * 64
             run_path.write_text(json.dumps(run), encoding="utf-8")
             validation = validate_artifact(run_path, artifact_type="agent_run")

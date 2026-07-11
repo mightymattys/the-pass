@@ -26,7 +26,7 @@ were not treated as proof.
 | P2 | A diagnostic midpoint fill could consume a book from another instrument. | Fill models bind instrument and event type and reject invalid price, quantity, fee, and cost values. |
 | P2 | Concurrent ledger writers could build entries from the same previous hash. | POSIX append transactions now lock the ledger across verification/build/write and use a durable `fsync` append. |
 | P2 | Multi-file automation output could become partially visible. | Worker output is prevalidated, rejects symlinks, and is exposed by one atomic directory rename. |
-| P2 | Codex routing used non-public model labels that offline doctor could not validate. | The policy now routes to public aliases `gpt-5.4-mini`, `gpt-5.4`, and `gpt-5.5`; doctor continues to state that account entitlement is not probed. |
+| P2 | Codex routing used model labels that were not bound to a reviewed current-model allowlist. | Superseded by the `0.10.0` policy: only GPT-5.6 Luna/Terra/Sol are accepted, with a mechanical GPT-5.6 floor and two-to-three-model limit; doctor still does not claim entitlement. |
 
 No unresolved P0 or P1 finding remains in the audited framework state.
 

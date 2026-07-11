@@ -495,7 +495,7 @@ def validate_packaged_policy() -> None:
     profiles = routing.get("profile_order")
     if profiles != ["economy", "balanced", "deep"]:
         fail("agent model routing must expose economy, balanced, and deep profiles")
-    if routing.get("catalog_reviewed_at") != "2026-07-10":
+    if routing.get("catalog_reviewed_at") != "2026-07-11":
         fail("agent model catalog review date must match the release audit")
     deprecated = {"gpt-5.2", "gpt-5.3-codex"}
     for provider in ("codex", "claude"):

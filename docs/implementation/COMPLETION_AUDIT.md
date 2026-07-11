@@ -78,7 +78,7 @@ Codex plugin developers should also run the bundled `plugin-creator/scripts/vali
 validator against the repo root from their local Codex install.
 
 Historical cross-version matrices remain in their versioned release audits. The current source
-matrix, including 196 tests on Python 3.9 and 3.12, clean wheel validation, dependency audit, and
+matrix, including 197 tests on Python 3.9 and 3.12, clean wheel validation, dependency audit, and
 explicit public adapter smoke, is recorded in the
 [repository hardening audit](../../reports/REPOSITORY_HARDENING_AUDIT_2026-07-10.md). Published
 `v0.9.1` installation evidence remains in its separate post-release audit.
