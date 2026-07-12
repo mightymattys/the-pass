@@ -5,6 +5,8 @@ and the Keep a Changelog structure.
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-07-12
+
 ### Added
 
 - Added `the-pass workflow execute`, a bounded liveness supervisor with atomic cycle reports,
@@ -137,7 +139,8 @@ and the Keep a Changelog structure.
 
 - Initial public plugin, slash skills, artifact schemas, validators, and synthetic examples.
 
-[Unreleased]: https://github.com/mightymattys/the-pass/compare/v0.9.1...HEAD
+[Unreleased]: https://github.com/mightymattys/the-pass/compare/v0.10.0...HEAD
+[0.10.0]: https://github.com/mightymattys/the-pass/compare/v0.9.1...v0.10.0
 [0.9.1]: https://github.com/mightymattys/the-pass/compare/v0.9.0...v0.9.1
 [0.9.0]: https://github.com/mightymattys/the-pass/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/mightymattys/the-pass/compare/v0.7.1...v0.8.0
