@@ -1,15 +1,16 @@
 # The Pass Remaining Work Plan
 
 Status: completed historical `v0.7.1` hardening plan; superseded for current work
-Updated: 2026-07-10
+Updated: 2026-07-12
 Historical target release: `v0.7.1`
 
 > [!NOTE]
-> RW0 through RW6 below describe the completed `v0.7.x` hardening cycle. Current `0.8.0`
-> interface work and its final evidence are tracked in
-> [SLASH_SKILL_CONSOLIDATION_PLAN.md](SLASH_SKILL_CONSOLIDATION_PLAN.md) and
-> [the release audit](../../reports/RELEASE_AUDIT_0.8.0.md). This file remains unchanged in
-> substance as historical release evidence; it is not an open task list.
+> RW0 through RW6 below describe the completed `v0.7.x` hardening cycle. Later interface and
+> supervised-workflow work is tracked in
+> [SLASH_SKILL_CONSOLIDATION_PLAN.md](SLASH_SKILL_CONSOLIDATION_PLAN.md),
+> [SUPERVISED_WORKFLOW_EXECUTION_PLAN.md](SUPERVISED_WORKFLOW_EXECUTION_PLAN.md), and the
+> [`v0.10.0` post-release audit](../../reports/POST_RELEASE_AUDIT_0.10.0.md). This file remains
+> unchanged in substance as historical release evidence; it is not an open task list.
 
 ## 1. Purpose and Boundary
 

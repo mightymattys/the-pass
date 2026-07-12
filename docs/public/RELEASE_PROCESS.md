@@ -21,11 +21,16 @@
 
 ## Tag and Publish
 
-1. Create an annotated `vX.Y.Z` tag on the reviewed `main` commit.
-2. Create a GitHub Release from that tag.
-3. Attach CI-built wheel, sdist, SHA-256 checksums, and final audit report.
-4. Install the release wheel in a fresh environment and run the documented smoke workflow.
-5. PyPI publication requires a separate explicit instruction.
+1. Create and push an annotated `vX.Y.Z` tag on the reviewed `main` commit.
+2. Let `.github/workflows/release.yml` rerun the Python matrix, confirm the tag/package version,
+   build and validate the distributions, and create the GitHub Release.
+3. Require the workflow-created release to contain the wheel, sdist, SHA-256 checksums, and
+   matching release audit; do not replace these with workstation-built assets.
+4. Download the published assets into a fresh directory, verify `SHA256SUMS`, and validate the
+   downloaded wheel outside the checkout.
+5. Record the workflow URL, tagged commit, asset hashes, and clean-install result in
+   `reports/POST_RELEASE_AUDIT_X.Y.Z.md`; then update current installation documentation.
+6. PyPI publication requires a separate explicit instruction.
 
 ## Rollback
 

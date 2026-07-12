@@ -56,6 +56,11 @@ Release evidence:
 
 - `https://github.com/mightymattys/the-pass/pull/11`
 - `https://github.com/mightymattys/the-pass/pull/13`
+- `https://github.com/mightymattys/the-pass/pull/14`
+- `https://github.com/mightymattys/the-pass/pull/15`
+- `https://github.com/mightymattys/the-pass/actions/runs/29206594772`
+- `https://github.com/mightymattys/the-pass/actions/runs/29206779773`
+- `https://github.com/mightymattys/the-pass/releases/tag/v0.10.0`
 - `reports/RELEASE_AUDIT_0.10.0.md`
 - `reports/POST_RELEASE_AUDIT_0.10.0.md`
 - `reports/RELEASE_AUDIT_0.9.1.md`
