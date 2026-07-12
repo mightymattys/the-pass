@@ -15,7 +15,7 @@ As a user-level tool from the published wheel:
 
 ```bash
 uv tool install \
-  "the-pass[data,research,paper] @ https://github.com/mightymattys/the-pass/releases/download/v0.9.1/the_pass-0.9.1-py3-none-any.whl"
+  "the-pass[data,research,paper] @ https://github.com/mightymattys/the-pass/releases/download/v0.10.0/the_pass-0.10.0-py3-none-any.whl"
 uv tool update-shell
 the-pass --version
 ```
@@ -51,7 +51,7 @@ The published pinned Claude marketplace supports:
 Codex installation uses the repository's Codex marketplace catalog:
 
 ```bash
-codex plugin marketplace add mightymattys/the-pass --ref v0.9.1
+codex plugin marketplace add mightymattys/the-pass --ref v0.10.0
 codex plugin add the-pass@the-pass-tools
 ```
 

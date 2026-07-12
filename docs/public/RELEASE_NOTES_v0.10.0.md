@@ -1,6 +1,6 @@
 # The Pass v0.10.0
 
-Status: release candidate validated on `main`; release tag pending.
+Status: published and post-release verified on 2026-07-12.
 
 `v0.10.0` adds supervised end-to-end execution and stage-aware Codex/Claude model routing.
 
@@ -23,10 +23,7 @@ Status: release candidate validated on `main`; release tag pending.
 
 ## Upgrade
 
-Until the `v0.10.0` release is tagged, use the reviewed `main` source checkout. The latest
-published wheel remains `v0.9.1`.
-
-After release, update both the CLI and plugin so the packaged routing policies match the source
+Update both the CLI and plugin so the packaged routing policies match the source
 manifest version. Authenticate both local provider CLIs before using the default two-provider auto
 route.
 

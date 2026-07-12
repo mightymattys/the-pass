@@ -62,17 +62,16 @@ policy hash.
 The framework is operational. All capability milestones in the machine-readable roadmap pass,
 while candidate promotion remains deliberately separate.
 
-The source tree and plugin manifests are versioned `0.10.0`; the latest published release remains
-`v0.9.1` until the supervised-workflow release is tagged. The release badge above remains the
-authority for the latest published tag. Readiness is recorded in the
+The source tree, plugin manifests, and latest published release are versioned `0.10.0`. The
+release badge above remains the authority for the latest published tag. Readiness is recorded in the
 [`v0.9.0` cross-agent audit](reports/CROSS_AGENT_ORCHESTRATION_AUDIT_0.9.0.md) and the
 [full repository stability audit](reports/FULL_REPOSITORY_STABILITY_AUDIT_2026-07-10.md). Versioned
 publication evidence for the installation fix is tracked in the
 [`v0.9.1` release audit](reports/RELEASE_AUDIT_0.9.1.md) and
-[post-release verification](reports/POST_RELEASE_AUDIT_0.9.1.md).
-Post-release framework hardening and its exact verification matrix are recorded in the
-[repository hardening audit](reports/REPOSITORY_HARDENING_AUDIT_2026-07-10.md); those unreleased
-source changes do not alter the published tag or imply candidate promotion.
+[post-release verification](reports/POST_RELEASE_AUDIT_0.9.1.md). The supervised workflow release
+is recorded in the [`v0.10.0` release audit](reports/RELEASE_AUDIT_0.10.0.md) and
+[post-release verification](reports/POST_RELEASE_AUDIT_0.10.0.md). Framework capability does not
+imply that any bundled strategy candidate passed promotion.
 
 | Area | Framework capability | Bundled candidate state |
 | --- | --- | --- |
@@ -187,7 +186,7 @@ machine interface and source of validation truth.
 Install the Codex plugin from the pinned marketplace:
 
 ```bash
-codex plugin marketplace add mightymattys/the-pass --ref v0.9.1
+codex plugin marketplace add mightymattys/the-pass --ref v0.10.0
 codex plugin add the-pass@the-pass-tools
 ```
 
@@ -446,6 +445,8 @@ Report vulnerabilities according to [SECURITY.md](SECURITY.md).
 - [`v0.9.1` release audit](reports/RELEASE_AUDIT_0.9.1.md)
 - [`v0.9.1` post-release verification](reports/POST_RELEASE_AUDIT_0.9.1.md)
 - [`v0.10.0` supervised workflow release notes](docs/public/RELEASE_NOTES_v0.10.0.md)
+- [`v0.10.0` release audit](reports/RELEASE_AUDIT_0.10.0.md)
+- [`v0.10.0` post-release verification](reports/POST_RELEASE_AUDIT_0.10.0.md)
 - [Supervised workflow implementation audit](reports/SUPERVISED_WORKFLOW_AUDIT_2026-07-11.md)
 - [Repository hardening audit](reports/REPOSITORY_HARDENING_AUDIT_2026-07-10.md)
 - [CLI contract](docs/public/CLI_CONTRACT.md)
