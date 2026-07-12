@@ -5,6 +5,11 @@ and the Keep a Changelog structure.
 
 ## [Unreleased]
 
+### Changed
+
+- Refreshed current completion, release-process, and historical-plan pointers after the verified
+  `v0.10.0` publication.
+
 ## [0.10.0] - 2026-07-12
 
 ### Added

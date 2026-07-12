@@ -1,6 +1,6 @@
 # Completion Audit
 
-Audit date: 2026-07-10.
+Audit date: 2026-07-12.
 
 This file maps the build plan to the evidence that proves the current public framework is
 complete. It does not claim that any trading strategy has edge.
@@ -24,8 +24,10 @@ that machine-readable file.
 
 All framework capability milestones are complete. The diagnostic candidate `paper_gate` and
 every public `live_gate` remain intentionally blocked; those states test the gate system and
-do not make the repository incomplete. The latest tracked human-readable hardening audit is
-[../../reports/REPOSITORY_HARDENING_AUDIT_2026-07-10.md](../../reports/REPOSITORY_HARDENING_AUDIT_2026-07-10.md).
+do not make the repository incomplete. The current implementation result is recorded in the
+[supervised workflow audit](../../reports/SUPERVISED_WORKFLOW_AUDIT_2026-07-11.md), while published
+distribution evidence is recorded in the
+[`v0.10.0` post-release audit](../../reports/POST_RELEASE_AUDIT_0.10.0.md).
 
 Trading roadmap gate evidence is tracked separately:
 
