@@ -16,6 +16,7 @@ import yaml
 
 from the_pass.data.contracts import stable_fingerprint
 from the_pass.incident import build_incident_report
+from the_pass.safety import contains_sensitive_key
 from the_pass.validator import parse_timestamp, validate_artifact
 
 
@@ -40,7 +41,6 @@ RETRYABLE_COMMANDS = {
 }
 REQUIRED_FORBIDDEN = {"gate_decision", "live_transaction", "credential_access"}
 ALERT_SINKS = {"local_incident_artifact"}
-SENSITIVE_INPUT_KEYS = {"api_key", "api_secret", "credential", "credentials", "password", "private_key", "secret"}
 
 
 def _utc_now_iso() -> str:
@@ -85,21 +85,21 @@ def _worker_outputs(staging: Path) -> list[Path]:
             path.relative_to(staging)
         except ValueError as exc:
             raise RuntimeError("automation worker output escapes staging") from exc
-        if not path.is_file():
+        if path.is_symlink() or not path.is_file():
             raise RuntimeError(f"automation worker output does not exist: {value}")
         outputs.append(path)
     return outputs
 
 
-def _promote_outputs(staging: Path, output_dir: Path) -> list[Path]:
-    promoted = []
-    for source in _worker_outputs(staging):
-        relative = source.relative_to(staging)
-        target = output_dir / relative
-        target.parent.mkdir(parents=True, exist_ok=True)
-        os.replace(source, target)
-        promoted.append(target)
-    return promoted
+def _promote_outputs(staging: Path, output_dir: Path, idempotency_key: str) -> list[Path]:
+    sources = _worker_outputs(staging)
+    relative_paths = [source.relative_to(staging) for source in sources]
+    commit_root = output_dir / "committed" / idempotency_key
+    commit_root.parent.mkdir(parents=True, exist_ok=True)
+    if commit_root.exists():
+        raise RuntimeError("automation commit directory already exists without a run receipt")
+    os.rename(staging, commit_root)
+    return [commit_root / relative for relative in relative_paths]
 
 
 def _log_attempt(output_dir: Path, idempotency_key: str, attempt: int, stream: str, content: str) -> Path:
@@ -116,17 +116,6 @@ def _within_allowed(output_dir: Path, workspace_root: Path, allowed_writes: list
         except ValueError:
             continue
         return True
-    return False
-
-
-def _contains_sensitive_input(value: Any) -> bool:
-    if isinstance(value, dict):
-        return any(
-            str(key).lower() in SENSITIVE_INPUT_KEYS or _contains_sensitive_input(child)
-            for key, child in value.items()
-        )
-    if isinstance(value, list):
-        return any(_contains_sensitive_input(child) for child in value)
     return False
 
 
@@ -155,7 +144,7 @@ def run_automation_spec(
         raise ValueError("automation spec must forbid gate decisions, live transactions, and credential access")
     if spec["alert_sink"] not in ALERT_SINKS:
         raise ValueError(f"automation alert sink is not supported: {spec['alert_sink']}")
-    if _contains_sensitive_input(spec["inputs"]):
+    if contains_sensitive_key(spec["inputs"]):
         raise ValueError("automation inputs contain a credential-like field")
     if parse_timestamp(scheduled_for) is None:
         raise ValueError("scheduled_for must be an RFC 3339 timestamp")
@@ -214,7 +203,7 @@ def run_automation_spec(
                 evidence_logs.append(_log_attempt(output_dir, idempotency_key, attempt, "stderr", process.stderr))
             if process.returncode != 0:
                 raise RuntimeError(f"worker exited {process.returncode}: {process.stderr.strip()}")
-            outputs = _promote_outputs(staging, output_dir)
+            outputs = _promote_outputs(staging, output_dir, idempotency_key)
             break
         except subprocess.TimeoutExpired as exc:
             stdout = exc.stdout.decode() if isinstance(exc.stdout, bytes) else (exc.stdout or "")

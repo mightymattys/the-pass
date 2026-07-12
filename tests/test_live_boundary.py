@@ -45,6 +45,11 @@ class LockedBoundaryTests(unittest.TestCase):
         document = build_config_diff({"max_position": 1}, {"max_position": 2})
         with self.assertRaises(ValueError):
             build_config_diff({"api_key": "redacted"}, {"api_key": "changed"})
+        with self.assertRaises(ValueError):
+            build_config_diff(
+                {"venue": {"authentication": {"client_secret": "redacted"}}},
+                {"venue": {"authentication": {"client_secret": "changed"}}},
+            )
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "config_diff.json"
             path.write_text(json.dumps(document), encoding="utf-8")

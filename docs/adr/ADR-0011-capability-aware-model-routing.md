@@ -2,7 +2,7 @@
 
 Status: accepted
 
-Date: 2026-07-10
+Date: 2026-07-10; model catalog amended 2026-07-11
 
 Owner: automation_engineer
 
@@ -12,17 +12,17 @@ The cross-provider broker originally inherited each CLI's default model. That wa
 made cost, latency, and expected capability implicit. A routine source lookup and a critical audit
 could therefore use the same model, while a local user setting could silently change the choice.
 
-The provider contracts are different. Codex documents Luna as the efficient model for clear,
-repeatable work, Terra as the everyday workhorse, and Sol for ambiguous or high-value work. Claude
-Code documents Haiku for simple low-cost tasks, Sonnet for everyday coding, and Opus for complex
-reasoning. Both CLIs expose explicit model and reasoning-effort flags.
+The provider contracts are different. OpenAI's current frontier family has three explicit tiers:
+GPT-5.6 Luna for cost-sensitive work, Terra for balanced work, and Sol for the most complex work.
+Anthropic's current set includes Claude Sonnet 5, Opus 4.8, and Fable 5. Both CLIs expose explicit
+model and reasoning-effort flags.
 
-Sources reviewed on 2026-07-10:
+Sources reviewed on 2026-07-11:
 
-- [Codex models](https://developers.openai.com/codex/models)
+- [OpenAI models](https://developers.openai.com/api/docs/models)
 - [Codex configuration reference](https://developers.openai.com/codex/config-reference)
-- [Claude Code model configuration](https://code.claude.com/docs/en/model-config)
-- [Claude Code cost guidance](https://code.claude.com/docs/en/costs)
+- [Claude models overview](https://platform.claude.com/docs/en/about-claude/models/overview)
+- [Claude model IDs and versioning](https://platform.claude.com/docs/en/about-claude/models/model-ids-and-versions)
 
 ## Decision
 
@@ -34,9 +34,9 @@ Profiles are:
 
 | Profile | Codex | Claude | Intended work |
 | --- | --- | --- | --- |
-| `economy` | `gpt-5.6-luna`, low | `haiku`, provider default effort | routine, well-specified read-only work |
-| `balanced` | `gpt-5.6-terra`, medium | `sonnet`, medium | normal research, review, and implementation |
-| `deep` | `gpt-5.6-sol`, high | `opus`, high | complex, ambiguous, or high-value work |
+| `economy` | `gpt-5.6-luna`, low | `claude-sonnet-5`, provider default effort | routine, well-specified work |
+| `balanced` | `gpt-5.6-terra`, medium | `claude-opus-4-8`, medium | normal research, review, and implementation |
+| `deep` | `gpt-5.6-sol`, high | `claude-fable-5`, high | complex, ambiguous, or high-value work |
 
 `critical` workload uses the `deep` model and raises effort to the catalog's critical setting.
 `auto` workload resolves conservatively to `standard`. Implementation and native-subagent runs
@@ -48,10 +48,11 @@ The router checks the selected catalog entry against role capabilities before pr
 call. Every `agent_run` stores the same selection and a SHA-256 fingerprint of the routing policy.
 The provider argv must match that receipt or semantic validation fails.
 
-Claude family aliases are intentionally rolling aliases managed by Claude Code. Codex model IDs
-are reviewed release inputs. Public validation rejects known deprecated Codex IDs and incomplete
-catalogs. `agents doctor` reports the configured profiles and CLI version but does not claim that
-the account can access every model.
+Both providers use explicit current model IDs as reviewed release inputs. Each provider must expose
+exactly two or three distinct models, every profile must resolve to that allowlist, and the Codex
+catalog has a mechanical `gpt-5.6` minimum-family check. This intentionally rejects older low-cost
+fallbacks. `agents doctor` reports configured profiles and CLI versions but does not claim that the
+account can access every model.
 
 ## Consequences
 

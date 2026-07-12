@@ -94,7 +94,7 @@ Add `.claude-plugin/plugin.json` with:
 - version, description, author, homepage, repository, license, and keywords;
 - default `skills/` and `agents/` discovery from the plugin root.
 
-Add `.claude-plugin/marketplace.json` so users can add `matk0shub/the-pass` as a marketplace and
+Add `.claude-plugin/marketplace.json` so users can add `mightymattys/the-pass` as a marketplace and
 install `the-pass@the-pass-tools`. The plugin entry itself uses the GitHub repository
 with `ref: v0.9.0`; mutable branch installation is development-only. Claude's marketplace schema
 has no archive-digest field, so release integrity is additionally checked by the existing
@@ -487,7 +487,7 @@ implementation:
 
 P2 resolutions: stable exit `2` is retained because it is already The Pass's documented semantic
 non-promotion code; worktree names are unique; packaged policy is runtime-authoritative; receipts
-are create-only but not claimed to be cryptographically immutable; and `matk0shub/the-pass` was
+are create-only but not claimed to be cryptographically immutable; and `mightymattys/the-pass` was
 confirmed from the configured git remote.
 
 No implementation decision is left as `TBD`. Provider choice is policy-driven through versioned

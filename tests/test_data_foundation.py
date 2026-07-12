@@ -173,6 +173,41 @@ class QualityTests(unittest.TestCase):
         self.assertTrue(report["quarantine"])
         self.assertEqual(report["promotion_impact"], "blocked")
 
+    def test_conflicting_market_key_is_duplicate_even_when_raw_payload_differs(self) -> None:
+        first = bar(100, "100", sequence=1, ingest_id="first")
+        conflicting = bar(100, "101", sequence=1, ingest_id="second")
+        report = build_quality_report(
+            "conflict", [first, conflicting], created_at="2026-07-10T00:00:00Z"
+        )
+        duplicates = next(check for check in report["checks"] if check["code"] == "duplicates")
+        self.assertEqual(duplicates["count"], 1)
+        self.assertTrue(report["quarantine"])
+
+    def test_irregular_trades_do_not_use_bar_interval_policy(self) -> None:
+        def trade(timestamp: int, sequence: int) -> CanonicalEvent:
+            return CanonicalEvent.from_raw(
+                raw={"timestamp": timestamp, "sequence": sequence},
+                source="fixture",
+                venue="test",
+                asset_class="synthetic",
+                instrument_id="TEST",
+                event_type=EventType.TRADE,
+                event_time_ns=timestamp,
+                receive_time_ns=timestamp + 1,
+                ingest_id=f"trade-{sequence}",
+                sequence=sequence,
+                payload={"price": Decimal("100"), "size": Decimal("1")},
+            )
+
+        report = build_quality_report(
+            "trades",
+            [trade(100, 1), trade(10_000, 2)],
+            policy=QualityPolicy(expected_interval_ns=100),
+            created_at="2026-07-10T00:00:00Z",
+        )
+        missing = next(check for check in report["checks"] if check["code"] == "missing_intervals")
+        self.assertEqual(missing["count"], 0)
+
     def test_crossed_book_is_critical(self) -> None:
         event = CanonicalEvent.from_raw(
             raw={"book": 1},

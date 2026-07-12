@@ -60,6 +60,20 @@ and next action. Finalized scientific and operational evidence is never edited: 
 risk evidence uses a superseding package with a new run receipt and package ID. Gate decisions
 are separate append-only governance attachments and cannot be overwritten or retried.
 
+For mechanically supervised execution, inspect first and then explicitly enable the local driver:
+
+```bash
+the-pass workflow execute --state <path> --author-provider codex \
+  --format json --driver auto
+the-pass workflow execute --state <path> --author-provider codex \
+  --execute --format json --driver auto
+```
+
+The supervisor invokes one stage per cycle, validates a new checkpoint, and refuses success from
+an unchanged or intermediate state. `auto` selects the provider and model through the versioned
+stage policy. A custom trusted driver command may replace `auto`; `--driver` must be the final
+option because all remaining tokens are the driver argv.
+
 ## Shared Rules
 
 - Native runtime subagents may be used within their declared read/write restrictions. Cross-runtime
@@ -102,9 +116,11 @@ the-pass workflow start --state <path> --run-id <id> --objective <text> \
 the-pass workflow advance --state <path> --to-stage <stage> \
   --status in_progress --next-action <text>
 the-pass workflow status --state <path>
+the-pass workflow execute --state <path> [--execute] --driver auto|<trusted argv>
 the-pass workflow fingerprint <package>
 the-pass workflow supersede <source-package> <target-package> \
   --ledger <ledger> --run-id <new-id> --created-at <RFC3339>
+the-pass agents route --stage <stage> [--author-provider codex|claude]
 ```
 
 The orchestrator maps stages only to the exact parser contracts in

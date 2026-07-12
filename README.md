@@ -1,7 +1,7 @@
 # The Pass
 
-[![CI](https://github.com/matk0shub/the-pass/actions/workflows/ci.yml/badge.svg)](https://github.com/matk0shub/the-pass/actions/workflows/ci.yml)
-[![Release](https://img.shields.io/github/v/release/matk0shub/the-pass)](https://github.com/matk0shub/the-pass/releases/latest)
+[![CI](https://github.com/mightymattys/the-pass/actions/workflows/ci.yml/badge.svg)](https://github.com/mightymattys/the-pass/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/mightymattys/the-pass)](https://github.com/mightymattys/the-pass/releases/latest)
 [![Python](https://img.shields.io/badge/python-3.9%20%7C%203.12-blue)](pyproject.toml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
@@ -62,13 +62,17 @@ policy hash.
 The framework is operational. All capability milestones in the machine-readable roadmap pass,
 while candidate promotion remains deliberately separate.
 
-The source tree, latest published release, and Codex/Claude Code plugins are versioned `0.9.1`.
-The release badge above remains the authority for the latest published tag. Readiness is recorded in the
+The source tree and plugin manifests are versioned `0.10.0`; the latest published release remains
+`v0.9.1` until the supervised-workflow release is tagged. The release badge above remains the
+authority for the latest published tag. Readiness is recorded in the
 [`v0.9.0` cross-agent audit](reports/CROSS_AGENT_ORCHESTRATION_AUDIT_0.9.0.md) and the
 [full repository stability audit](reports/FULL_REPOSITORY_STABILITY_AUDIT_2026-07-10.md). Versioned
 publication evidence for the installation fix is tracked in the
 [`v0.9.1` release audit](reports/RELEASE_AUDIT_0.9.1.md) and
 [post-release verification](reports/POST_RELEASE_AUDIT_0.9.1.md).
+Post-release framework hardening and its exact verification matrix are recorded in the
+[repository hardening audit](reports/REPOSITORY_HARDENING_AUDIT_2026-07-10.md); those unreleased
+source changes do not alter the published tag or imply candidate promotion.
 
 | Area | Framework capability | Bundled candidate state |
 | --- | --- | --- |
@@ -91,7 +95,7 @@ The Pass supports Python 3.9 and 3.12. [`uv`](https://docs.astral.sh/uv/) is the
 development workflow.
 
 ```bash
-git clone https://github.com/matk0shub/the-pass.git
+git clone https://github.com/mightymattys/the-pass.git
 cd the-pass
 uv sync --locked --extra data --extra research
 uv run the-pass --version
@@ -156,8 +160,8 @@ uv run the-pass <group> --help
 | `automation`, `incident` | Execute whitelisted jobs and create fail-closed incident evidence |
 | `report`, `dashboard` | Build static, read-only evidence bundles |
 | `receipts` | Append and semantically replay run and gate-decision ledgers |
-| `workflow` | Start, advance, inspect, or supersede a bounded slash-skill run |
-| `agents` | Inspect or explicitly dispatch bounded Codex/Claude agent tasks |
+| `workflow` | Start, advance, inspect, supervise, or supersede a bounded slash-skill run |
+| `agents` | Route, inspect, or explicitly dispatch bounded Codex/Claude agent tasks |
 
 All commands support `--format text|json`. Stable JSON responses contain `ok`, `status`,
 `artifact_paths`, `issues`, and `receipt_id`. See the full [CLI contract](docs/public/CLI_CONTRACT.md).
@@ -183,11 +187,11 @@ machine interface and source of validation truth.
 Install the Codex plugin from the pinned marketplace:
 
 ```bash
-codex plugin marketplace add matk0shub/the-pass --ref v0.9.1
+codex plugin marketplace add mightymattys/the-pass --ref v0.9.1
 codex plugin add the-pass@the-pass-tools
 ```
 
-For Claude Code, add `matk0shub/the-pass` as a marketplace and install
+For Claude Code, add `mightymattys/the-pass` as a marketplace and install
 `the-pass@the-pass-tools`. Install the Python CLI separately in both cases; see the
 [Usage Guide](docs/public/USAGE_GUIDE.md).
 
@@ -219,6 +223,37 @@ gate can enter remediation only from its exact package's recorded `blocked` or `
 when that decision fingerprints a confirmed finding. Claimed progress requires a newly recorded
 successor package; editing counters, copying a package, or using a v1 row cannot advance the run.
 
+### Supervised End-to-End Execution
+
+Version `0.10.0` adds a mechanical liveness supervisor. It repeatedly executes exactly one stage,
+reloads durable state, rejects no-progress or illegal transitions, and stops only at `complete`,
+`waiting`, `blocked`, or `killed`. Inspect the next route without making a model call:
+
+```bash
+the-pass agents route --stage backtest --author-provider codex --format json
+the-pass workflow execute --state .the-pass/runs/<run-id>/state.yaml \
+  --author-provider codex --format json --driver auto
+```
+
+Add `--execute` before `--driver auto` to start paid/authenticated provider calls. The auto driver
+uses the versioned stage policy: Claude is preferred for research and adversarial statistical
+review, Codex for data, implementation, simulation, paper, and risk packaging, and an independent
+provider for gate review. It selects the cheapest profile satisfying the stage's workload and
+capability floor. Preflight and gate recording are deterministic and never ask a model to approve
+itself.
+
+The reviewed `0.10.0` catalog contains only GPT-5.6 Luna, Terra, and Sol for Codex, plus Claude
+Sonnet 5, Opus 4.8, and Fable 5. Policy validation rejects a Codex model below GPT-5.6, more than
+three provider models, and any model outside the current allowlist; there is no legacy fallback.
+
+The auto driver is an explicitly trusted local mode: selected provider CLIs receive workspace
+tools so they can produce evidence and run tests. The supervisor validates state and gate authority
+after every turn, but it is not an OS sandbox for an arbitrary local command. A custom trusted
+driver may replace `auto` after `--driver` when another orchestrator should own stage execution.
+`agents doctor` does not verify authentication or model entitlement. Authenticate both providers
+for the default route, or pass `--available-provider codex|claude`; provider failures are not
+automatically retried through a second model.
+
 The complete behavioral contract is in [The Pass Commands](docs/plugin/COMMANDS.md) and
 [Skill Contracts](docs/implementation/SKILL_CONTRACTS.md). The consolidation rationale and
 verified implementation plan are in the
@@ -230,6 +265,7 @@ depth-one broker. Delegation is inspect-first and never runs implicitly:
 
 ```bash
 the-pass agents doctor --format json
+the-pass agents route --stage review_research --author-provider codex --format json
 the-pass agents inspect templates/agent_task.yaml --format json
 the-pass agents dispatch templates/agent_task.yaml --output-dir reports/agents \
   --execute --format json
@@ -308,6 +344,11 @@ Read the [Adapter Contract](docs/adapter-contract.md) and
 The reference simulator is intentionally small and auditable. It models order lifecycle,
 partial fills, depth, fees, slippage, funding, borrow, rolls, missed fills, and portfolio
 conservation. Mid-price fills are diagnostic-only and cannot support promotion.
+
+Gross and net path metrics use separate equity curves. Annualization records the asset calendar,
+median observation interval, and periods per year instead of assuming every market has 252 data
+points per year. Missing prices, malformed fills, conflicting event identities, and stale/future
+paper observations fail closed.
 
 The robustness layer includes walk-forward evaluation, purged splits and embargoes, PBO,
 PSR/DSR, deterministic bootstrap, Reality Check/SPA support, parameter sensitivity, regime
@@ -404,6 +445,9 @@ Report vulnerabilities according to [SECURITY.md](SECURITY.md).
 - [`v0.9.1` release notes](docs/public/RELEASE_NOTES_v0.9.1.md)
 - [`v0.9.1` release audit](reports/RELEASE_AUDIT_0.9.1.md)
 - [`v0.9.1` post-release verification](reports/POST_RELEASE_AUDIT_0.9.1.md)
+- [`v0.10.0` supervised workflow release notes](docs/public/RELEASE_NOTES_v0.10.0.md)
+- [Supervised workflow implementation audit](reports/SUPERVISED_WORKFLOW_AUDIT_2026-07-11.md)
+- [Repository hardening audit](reports/REPOSITORY_HARDENING_AUDIT_2026-07-10.md)
 - [CLI contract](docs/public/CLI_CONTRACT.md)
 - [Usage guide](docs/public/USAGE_GUIDE.md)
 - [Release process](docs/public/RELEASE_PROCESS.md)
@@ -412,7 +456,7 @@ Report vulnerabilities according to [SECURITY.md](SECURITY.md).
 - [Performance policy](docs/public/PERFORMANCE_POLICY.md)
 - [Outcome examples](examples/outcomes/README.md)
 - [Changelog](CHANGELOG.md)
-- [Latest release](https://github.com/matk0shub/the-pass/releases/latest)
+- [Latest release](https://github.com/mightymattys/the-pass/releases/latest)
 
 ## License
 

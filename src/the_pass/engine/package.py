@@ -198,6 +198,7 @@ def write_run_package(
         created_at=created_at,
         start_time=start_time,
         end_time=end_time,
+        asset_class=asset_class,
     )
     spec = strategy_spec(result.strategy_id, rows[0].instrument_id, asset_class, search_space)
     receipt = {

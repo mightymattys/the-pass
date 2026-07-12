@@ -43,6 +43,22 @@ class Fill:
     slippage_cost: Decimal = Decimal(0)
     evidence: str = ""
 
+    def __post_init__(self) -> None:
+        if not self.intent_id or not self.instrument_id:
+            raise ValueError("fill identifiers must not be empty")
+        if self.side not in {"buy", "sell"}:
+            raise ValueError("fill side must be buy or sell")
+        if not self.quantity.is_finite() or self.quantity <= 0:
+            raise ValueError("fill quantity must be positive and finite")
+        if not self.price.is_finite() or self.price <= 0:
+            raise ValueError("fill price must be positive and finite")
+        for field_name in ("fee", "spread_cost", "slippage_cost"):
+            value = getattr(self, field_name)
+            if not value.is_finite() or value < 0:
+                raise ValueError(f"fill {field_name} must be non-negative and finite")
+        if not isinstance(self.event_time_ns, int) or isinstance(self.event_time_ns, bool) or self.event_time_ns < 0:
+            raise ValueError("fill event_time_ns must be non-negative UTC nanoseconds")
+
 
 @dataclass(frozen=True)
 class FillOutcome:

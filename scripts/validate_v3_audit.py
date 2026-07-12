@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import math
 import sys
@@ -12,7 +13,23 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
+REPRODUCED_PACKAGE_FILES = {
+    "strategy_spec.json",
+    "data_manifest.json",
+    "quality_report.json",
+    "run_receipt.json",
+    "metrics_report.json",
+    "cost_waterfall.json",
+    "verdict_report.json",
+    "search_space.json",
+    "runner_result.json",
+    "screen_results.json",
+    "run_report.md",
+    "run_report.html",
+}
+
 from the_pass.data.contracts import stable_fingerprint  # noqa: E402
+from the_pass.ledger import build_run_entry  # noqa: E402
 from the_pass.validator import validate_artifact  # noqa: E402
 
 
@@ -77,6 +94,10 @@ def main() -> int:
     if stable_fingerprint(core) != policy["policy_hash"]:
         fail("V3 risk policy hash mismatch")
     report = json.loads((root / "risk_report.json").read_text(encoding="utf-8"))
+    package = ROOT / "examples" / "b2-baselines" / "donchian_momentum" / "package"
+    expected_package_id = build_run_entry(package)["package_id"]
+    if report.get("package_id") != expected_package_id:
+        fail("V3 risk report does not bind the current Donchian package_id")
     if report["policy_hash"] != policy["policy_hash"] or report["verdict"] != "blocked":
         fail("V3 risk report must bind exact policy and block the synthetic candidate")
 
@@ -94,6 +115,19 @@ def main() -> int:
     reproduction = json.loads((root / "reproduction_report.json").read_text(encoding="utf-8"))
     if reproduction["status"] != "pass" or reproduction["mismatches"]:
         fail("V3 clean-room reproduction did not pass")
+    if reproduction.get("backtest_exit_code") != 0 or reproduction.get("receipt_exit_code") != 0:
+        fail("V3 clean-room reproduction commands did not exit successfully")
+    fingerprint_rows = reproduction.get("fingerprints", [])
+    fingerprint_paths = [row.get("path") for row in fingerprint_rows if isinstance(row, dict)]
+    if len(fingerprint_paths) != len(set(fingerprint_paths)) or set(fingerprint_paths) != REPRODUCED_PACKAGE_FILES:
+        fail("V3 reproduction fingerprint inventory is incomplete or duplicated")
+    for row in fingerprint_rows:
+        path = package / str(row.get("path", ""))
+        if not path.is_file():
+            fail(f"V3 reproduction references missing package artifact: {path.name}")
+        current = hashlib.sha256(path.read_bytes()).hexdigest()
+        if row.get("expected") != current or row.get("observed") != current:
+            fail(f"V3 reproduction fingerprint is stale: {path.name}")
     candidate_verdict = json.loads(
         (ROOT / "examples" / "b2-baselines" / "donchian_momentum" / "package" / "verdict_report.json").read_text(encoding="utf-8")
     )

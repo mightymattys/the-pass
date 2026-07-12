@@ -5,10 +5,11 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, BinaryIO, Iterator
 
 from .validator import (
     PACKAGE_CORE_ARTIFACTS,
@@ -69,6 +70,36 @@ def utc_now_iso() -> str:
         .isoformat()
         .replace("+00:00", "Z")
     )
+
+
+@contextmanager
+def locked_ledger(ledger_path: Path) -> Iterator[BinaryIO]:
+    """Serialize a complete verify/build/append transaction on supported POSIX systems."""
+
+    ledger_path.parent.mkdir(parents=True, exist_ok=True)
+    handle = ledger_path.open("a+b")
+    try:
+        try:
+            import fcntl
+        except ImportError:
+            fcntl = None  # type: ignore[assignment]
+        if fcntl is not None:
+            fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
+        yield handle
+    finally:
+        if fcntl is not None:
+            fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+        handle.close()
+
+
+def append_locked_entry(handle: BinaryIO, entry: dict[str, Any]) -> None:
+    payload = (canonical_json(entry) + "\n").encode("utf-8")
+    handle.seek(0, os.SEEK_END)
+    written = handle.write(payload)
+    if written != len(payload):
+        raise LedgerError("ledger append was incomplete")
+    handle.flush()
+    os.fsync(handle.fileno())
 
 
 def read_ledger_entries(ledger_path: Path) -> list[dict[str, Any]]:
@@ -640,8 +671,17 @@ def append_ledger_entry(
     package_dir: Path,
     *,
     recorded_at: str | None = None,
+    _locked_handle: BinaryIO | None = None,
 ) -> LedgerAppendResult:
     ledger_path = ledger_path.resolve()
+    if _locked_handle is None:
+        with locked_ledger(ledger_path) as handle:
+            return append_ledger_entry(
+                ledger_path,
+                package_dir,
+                recorded_at=recorded_at,
+                _locked_handle=handle,
+            )
     entries = read_ledger_entries(ledger_path)
     issues = verify_ledger_file(ledger_path) if ledger_path.exists() else []
     if issues:
@@ -674,9 +714,7 @@ def append_ledger_entry(
     entry["previous_hash"] = entries[-1]["entry_hash"] if entries else None
     entry["entry_hash"] = hash_entry(entry)
 
-    ledger_path.parent.mkdir(parents=True, exist_ok=True)
-    with ledger_path.open("a", encoding="utf-8") as handle:
-        handle.write(canonical_json(entry) + "\n")
+    append_locked_entry(_locked_handle, entry)
 
     return LedgerAppendResult(entry, True, "receipt appended")
 
@@ -719,9 +757,21 @@ def build_gate_ledger_entry(
     }
 
 
-def append_gate_decision(ledger_path: Path, decision_path: Path) -> LedgerAppendResult:
+def append_gate_decision(
+    ledger_path: Path,
+    decision_path: Path,
+    *,
+    _locked_handle: BinaryIO | None = None,
+) -> LedgerAppendResult:
     ledger_path = ledger_path.resolve()
     decision_path = decision_path.resolve()
+    if _locked_handle is None:
+        with locked_ledger(ledger_path) as handle:
+            return append_gate_decision(
+                ledger_path,
+                decision_path,
+                _locked_handle=handle,
+            )
     entries = read_ledger_entries(ledger_path)
     issues = verify_ledger_file(ledger_path) if ledger_path.exists() else []
     if issues:
@@ -838,9 +888,7 @@ def append_gate_decision(ledger_path: Path, decision_path: Path) -> LedgerAppend
 
     entry["previous_hash"] = entries[-1]["entry_hash"] if entries else None
     entry["entry_hash"] = hash_entry(entry)
-    ledger_path.parent.mkdir(parents=True, exist_ok=True)
-    with ledger_path.open("a", encoding="utf-8") as handle:
-        handle.write(canonical_json(entry) + "\n")
+    append_locked_entry(_locked_handle, entry)
     return LedgerAppendResult(entry, True, "gate decision appended")
 
 

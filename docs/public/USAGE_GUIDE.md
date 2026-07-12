@@ -24,7 +24,7 @@ Install the released CLI and all non-live research extras with `uv`:
 
 ```bash
 uv tool install \
-  "the-pass[data,research,paper] @ https://github.com/matk0shub/the-pass/releases/download/v0.9.1/the_pass-0.9.1-py3-none-any.whl"
+  "the-pass[data,research,paper] @ https://github.com/mightymattys/the-pass/releases/download/v0.9.1/the_pass-0.9.1-py3-none-any.whl"
 uv tool update-shell
 the-pass --version
 ```
@@ -37,7 +37,7 @@ trading client.
 For repository development instead:
 
 ```bash
-git clone https://github.com/matk0shub/the-pass.git
+git clone https://github.com/mightymattys/the-pass.git
 cd the-pass
 git checkout v0.9.1
 uv sync --locked --extra data --extra research --extra dev
@@ -49,7 +49,7 @@ uv run the-pass --version
 ### Codex
 
 ```bash
-codex plugin marketplace add matk0shub/the-pass --ref v0.9.1
+codex plugin marketplace add mightymattys/the-pass --ref v0.9.1
 codex plugin add the-pass@the-pass-tools
 codex plugin list
 ```
@@ -68,7 +68,7 @@ codex plugin add the-pass@the-pass-tools
 Inside Claude Code:
 
 ```text
-/plugin marketplace add matk0shub/the-pass
+/plugin marketplace add mightymattys/the-pass
 /plugin install the-pass@the-pass-tools
 /reload-plugins
 ```
@@ -153,6 +153,51 @@ The run creates durable state under `.the-pass/runs/<run-id>/state.yaml`. It adv
 that has sufficient evidence and stops honestly at `complete`, `waiting`, `blocked`, or `killed`.
 It may stop before the target when data, a license, an independent reviewer, supported execution
 evidence, or a paper window is missing. That stop is a valid testing result.
+
+### Supervise The Run To A Terminal Checkpoint
+
+The `0.10.0` source tree can mechanically continue one stage at a time. First inspect without a
+model call:
+
+```bash
+the-pass agents route --stage research --format json
+the-pass workflow execute \
+  --state .the-pass/runs/<run-id>/state.yaml \
+  --author-provider codex \
+  --format json \
+  --driver auto
+```
+
+Then add `--execute` before `--driver auto`. The option `--driver` must remain last:
+
+```bash
+the-pass workflow execute \
+  --state .the-pass/runs/<run-id>/state.yaml \
+  --author-provider codex \
+  --timeout-seconds 1800 \
+  --execute \
+  --format json \
+  --driver auto
+```
+
+This uses the locally authenticated Codex and Claude CLIs and may incur provider cost. Each model
+receives one stage, not the whole authority chain. The supervisor rejects an unchanged state,
+invalid transition, timeout, exhausted cycle budget, or completion without the exact passed gate.
+It stops normally with exit `2` for valid `blocked`, `waiting`, or `killed` research outcomes.
+`agents doctor` proves only that a binary exists. Authenticate both CLIs before a two-provider run,
+or constrain routing with one or more `--available-provider` options. A provider authentication or
+model-access failure is not automatically retried through another provider.
+
+The current catalog is limited to GPT-5.6 Luna/Terra/Sol and Claude Sonnet 5/Opus 4.8/Fable 5.
+The framework intentionally does not fall back to an older model family.
+
+For independent review, `--author-provider` identifies the provider that produced the candidate.
+The route fails closed if no different provider is available. A custom trusted executable may be
+placed after `--driver` instead of `auto`; it receives documented `THE_PASS_WORKFLOW_*` and
+`THE_PASS_ROUTE_*` environment variables and must advance exactly one stage per invocation.
+The supervisor report is written beside the workflow state. Auto mode does not forward venue keys
+or direct API-key environment variables to provider processes; it uses the CLIs' local authenticated
+configuration.
 
 ## 7. Use Focused Skills When Needed
 

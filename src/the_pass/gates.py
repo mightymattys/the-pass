@@ -25,6 +25,7 @@ from .ledger import (
 from .validator import (
     find_artifact,
     load_document,
+    normalize_identity,
     parse_timestamp,
     validate_artifact,
     validate_package,
@@ -214,8 +215,9 @@ def reviewer_identity_blockers(package_dir: Path, reviewer: str) -> list[str]:
             blockers.append(f"{label} owner is required for independent review")
         else:
             owners[label] = owner.strip()
+    normalized_reviewer = normalize_identity(reviewer)
     for label, owner in owners.items():
-        if reviewer == owner:
+        if normalized_reviewer == normalize_identity(owner):
             blockers.append(f"reviewer must differ from {label} owner")
     return blockers
 
@@ -234,6 +236,8 @@ def evaluate_gate(
         raise GateEvaluationError(f"gate must be one of: {', '.join(CORE_GATES)}")
     if not reviewer.strip():
         raise GateEvaluationError("reviewer must be non-empty")
+    if reviewer != reviewer.strip():
+        raise GateEvaluationError("reviewer must not contain leading or trailing whitespace")
 
     package_validation = validate_package(package_dir)
     if not package_validation.ok:

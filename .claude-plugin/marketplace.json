@@ -5,22 +5,22 @@
     "name": "The Pass contributors"
   },
   "description": "Auditable trading-strategy research workflows for Claude Code.",
-  "version": "0.9.1",
+  "version": "0.10.0",
   "plugins": [
     {
       "name": "the-pass",
       "source": {
         "source": "url",
-        "url": "https://github.com/matk0shub/the-pass.git",
-        "ref": "v0.9.1"
+        "url": "https://github.com/mightymattys/the-pass.git",
+        "ref": "v0.10.0"
       },
       "description": "Research, test, independently review, and paper-observe trading strategies without live execution.",
-      "version": "0.9.1",
+      "version": "0.10.0",
       "author": {
         "name": "The Pass contributors"
       },
-      "homepage": "https://github.com/matk0shub/the-pass",
-      "repository": "https://github.com/matk0shub/the-pass",
+      "homepage": "https://github.com/mightymattys/the-pass",
+      "repository": "https://github.com/mightymattys/the-pass",
       "license": "MIT",
       "category": "development",
       "tags": ["trading", "research", "backtesting", "risk", "multi-agent"],

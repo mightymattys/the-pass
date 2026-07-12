@@ -6,9 +6,9 @@ Result: **PASS**
 
 ## Published Release
 
-- Release: [The Pass v0.9.1](https://github.com/matk0shub/the-pass/releases/tag/v0.9.1)
-- Release workflow: [run 29111522079](https://github.com/matk0shub/the-pass/actions/runs/29111522079)
-- Release PR: [#11](https://github.com/matk0shub/the-pass/pull/11)
+- Release: [The Pass v0.9.1](https://github.com/mightymattys/the-pass/releases/tag/v0.9.1)
+- Release workflow: [run 29111522079](https://github.com/mightymattys/the-pass/actions/runs/29111522079)
+- Release PR: [#11](https://github.com/mightymattys/the-pass/pull/11)
 - Annotated tag: `v0.9.1`
 - Tagged commit: `c66932610213c74daf5ccd1391733ddc9bb70b04`
 - GitHub state: latest release, not draft, not prerelease
@@ -33,9 +33,9 @@ The downloaded wheel passed clean distribution validation. The exact user-level 
 
 The documented commands were rerun against the published `v0.9.1` tag in new isolated profiles:
 
-- Codex added `matk0shub/the-pass --ref v0.9.1`, discovered
+- Codex added `mightymattys/the-pass --ref v0.9.1`, discovered
   `the-pass@the-pass-tools`, installed version `0.9.1`, and enabled it.
-- Claude added `matk0shub/the-pass`, cloned the pinned plugin over HTTPS without an SSH key,
+- Claude added `mightymattys/the-pass`, cloned the pinned plugin over HTTPS without an SSH key,
   installed version `0.9.1`, and enabled it.
 - Each installed archive contains exactly seven slash skills and four bounded Claude agent
   definitions.

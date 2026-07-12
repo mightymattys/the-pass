@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from decimal import Decimal
 from pathlib import Path
@@ -14,6 +15,7 @@ from the_pass.engine.fills import BarFillModel
 from the_pass.engine.simulator import EventSimulator
 from the_pass.engine.workflows import make_baseline_strategy
 from the_pass.risk import VersionedRiskPolicy
+from the_pass.safety import is_sensitive_key
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -41,7 +43,7 @@ def main(argv: list[str] | None = None) -> int:
         "config_hash": args.config_hash,
         "process_isolated": True,
         "network_clients_loaded": any(name in sys.modules for name in ("httpx", "websockets")),
-        "credentials_present": False,
+        "credentials_present": any(is_sensitive_key(name) for name in os.environ),
         "signals": result.signals,
         "decision_journal": [
             {

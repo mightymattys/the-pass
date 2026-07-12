@@ -7,9 +7,7 @@ from decimal import Decimal
 from typing import Any, Mapping, Protocol
 
 from .data.contracts import stable_fingerprint
-
-
-SENSITIVE_CONFIG_KEYS = {"secret", "api_key", "private_key", "credential", "token"}
+from .safety import contains_sensitive_key
 
 
 class ExecutionGateway(Protocol):
@@ -49,7 +47,7 @@ class LockedExecutionGateway:
 
 def build_config_diff(before: Mapping[str, Any], after: Mapping[str, Any]) -> dict[str, Any]:
     keys = set(before) | set(after)
-    if any(any(sensitive in key.lower() for sensitive in SENSITIVE_CONFIG_KEYS) for key in keys):
+    if contains_sensitive_key(before) or contains_sensitive_key(after):
         raise ValueError("config diff cannot contain secret-like keys")
     changes = [
         {"field": key, "before": before.get(key), "after": after.get(key)}

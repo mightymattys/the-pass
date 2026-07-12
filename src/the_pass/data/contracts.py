@@ -85,7 +85,14 @@ class Instrument:
     margin_mode: str | None = None
 
     def __post_init__(self) -> None:
-        for field_name in ("instrument_id", "symbol", "venue", "asset_class", "quote_currency"):
+        for field_name in (
+            "instrument_id",
+            "symbol",
+            "venue",
+            "asset_class",
+            "quote_currency",
+            "contract_type",
+        ):
             if not getattr(self, field_name):
                 raise ValueError(f"{field_name} must not be empty")
         for field_name in ("tick_size", "lot_size", "multiplier"):
@@ -127,12 +134,25 @@ class CanonicalEvent:
         for field_name in ("source", "venue", "asset_class", "instrument_id", "ingest_id"):
             if not getattr(self, field_name):
                 raise ValueError(f"{field_name} must not be empty")
-        if self.event_time_ns < 0 or self.receive_time_ns < 0:
+        if (
+            not isinstance(self.event_time_ns, int)
+            or isinstance(self.event_time_ns, bool)
+            or not isinstance(self.receive_time_ns, int)
+            or isinstance(self.receive_time_ns, bool)
+            or self.event_time_ns < 0
+            or self.receive_time_ns < 0
+        ):
             raise ValueError("timestamps must be UTC nanoseconds since epoch")
-        if self.sequence is not None and self.sequence < 0:
+        if self.sequence is not None and (
+            not isinstance(self.sequence, int)
+            or isinstance(self.sequence, bool)
+            or self.sequence < 0
+        ):
             raise ValueError("sequence must be non-negative")
         if len(self.raw_fingerprint) != 64 or any(char not in "0123456789abcdefABCDEF" for char in self.raw_fingerprint):
             raise ValueError("raw_fingerprint must be a SHA-256 hex digest")
+        if not isinstance(self.payload, Mapping):
+            raise TypeError("payload must be a mapping")
         canonical_value(self.payload)
 
     @classmethod

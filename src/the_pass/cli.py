@@ -17,6 +17,7 @@ from .agent_orchestration import (
     dispatch_agent_task,
     doctor_agents,
     inspect_agent_task,
+    route_workflow_stage,
 )
 from .data.contracts import CanonicalEvent
 from .data.features import build_bar_features
@@ -59,6 +60,11 @@ from .orchestration import (
     new_workflow_state,
     read_workflow_state,
     write_workflow_state_atomic,
+)
+from .workflow_supervisor import (
+    WorkflowSupervisorError,
+    inspect_workflow_execution,
+    supervise_workflow,
 )
 from .validator import (
     ARTIFACT_TYPES,
@@ -389,6 +395,18 @@ def build_parser() -> argparse.ArgumentParser:
         "--provider", choices=("codex", "claude", "all"), default="all"
     )
     agents_doctor.add_argument("--format", choices=("text", "json"), default="text")
+    agents_route = agents_subparsers.add_parser(
+        "route", help="Resolve the provider and model for one workflow stage."
+    )
+    agents_route.add_argument("--stage", required=True)
+    agents_route.add_argument("--author-provider", choices=("codex", "claude"))
+    agents_route.add_argument(
+        "--available-provider",
+        choices=("codex", "claude"),
+        action="append",
+        dest="available_providers",
+    )
+    agents_route.add_argument("--format", choices=("text", "json"), default="text")
     agents_inspect = agents_subparsers.add_parser(
         "inspect", help="Validate a task and preview its safe invocation."
     )
@@ -492,6 +510,31 @@ def build_parser() -> argparse.ArgumentParser:
     )
     workflow_status.add_argument("--state", type=Path, required=True)
     workflow_status.add_argument("--format", choices=("text", "json"), default="text")
+
+    workflow_execute = workflow_subparsers.add_parser(
+        "execute", help="Supervise a trusted stage driver to a terminal checkpoint."
+    )
+    workflow_execute.add_argument("--state", type=Path, required=True)
+    workflow_execute.add_argument("--cwd", type=Path, default=Path.cwd())
+    workflow_execute.add_argument("--report", type=Path)
+    workflow_execute.add_argument("--author-provider", choices=("codex", "claude"))
+    workflow_execute.add_argument(
+        "--available-provider",
+        choices=("codex", "claude"),
+        action="append",
+        dest="available_providers",
+    )
+    workflow_execute.add_argument("--max-cycles", type=int)
+    workflow_execute.add_argument("--timeout-seconds", type=int, default=1800)
+    workflow_execute.add_argument("--max-output-bytes", type=int, default=4194304)
+    workflow_execute.add_argument("--execute", action="store_true")
+    workflow_execute.add_argument("--format", choices=("text", "json"), default="text")
+    workflow_execute.add_argument(
+        "--driver",
+        nargs=argparse.REMAINDER,
+        required=True,
+        help="Trusted driver argv. This option must be last.",
+    )
 
     workflow_fingerprint = workflow_subparsers.add_parser(
         "fingerprint", help="Compute a validated package identity without recording it."
@@ -922,6 +965,19 @@ def main(argv: list[str] | None = None) -> int:
                     details=document,
                 )
                 return 0
+            if args.agents_command == "route":
+                route = route_workflow_stage(
+                    args.stage,
+                    author_provider=args.author_provider,
+                    available_providers=args.available_providers or ("codex", "claude"),
+                )
+                print_envelope(
+                    output_format=args.format,
+                    ok=True,
+                    status="complete",
+                    details={"route": route},
+                )
+                return 0
             if args.agents_command == "inspect":
                 document = inspect_agent_task(args.task)
                 print_envelope(
@@ -1086,6 +1142,52 @@ def main(argv: list[str] | None = None) -> int:
                     details={"workflow": state},
                 )
                 return 0
+
+            if args.workflow_command == "execute":
+                providers = args.available_providers or ("codex", "claude")
+                report_path = args.report or args.state.parent / "supervisor-run.json"
+                if not args.driver:
+                    raise WorkflowSupervisorError(
+                        "workflow execute requires a command after --driver"
+                    )
+                if not args.execute:
+                    inspection = inspect_workflow_execution(
+                        args.state,
+                        driver_argv=args.driver,
+                        author_provider=args.author_provider,
+                        available_providers=providers,
+                    )
+                    print_envelope(
+                        output_format=args.format,
+                        ok=True,
+                        status="inspection",
+                        artifact_paths=[args.state.resolve()],
+                        details={"inspection": inspection},
+                    )
+                    return 0
+                report, exit_code = supervise_workflow(
+                    args.state,
+                    driver_argv=args.driver,
+                    cwd=args.cwd,
+                    report_path=report_path,
+                    author_provider=args.author_provider,
+                    available_providers=providers,
+                    max_cycles=args.max_cycles,
+                    timeout_seconds=args.timeout_seconds,
+                    max_output_bytes=args.max_output_bytes,
+                )
+                print_envelope(
+                    output_format=args.format,
+                    ok=exit_code == 0,
+                    status=report["status"],
+                    artifact_paths=[args.state.resolve(), report_path.resolve()],
+                    issues=[
+                        {"path": str(report_path), "message": issue}
+                        for issue in report["issues"]
+                    ],
+                    details={"supervisor": report},
+                )
+                return exit_code
 
             if args.workflow_command == "fingerprint":
                 package_id = build_run_entry(args.package)["package_id"]

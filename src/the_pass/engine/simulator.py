@@ -43,8 +43,10 @@ class EventSimulator:
         equity_curve: list[dict[str, object]] = []
         costs = {name: Decimal(0) for name in ("fees", "spread", "slippage", "funding", "borrow", "roll", "rejects_or_missed_fills")}
         signals = 0
+        intent_ids: set[str] = set()
 
         for index, event in enumerate(ordered):
+            portfolio.begin_event(event.receive_time_ns)
             still_pending = []
             for intent in pending:
                 outcome = self.fill_model.evaluate(intent, event, self.cost_model)
@@ -73,7 +75,17 @@ class EventSimulator:
             pending = still_pending
 
             mark_value = event.payload.get("close", event.payload.get("price"))
+            if mark_value is None and event.event_type in {EventType.BOOK_SNAPSHOT, EventType.BOOK_DELTA}:
+                bids = event.payload.get("bids") or []
+                asks = event.payload.get("asks") or []
+                if bids and asks:
+                    best_bid = max(Decimal(str(level[0])) for level in bids)
+                    best_ask = min(Decimal(str(level[0])) for level in asks)
+                    if best_bid > 0 and best_ask > best_bid:
+                        mark_value = (best_bid + best_ask) / Decimal(2)
             if mark_value is not None and event.event_type in {EventType.BAR, EventType.TRADE}:
+                equity_curve.append(portfolio.mark(event.instrument_id, Decimal(str(mark_value)), event.receive_time_ns))
+            elif mark_value is not None and event.event_type in {EventType.BOOK_SNAPSHOT, EventType.BOOK_DELTA}:
                 equity_curve.append(portfolio.mark(event.instrument_id, Decimal(str(mark_value)), event.receive_time_ns))
 
             context = RunnerContext(
@@ -86,6 +98,9 @@ class EventSimulator:
             new_intents = list(strategy.on_event(event, context))
             signals += len(new_intents)
             for intent in new_intents:
+                if intent.intent_id in intent_ids:
+                    raise ValueError(f"duplicate strategy intent_id: {intent.intent_id}")
+                intent_ids.add(intent.intent_id)
                 if intent.decision_time_ns != event.receive_time_ns:
                     raise ValueError("strategy intent decision time must equal current receive time")
                 allowed, reason = self.risk_policy.allow(intent, portfolio)

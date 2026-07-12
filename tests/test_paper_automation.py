@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import json
+import os
 import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 import yaml
 
@@ -53,6 +55,36 @@ class PaperRuntimeTests(unittest.TestCase):
         self.assertEqual(result["status"], "frozen")
         self.assertEqual(result["breaches"][0]["code"], "stale_data")
         self.assertFalse(result["decision_journal"])
+
+    def test_future_events_freeze_and_credentials_are_not_inherited(self) -> None:
+        events = generate_synthetic_bars(instrument_id="BTCUSDT", profile="trend")
+        with tempfile.TemporaryDirectory() as tmp, patch.dict(
+            os.environ, {"OPENAI_API_KEY": "must-not-reach-paper"}
+        ):
+            clean = run_virtual_paper_process(
+                strategy_name="donchian_momentum",
+                events=events,
+                risk_policy=build_risk_policy_artifact("crypto_intraday"),
+                observation_policy=ObservationPolicy(
+                    300_000_000_000, 5_000_000_000, 120_000_000_000
+                ),
+                observation_time_ns=events[-1].receive_time_ns,
+                output_path=Path(tmp) / "clean-paper.json",
+            )
+            frozen = run_virtual_paper_process(
+                strategy_name="donchian_momentum",
+                events=events,
+                risk_policy=build_risk_policy_artifact("crypto_intraday"),
+                observation_policy=ObservationPolicy(
+                    300_000_000_000, 5_000_000_000, 120_000_000_000
+                ),
+                observation_time_ns=events[-2].receive_time_ns,
+                output_path=Path(tmp) / "future-paper.json",
+            )
+
+        self.assertFalse(clean["credentials_present"])
+        self.assertEqual(frozen["status"], "frozen")
+        self.assertIn("future_data", {breach["code"] for breach in frozen["breaches"]})
 
 
 class AutomationTests(unittest.TestCase):
@@ -138,6 +170,14 @@ class AutomationTests(unittest.TestCase):
 
         self.assertFalse(inputs_files)
 
+    def test_access_token_input_is_rejected_before_execution(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            spec = yaml.safe_load((ROOT / "automations" / "data-health.yaml").read_text(encoding="utf-8"))
+            spec["inputs"] = {"provider": {"access_token": "must-not-be-written"}}
+            with self.assertRaisesRegex(ValueError, "credential-like"):
+                self.run_fixture(root, spec)
+
     def test_timeout_terminates_worker_and_creates_incident(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -167,6 +207,7 @@ class AutomationTests(unittest.TestCase):
         self.assertEqual(document["status"], "complete")
         self.assertEqual(document["attempts"], 2)
         self.assertEqual(payload["attempt"], 2)
+        self.assertIn("committed", output.parts)
         self.assertTrue(document["receipt"]["staged_outputs_committed"])
         self.assertIsNone(document["receipt"]["incident_report"])
 

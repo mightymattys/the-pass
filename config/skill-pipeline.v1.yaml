@@ -1,5 +1,5 @@
 schema_version: 1
-interface_version: 0.9.1
+interface_version: 0.10.0
 public_skills:
   run: [complete, waiting, blocked, killed]
   research: [research_ready, rejected, blocked]
@@ -131,6 +131,11 @@ cli_contracts:
     accepted_exit_codes: [0, 1]
     outputs: [workflow_state]
     capability: valid_existing_state
+  workflow_execute:
+    argv: [workflow, execute, --state, state.yaml, --max-cycles, "20", --timeout-seconds, "1800", --execute, --driver, trusted-stage-driver]
+    accepted_exit_codes: [0, 1, 2, 3]
+    outputs: [workflow_state, supervisor_report]
+    capability: trusted_local_stage_driver
   workflow_fingerprint:
     argv: [workflow, fingerprint, package, --format, json]
     accepted_exit_codes: [0, 1]
@@ -151,6 +156,11 @@ cli_contracts:
     accepted_exit_codes: [0, 1, 3]
     outputs: [agent_invocation_preview]
     capability: valid_agent_task
+  agents_route:
+    argv: [agents, route, --stage, backtest, --author-provider, codex, --format, json]
+    accepted_exit_codes: [0, 1, 3]
+    outputs: [workflow_agent_route]
+    capability: versioned_stage_routing_policy
   agents_dispatch:
     argv: [agents, dispatch, agent-task.yaml, --output-dir, reports/agents, --execute, --format, json]
     accepted_exit_codes: [0, 1, 2, 3]
@@ -161,7 +171,7 @@ stages:
   preflight:
     role: orchestrator
     skill: run
-    cli_contracts: [workflow_start, receipts_verify, agents_doctor]
+    cli_contracts: [workflow_start, workflow_execute, receipts_verify, agents_doctor, agents_route]
     transitions: [research, screen, backtest, robustness, review_research, research_gate, paper_prepare, paper_observe, review_paper, paper_gate, risk_prepare, plate, review_risk, risk_review]
   research:
     role: researcher

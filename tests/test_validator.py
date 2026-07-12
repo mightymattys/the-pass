@@ -6,6 +6,7 @@ import os
 import shutil
 import tempfile
 import unittest
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 from unittest.mock import patch
@@ -348,6 +349,12 @@ def prepare_paper_candidate(
             "holdout_end_time": "2026-01-31T00:00:00Z",
         }
     )
+    metrics["annualization"] = {
+        "method": "asset_calendar_over_median_equity_interval",
+        "calendar": "continuous_365.25_days",
+        "median_interval_seconds": 60,
+        "periods_per_year": 525960,
+    }
     metrics["robustness"]["null_baseline_result"] = (
         "candidate exceeded the matched random baseline"
     )
@@ -652,6 +659,30 @@ def add_paper_gate_artifacts(
 
 
 class ValidatorTests(unittest.TestCase):
+    def test_concurrent_receipt_appends_preserve_hash_chain(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            ledger = root / "ledger.jsonl"
+            breakout = root / "breakout"
+            random_control = root / "random"
+            shutil.copytree(EXAMPLE_PACKAGE, breakout)
+            shutil.copytree(ROOT / "examples" / "synthetic-random-baseline" / "package", random_control)
+
+            with ThreadPoolExecutor(max_workers=2) as executor:
+                results = list(
+                    executor.map(
+                        lambda package: append_ledger_entry(ledger, package),
+                        (breakout, random_control),
+                    )
+                )
+
+            issues = verify_ledger_file(ledger)
+            entries = read_ledger_entries(ledger)
+
+        self.assertTrue(all(result.appended for result in results))
+        self.assertEqual(len(entries), 2)
+        self.assertFalse(issues, [issue.as_dict() for issue in issues])
+
     def test_rfc3339_date_time_format_is_enforced(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             artifact = Path(tmp) / "cost_waterfall.json"
@@ -1170,6 +1201,20 @@ safety:
         self.assertTrue(
             any("must be independent" in issue.message for issue in result.issues)
         )
+
+    def test_reviewer_identity_cannot_bypass_independence_by_case_or_whitespace(self) -> None:
+        for reviewer in ("THE-PASS", "the-pass "):
+            with self.subTest(reviewer=reviewer), tempfile.TemporaryDirectory() as tmp:
+                package = Path(tmp) / "package"
+                shutil.copytree(EXAMPLE_PACKAGE, package)
+                prepare_paper_candidate(package, reviewer=reviewer)
+                result = validate_package(package)
+
+                self.assertFalse(result.ok)
+                self.assertTrue(
+                    any("must be independent" in issue.message for issue in result.issues),
+                    [issue.as_dict() for issue in result.issues],
+                )
 
     def test_paper_candidate_rejects_placeholder_baseline(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

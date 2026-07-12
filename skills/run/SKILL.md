@@ -88,6 +88,14 @@ preflight -> research -> screen -> backtest -> robustness
   package ID, next action, and reviewer when required.
 - Send one concise progress update at stage boundaries. Do not ask for routine confirmation.
 - `complete` means the requested non-live gate has a separately recorded pass decision.
+- Resolve every stage boundary with `the-pass agents route`. Follow its provider/model decision
+  when delegation is available; do not hard-code a model in the prompt or call every model merely
+  because it exists.
+- When the user requests guaranteed continuation and authenticated provider CLIs are available,
+  prefer `the-pass workflow execute --execute --driver auto`. The supervisor remains the liveness
+  authority; a provider's prose response is never a terminal result.
+- If supervision is interrupted, run `the-pass workflow status` and resume the same state. Never
+  restart from conversation memory or silently abandon an `in_progress` checkpoint.
 
 ### 3. Preserve immutable evidence
 
@@ -166,6 +174,7 @@ the-pass workflow supersede <recorded-package> <new-package> \
 - Specialist artifacts and immutable superseding packages.
 - Verified run and gate-decision ledger entries.
 - Stage progress, exact blocker or waiting reason, and one final evidence-backed report.
+- A supervisor report for mechanically executed runs, including every stage route and state hash.
 
 ## Exit States
 

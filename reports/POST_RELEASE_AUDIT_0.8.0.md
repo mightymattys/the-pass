@@ -6,8 +6,8 @@ Result: **PASS**
 
 ## Published Release
 
-- Release: [The Pass v0.8.0](https://github.com/matk0shub/the-pass/releases/tag/v0.8.0)
-- Release workflow: [run 29096613219](https://github.com/matk0shub/the-pass/actions/runs/29096613219)
+- Release: [The Pass v0.8.0](https://github.com/mightymattys/the-pass/releases/tag/v0.8.0)
+- Release workflow: [run 29096613219](https://github.com/mightymattys/the-pass/actions/runs/29096613219)
 - Annotated tag: `v0.8.0`
 - Tagged commit: `475091862dc028a018738dcebf5f42d3e071f98a`
 - GitHub state: latest release, not draft, not prerelease

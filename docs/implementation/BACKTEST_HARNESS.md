@@ -12,6 +12,18 @@ runtime without changing strategy logic.
   are explicit.
 - Bar intents fill only at a later bar open with adverse slippage.
 - Midpoint fills are diagnostic and have `promotion_eligible = false`.
+- Every fill is bound to the intent instrument and rejects invalid price, size, fee, or cost values.
+
+## Metrics And Costs
+
+- Net metrics use the accounting equity curve after explicit costs.
+- Gross path metrics use a separate reconstructed equity curve that adds timestamped fill costs
+  back at each observation; unallocated costs fail the reconstruction instead of silently reusing
+  net returns.
+- Annualization is explicit in `metrics_report.annualization`. Continuous crypto and prediction
+  markets use a 365.25-day calendar; listed-futures diagnostics use 252 sessions of 6.5 hours.
+  Both derive observations per year from the median equity interval.
+- A `paper_candidate` without a positive, named annualization policy is invalid.
 
 ## Reproduction
 

@@ -13,6 +13,12 @@ sample:
   signals: 0
   instruments: [BTCUSDT]
 
+annualization:
+  method: asset_calendar_over_median_equity_interval
+  calendar: continuous_365.25_days
+  median_interval_seconds: 60
+  periods_per_year: 525960
+
 gross_metrics:
   pnl: 0
   total_return: 0
@@ -62,4 +68,4 @@ robustness:
   stress_results: [No stress claim from the empty example run.]
   parameter_stability: Not assessed in the example.
 
-limitations: [Zero values are placeholders, not measured performance.]
+limitations: [Zero values are placeholders, not measured performance or an annualized claim.]

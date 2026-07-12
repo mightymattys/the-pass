@@ -52,7 +52,7 @@ Status: `v0.9.1` published and reverified from freshly downloaded release assets
 
 Release evidence:
 
-- `https://github.com/matk0shub/the-pass/pull/11`
+- `https://github.com/mightymattys/the-pass/pull/11`
 - `reports/RELEASE_AUDIT_0.9.1.md`
 - `reports/POST_RELEASE_AUDIT_0.9.1.md`
 - `docs/public/USAGE_GUIDE.md`

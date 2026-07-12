@@ -11,7 +11,8 @@ from pathlib import Path
 
 from the_pass.audit import build_audit_report
 from the_pass.cli import main as cli_main
-from the_pass.engine.contracts import SimulatedIntent
+from the_pass.data.contracts import stable_fingerprint
+from the_pass.engine.contracts import Fill, SimulatedIntent
 from the_pass.engine.portfolio import AccountingPortfolio
 from the_pass.risk import VersionedRiskPolicy, build_risk_policy_artifact, build_risk_report
 from the_pass.robustness import (
@@ -113,6 +114,37 @@ class StressAndRiskTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             VersionedRiskPolicy.from_artifact(tampered)
         self.assertLessEqual(policy.kelly_upper_bound(Decimal("0.55"), Decimal("1.5")), Decimal(1))
+
+    def test_risk_policy_fails_closed_without_price_and_resets_daily_loss_baseline(self) -> None:
+        artifact = build_risk_policy_artifact("crypto_intraday")
+        artifact["limits"]["max_daily_loss"] = 20
+        artifact["policy_hash"] = stable_fingerprint(
+            {key: value for key, value in artifact.items() if key != "policy_hash"}
+        )
+        policy = VersionedRiskPolicy.from_artifact(artifact)
+        portfolio = AccountingPortfolio(Decimal("100000"))
+        intent = SimulatedIntent("first", "TEST", "buy", Decimal(1), 1, "market")
+        self.assertEqual(policy.allow(intent, portfolio), (False, "missing_reference_price"))
+
+        day_ns = 86_400_000_000_000
+        portfolio.mark("TEST", Decimal("100"), day_ns)
+        portfolio.apply_fill(Fill("entry", "TEST", "buy", Decimal(1), Decimal("100"), day_ns))
+        portfolio.mark("TEST", Decimal("50"), day_ns + 1)
+        close_intent = SimulatedIntent("close", "TEST", "sell", Decimal(1), day_ns + 1, "market")
+        self.assertEqual(policy.allow(close_intent, portfolio), (False, "max_daily_loss"))
+
+        portfolio.mark("TEST", Decimal("50"), day_ns * 2)
+        portfolio.mark("TEST", Decimal("40"), day_ns * 2 + 1)
+        self.assertEqual(policy.allow(close_intent, portfolio), (True, ""))
+
+        fee_portfolio = AccountingPortfolio(Decimal("100000"))
+        fee_portfolio.mark("TEST", Decimal("100"), day_ns)
+        fee_portfolio.begin_event(day_ns * 2)
+        fee_portfolio.apply_fill(
+            Fill("new-day-entry", "TEST", "buy", Decimal(1), Decimal("100"), day_ns * 2, fee=Decimal("25"))
+        )
+        fee_close = SimulatedIntent("fee-close", "TEST", "sell", Decimal(1), day_ns * 2, "market")
+        self.assertEqual(policy.allow(fee_close, fee_portfolio), (False, "max_daily_loss"))
 
     def test_risk_artifacts_validate(self) -> None:
         policy = build_risk_policy_artifact("crypto_intraday")

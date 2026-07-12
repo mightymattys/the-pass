@@ -18,6 +18,24 @@ class QualityPolicy:
     requested_end_ns: int | None = None
     session_gap_intervals: tuple[tuple[int, int], ...] = ()
     roll_gap_intervals: tuple[tuple[int, int], ...] = ()
+    fixed_interval_event_types: tuple[EventType, ...] = (EventType.BAR,)
+
+    def __post_init__(self) -> None:
+        for field_name in ("expected_interval_ns", "stale_after_ns"):
+            value = getattr(self, field_name)
+            if value is not None and (isinstance(value, bool) or value <= 0):
+                raise ValueError(f"{field_name} must be positive when provided")
+        if self.outlier_return < 0 or not self.outlier_return.is_finite():
+            raise ValueError("outlier_return must be non-negative and finite")
+        if (
+            self.requested_start_ns is not None
+            and self.requested_end_ns is not None
+            and self.requested_start_ns >= self.requested_end_ns
+        ):
+            raise ValueError("requested_start_ns must be earlier than requested_end_ns")
+        for interval in (*self.session_gap_intervals, *self.roll_gap_intervals):
+            if interval[0] >= interval[1]:
+                raise ValueError("allowed gap intervals must have start earlier than end")
 
 
 CHECK_DEFINITIONS = (
@@ -77,11 +95,11 @@ def build_quality_report(
     for index, event in enumerate(original):
         identity = (
             event.source,
+            event.venue,
             event.instrument_id,
             event.event_type.value,
             event.event_time_ns,
             event.sequence,
-            event.raw_fingerprint,
         )
         if identity in seen:
             _record(affected, "duplicates", f"rows:{seen[identity]},{index}")
@@ -118,7 +136,11 @@ def build_quality_report(
             if previous.sequence is not None and current.sequence is not None and current.sequence > previous.sequence + 1:
                 _record(affected, "sequence_gaps", f"{instrument_id}:{event_type}:{previous.sequence + 1}-{current.sequence - 1}")
             gap = current.event_time_ns - previous.event_time_ns
-            if policy.expected_interval_ns and gap > policy.expected_interval_ns:
+            if (
+                policy.expected_interval_ns
+                and EventType(event_type) in policy.fixed_interval_event_types
+                and gap > policy.expected_interval_ns
+            ):
                 interval = (previous.event_time_ns, current.event_time_ns)
                 if _interval_overlaps(interval, policy.session_gap_intervals):
                     _record(affected, "session_gaps", f"{instrument_id}:{interval[0]}-{interval[1]}")
@@ -141,11 +163,15 @@ def build_quality_report(
                     if change > policy.outlier_return:
                         _record(affected, "outliers", f"{instrument_id}:{current.event_time_ns}")
 
-    if ordered:
-        if policy.requested_start_ns is not None and ordered[0].event_time_ns > policy.requested_start_ns:
-            _record(affected, "provider_truncation", f"start:{ordered[0].event_time_ns}")
-        if policy.requested_end_ns is not None and ordered[-1].event_time_ns < policy.requested_end_ns:
-            _record(affected, "provider_truncation", f"end:{ordered[-1].event_time_ns}")
+    coverage_groups: dict[tuple[str, str, str], list[CanonicalEvent]] = {}
+    for event in ordered:
+        coverage_groups.setdefault((event.source, event.venue, event.instrument_id), []).append(event)
+    for (source, venue, instrument_id), rows in sorted(coverage_groups.items()):
+        label = f"{source}:{venue}:{instrument_id}"
+        if policy.requested_start_ns is not None and rows[0].event_time_ns > policy.requested_start_ns:
+            _record(affected, "provider_truncation", f"{label}:start:{rows[0].event_time_ns}")
+        if policy.requested_end_ns is not None and rows[-1].event_time_ns < policy.requested_end_ns:
+            _record(affected, "provider_truncation", f"{label}:end:{rows[-1].event_time_ns}")
 
     checks = []
     errors = 0

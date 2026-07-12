@@ -49,8 +49,8 @@ Peak Python-managed memory decreased from approximately 3.16 GB in the initial a
 
 ## Governance
 
-- Protected review: `https://github.com/matk0shub/the-pass/pull/1`.
-- Cross-version CI evidence: `https://github.com/matk0shub/the-pass/actions/runs/29074681353`.
+- Protected review: `https://github.com/mightymattys/the-pass/pull/1`.
+- Cross-version CI evidence: `https://github.com/mightymattys/the-pass/actions/runs/29074681353`.
 - `main` requires the Python 3.9 and 3.12 CI checks.
 - Pull-request review, linear history, resolved conversations, and strict up-to-date checks are
   required.

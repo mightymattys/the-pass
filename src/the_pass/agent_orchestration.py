@@ -125,6 +125,7 @@ def load_agent_policy() -> dict[str, Any]:
         "interface_version",
         "limits",
         "model_routing",
+        "workflow_routing",
         "providers",
         "roles",
         "required_forbidden_actions",
@@ -159,6 +160,7 @@ def load_agent_policy() -> dict[str, Any]:
     if safety.get("exclusive_external_dispatch") is not True:
         raise AgentSafetyError("external provider dispatch lock must remain enabled")
     _validate_model_routing_policy(policy["model_routing"])
+    _validate_workflow_routing_policy(policy["workflow_routing"])
     return policy
 
 
@@ -201,6 +203,19 @@ def _validate_model_routing_policy(routing: Any) -> None:
     if not isinstance(providers, dict) or set(providers) != {"codex", "claude"}:
         raise AgentOrchestrationError("model catalog must define codex and claude")
     allowed_efforts = {None, "low", "medium", "high", "xhigh"}
+    current_models = routing.get("current_models")
+    distinct_limits = routing.get("distinct_models_per_provider")
+    if (
+        not isinstance(current_models, dict)
+        or set(current_models) != {"codex", "claude"}
+        or not isinstance(distinct_limits, dict)
+        or distinct_limits != {"minimum": 2, "maximum": 3}
+    ):
+        raise AgentOrchestrationError(
+            "model routing must define two-to-three current models per provider"
+        )
+    if routing.get("codex_minimum_family") != "gpt-5.6":
+        raise AgentSafetyError("Codex model floor must remain gpt-5.6")
     for provider, catalog in providers.items():
         if not isinstance(catalog, dict) or set(catalog) != set(profiles):
             raise AgentOrchestrationError(
@@ -228,10 +243,167 @@ def _validate_model_routing_policy(routing: Any) -> None:
                 raise AgentOrchestrationError(
                     f"model capabilities are missing: {provider}/{profile}"
                 )
+        catalog_models = {str(entry["model"]) for entry in catalog.values()}
+        allowed_models = current_models.get(provider)
+        if (
+            not isinstance(allowed_models, list)
+            or any(not isinstance(model, str) or not model for model in allowed_models)
+            or len(allowed_models) != len(set(allowed_models))
+            or not 2 <= len(allowed_models) <= 3
+            or catalog_models != set(allowed_models)
+        ):
+            raise AgentSafetyError(
+                f"model catalog for {provider} must use exactly its current two-to-three models"
+            )
+    if any(
+        re.fullmatch(r"gpt-5\.6(?:-[a-z0-9]+)?", model) is None
+        for model in current_models["codex"]
+    ):
+        raise AgentSafetyError("Codex catalog cannot use a model older than gpt-5.6")
     if routing.get("default_profile") != "auto" or routing.get(
         "default_workload_class"
     ) != "auto":
         raise AgentSafetyError("model routing defaults must remain automatic")
+
+
+def _validate_workflow_routing_policy(routing: Any) -> None:
+    if not isinstance(routing, dict):
+        raise AgentOrchestrationError("workflow routing policy must be an object")
+    deterministic = routing.get("deterministic_stages")
+    stages = routing.get("stages")
+    expected_deterministic = {
+        "preflight",
+        "research_gate",
+        "paper_gate",
+        "risk_review",
+        "complete",
+    }
+    expected_agent_stages = {
+        "research",
+        "screen",
+        "backtest",
+        "robustness",
+        "review_research",
+        "paper_prepare",
+        "paper_observe",
+        "review_paper",
+        "risk_prepare",
+        "plate",
+        "review_risk",
+        "remediation",
+    }
+    if not isinstance(deterministic, list) or set(deterministic) != expected_deterministic:
+        raise AgentOrchestrationError("workflow deterministic-stage routing is incomplete")
+    if not isinstance(stages, dict) or set(stages) != expected_agent_stages:
+        raise AgentOrchestrationError("workflow agent-stage routing is incomplete")
+    for stage, route in stages.items():
+        if not isinstance(route, dict) or set(route) != {
+            "role",
+            "workload_class",
+            "preferred_provider",
+        }:
+            raise AgentOrchestrationError(f"workflow route is invalid: {stage}")
+        if route["role"] not in {"researcher", "implementer", "reviewer"}:
+            raise AgentOrchestrationError(f"workflow route role is invalid: {stage}")
+        if route["workload_class"] not in {
+            "routine",
+            "standard",
+            "complex",
+            "critical",
+        }:
+            raise AgentOrchestrationError(f"workflow route workload is invalid: {stage}")
+        if route["preferred_provider"] not in {"codex", "claude", "independent"}:
+            raise AgentOrchestrationError(f"workflow route provider is invalid: {stage}")
+
+
+def route_workflow_stage(
+    stage: str,
+    *,
+    author_provider: str | None = None,
+    available_providers: Sequence[str] = ("codex", "claude"),
+    policy: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Resolve a capability-checked provider/model route for one workflow stage."""
+
+    active = dict(policy or load_agent_policy())
+    routing = active["workflow_routing"]
+    available = tuple(dict.fromkeys(str(value) for value in available_providers))
+    if not available or any(value not in {"codex", "claude"} for value in available):
+        raise AgentOrchestrationError("available providers must contain codex or claude")
+    if author_provider is not None and author_provider not in {"codex", "claude"}:
+        raise AgentOrchestrationError("author provider must be codex or claude")
+    if stage in routing["deterministic_stages"]:
+        return {
+            "stage": stage,
+            "execution": "deterministic",
+            "role": "supervisor",
+            "provider": None,
+            "requested_model": None,
+            "reasoning_effort": None,
+            "resolved_profile": None,
+            "resolved_workload_class": "routine",
+            "capabilities": ["workflow_control"],
+            "rationale": ["deterministic-stage:no-model-call"],
+            "routing_policy_sha256": _fingerprint(routing),
+        }
+    if stage not in routing["stages"]:
+        raise AgentOrchestrationError(f"unknown workflow stage for routing: {stage}")
+
+    route = routing["stages"][stage]
+    preferred = route["preferred_provider"]
+    if preferred == "independent":
+        if author_provider is None:
+            raise AgentSafetyError(
+                f"workflow stage {stage} requires author_provider for reviewer separation"
+            )
+        provider_order = [value for value in ("claude", "codex") if value != author_provider]
+    else:
+        provider_order = [preferred, "claude" if preferred == "codex" else "codex"]
+    provider = next((value for value in provider_order if value in available), None)
+    if provider is None:
+        raise AgentSafetyError(f"no eligible provider is available for workflow stage {stage}")
+    if preferred == "independent" and provider == author_provider:
+        raise AgentSafetyError(f"workflow stage {stage} cannot be reviewed by its author provider")
+
+    model_routing = active["model_routing"]
+    profiles = list(model_routing["profile_order"])
+    workload = str(route["workload_class"])
+    candidates = [
+        str(model_routing["workload_profiles"][workload]),
+        str(model_routing["role_minimum_profiles"][route["role"]]),
+    ]
+    resolved_profile = max(candidates, key=profiles.index)
+    entry = model_routing["providers"][provider][resolved_profile]
+    capabilities = sorted(set(str(value) for value in entry["capabilities"]))
+    required = set(model_routing["required_capabilities"][route["role"]])
+    missing = sorted(required - set(capabilities))
+    if missing:
+        raise AgentSafetyError(
+            f"workflow route lacks required capabilities: {', '.join(missing)}"
+        )
+    effort = entry["critical_effort"] if workload == "critical" else entry["effort"]
+    rationale = [
+        f"stage:{stage}",
+        f"role:{route['role']}",
+        f"workload:{workload}",
+        f"provider-preference:{preferred}->{provider}",
+        f"profile:{resolved_profile}",
+    ]
+    if author_provider is not None:
+        rationale.append(f"author-provider:{author_provider}")
+    return {
+        "stage": stage,
+        "execution": "agent",
+        "role": route["role"],
+        "provider": provider,
+        "requested_model": str(entry["model"]),
+        "reasoning_effort": str(effort) if effort is not None else None,
+        "resolved_profile": resolved_profile,
+        "resolved_workload_class": workload,
+        "capabilities": capabilities,
+        "rationale": rationale,
+        "routing_policy_sha256": _fingerprint(routing),
+    }
 
 
 def select_model(context: TaskContext) -> ModelSelection:

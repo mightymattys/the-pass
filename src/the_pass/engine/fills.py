@@ -13,6 +13,8 @@ from .contracts import CostModel, Fill, FillOutcome, SimulatedIntent
 def _levels(event: CanonicalEvent, side: str) -> list[tuple[Decimal, Decimal]]:
     field = "asks" if side == "buy" else "bids"
     rows = [(Decimal(str(price)), Decimal(str(size))) for price, size in event.payload.get(field, [])]
+    if any(not price.is_finite() or price <= 0 or not size.is_finite() or size <= 0 for price, size in rows):
+        raise ValueError("book levels must contain positive finite prices and sizes")
     return sorted(rows, key=lambda row: row[0], reverse=side == "sell")
 
 
@@ -69,7 +71,7 @@ class LimitEvidenceFillModel:
 
     def __post_init__(self) -> None:
         for value in (self.queue_haircut, self.adverse_selection_haircut):
-            if value < 0 or value > 1:
+            if not value.is_finite() or value < 0 or value > 1:
                 raise ValueError("fill haircuts must be between zero and one")
 
     def evaluate(self, intent: SimulatedIntent, event: CanonicalEvent, cost_model: CostModel) -> FillOutcome:
@@ -118,6 +120,10 @@ class BarFillModel:
     slippage_bps: Decimal = Decimal("5")
     promotion_eligible: bool = True
 
+    def __post_init__(self) -> None:
+        if not self.slippage_bps.is_finite() or self.slippage_bps < 0:
+            raise ValueError("slippage_bps must be non-negative and finite")
+
     def evaluate(self, intent: SimulatedIntent, event: CanonicalEvent, cost_model: CostModel) -> FillOutcome:
         if intent.intent_type != "bar" or event.instrument_id != intent.instrument_id:
             return FillOutcome(remaining_quantity=intent.quantity)
@@ -148,7 +154,12 @@ class DiagnosticMidpointFillModel:
     promotion_eligible: bool = False
 
     def evaluate(self, intent: SimulatedIntent, event: CanonicalEvent, cost_model: CostModel) -> FillOutcome:
-        if intent.intent_type != "mid_diagnostic" or event.receive_time_ns <= intent.decision_time_ns:
+        if (
+            intent.intent_type != "mid_diagnostic"
+            or event.instrument_id != intent.instrument_id
+            or event.event_type not in {EventType.BOOK_SNAPSHOT, EventType.BOOK_DELTA}
+            or event.receive_time_ns <= intent.decision_time_ns
+        ):
             return FillOutcome(remaining_quantity=intent.quantity, promotion_eligible=False)
         midpoint = _mid(event)
         if midpoint is None:

@@ -21,6 +21,8 @@ class AccountingPortfolio:
             raise ValueError("initial_cash must be positive and finite")
         self.initial_cash = initial_cash
         self.cash = initial_cash
+        if not collateral.is_finite() or collateral < 0:
+            raise ValueError("collateral must be non-negative and finite")
         self.collateral = collateral
         self._positions: dict[str, PositionState] = {}
         self.marks: dict[str, Decimal] = {}
@@ -31,6 +33,8 @@ class AccountingPortfolio:
         self.roll = Decimal(0)
         self.opportunity_cost = Decimal(0)
         self.rejected_notional = Decimal(0)
+        self.daily_start_equity = initial_cash
+        self._utc_day: int | None = None
 
     @property
     def positions(self) -> Mapping[str, Decimal]:
@@ -59,15 +63,24 @@ class AccountingPortfolio:
         self.assert_conservation()
 
     def apply_carry_cost(self, component: str, amount: Decimal) -> None:
-        if component not in {"funding", "borrow", "roll"} or amount < 0 or not amount.is_finite():
+        if component not in {"funding", "borrow", "roll"} or not amount.is_finite() or amount < 0:
             raise ValueError("invalid carry cost")
         setattr(self, component, getattr(self, component) + amount)
         self.cash -= amount
         self.assert_conservation()
 
+    def begin_event(self, event_time_ns: int) -> None:
+        if not isinstance(event_time_ns, int) or isinstance(event_time_ns, bool) or event_time_ns < 0:
+            raise ValueError("event_time_ns must be non-negative UTC nanoseconds")
+        utc_day = event_time_ns // 86_400_000_000_000
+        if self._utc_day != utc_day:
+            self._utc_day = utc_day
+            self.daily_start_equity = self.equity()
+
     def mark(self, instrument_id: str, price: Decimal, event_time_ns: int) -> dict[str, Any]:
         if price <= 0 or not price.is_finite():
             raise ValueError("mark price must be positive and finite")
+        self.begin_event(event_time_ns)
         self.marks[instrument_id] = price
         self.assert_conservation()
         return self.snapshot(event_time_ns)

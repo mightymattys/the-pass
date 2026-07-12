@@ -4,8 +4,8 @@ Audit date: 2026-07-10
 
 Candidate verdict: **PASS FOR RELEASE UNDER EXPLICIT OWNER EXCEPTION**
 
-Publication state: [PR #9](https://github.com/matk0shub/the-pass/pull/9) passed both required
-contexts in [CI run 29109150235](https://github.com/matk0shub/the-pass/actions/runs/29109150235)
+Publication state: [PR #9](https://github.com/mightymattys/the-pass/pull/9) passed both required
+contexts in [CI run 29109150235](https://github.com/mightymattys/the-pass/actions/runs/29109150235)
 and was administratively merged as `97ecdb6` under the documented owner exception. Publication
 still requires the annotated `v0.9.0` tag and successful release workflow.
 

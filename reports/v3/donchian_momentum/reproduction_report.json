@@ -28,8 +28,8 @@
       "path": "run_receipt.json"
     },
     {
-      "expected": "0e1a17f39db4d3ab9a3844abd1b3e833c97b4d1b913875b052376fa2b49f01e6",
-      "observed": "0e1a17f39db4d3ab9a3844abd1b3e833c97b4d1b913875b052376fa2b49f01e6",
+      "expected": "ca90929c229f89e01ab2cf5c51ee9d31af2fbba294b73d35ecc8115bb757a2f2",
+      "observed": "ca90929c229f89e01ab2cf5c51ee9d31af2fbba294b73d35ecc8115bb757a2f2",
       "path": "metrics_report.json"
     },
     {

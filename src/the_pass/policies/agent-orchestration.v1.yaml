@@ -1,5 +1,5 @@
 schema_version: 1
-interface_version: 0.9.1
+interface_version: 0.10.0
 
 limits:
   max_cross_provider_depth: 1
@@ -10,7 +10,12 @@ limits:
   max_concurrent_external_dispatches: 1
 
 model_routing:
-  catalog_reviewed_at: "2026-07-10"
+  catalog_reviewed_at: "2026-07-11"
+  current_models:
+    codex: [gpt-5.6-luna, gpt-5.6-terra, gpt-5.6-sol]
+    claude: [claude-sonnet-5, claude-opus-4-8, claude-fable-5]
+  distinct_models_per_provider: {minimum: 2, maximum: 3}
+  codex_minimum_family: gpt-5.6
   profile_order: [economy, balanced, deep]
   default_profile: auto
   default_workload_class: auto
@@ -49,20 +54,36 @@ model_routing:
         capabilities: [structured_output, repository_read, repository_write, coding, research, review]
     claude:
       economy:
-        model: haiku
+        model: claude-sonnet-5
         effort: null
         critical_effort: null
         capabilities: [structured_output, repository_read, repository_write, coding, research, review]
       balanced:
-        model: sonnet
+        model: claude-opus-4-8
         effort: medium
         critical_effort: high
         capabilities: [structured_output, repository_read, repository_write, coding, research, review, native_subagents]
       deep:
-        model: opus
+        model: claude-fable-5
         effort: high
         critical_effort: xhigh
         capabilities: [structured_output, repository_read, repository_write, coding, research, review, native_subagents]
+
+workflow_routing:
+  deterministic_stages: [preflight, research_gate, paper_gate, risk_review, complete]
+  stages:
+    research: {role: researcher, workload_class: complex, preferred_provider: claude}
+    screen: {role: implementer, workload_class: complex, preferred_provider: codex}
+    backtest: {role: implementer, workload_class: critical, preferred_provider: codex}
+    robustness: {role: reviewer, workload_class: critical, preferred_provider: claude}
+    review_research: {role: reviewer, workload_class: critical, preferred_provider: independent}
+    paper_prepare: {role: implementer, workload_class: standard, preferred_provider: codex}
+    paper_observe: {role: implementer, workload_class: standard, preferred_provider: codex}
+    review_paper: {role: reviewer, workload_class: critical, preferred_provider: independent}
+    risk_prepare: {role: implementer, workload_class: complex, preferred_provider: codex}
+    plate: {role: implementer, workload_class: complex, preferred_provider: codex}
+    review_risk: {role: reviewer, workload_class: critical, preferred_provider: independent}
+    remediation: {role: implementer, workload_class: critical, preferred_provider: codex}
 
 providers:
   codex:

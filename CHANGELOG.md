@@ -5,6 +5,34 @@ and the Keep a Changelog structure.
 
 ## [Unreleased]
 
+### Added
+
+- Added `the-pass workflow execute`, a bounded liveness supervisor with atomic cycle reports,
+  timeout/output limits, one-transition enforcement, resume-safe checkpoints, and explicit
+  inspect-versus-execute behavior.
+- Added `the-pass agents route` and versioned stage-aware routing across Codex and Claude model
+  profiles, including preferred specialists, capability floors, fallback selection, and mandatory
+  author/reviewer provider separation.
+- Added the explicit `--driver auto` mode, which executes agent stages with locally authenticated
+  provider CLIs while keeping preflight and gate recording deterministic.
+
+### Changed
+
+- Raised the Codex routing floor to GPT-5.6 and limited each provider to three reviewed current
+  models: Luna/Terra/Sol for Codex and Sonnet 5/Opus 4.8/Fable 5 for Claude.
+- Replaced preview-style Codex routing labels with public capability-tier aliases and preserved
+  explicit entitlement uncertainty in agent diagnostics.
+- Added asset-calendar annualization and distinct timestamped gross/net equity metrics.
+- Made ledger appends durable and serialized, automation output commits atomic, and V3
+  reproduction/package binding authoritative.
+
+### Fixed
+
+- Closed case/whitespace reviewer-independence bypasses, cross-instrument midpoint fills,
+  conflicting-event duplicate gaps, missing-price risk bypasses, and lifetime-as-daily loss checks.
+- Removed credential inheritance from paper workers, blocked future-received paper events, and
+  expanded nested secret-key detection for config and automation artifacts.
+
 ## [0.9.1] - 2026-07-10
 
 ### Added
@@ -109,9 +137,9 @@ and the Keep a Changelog structure.
 
 - Initial public plugin, slash skills, artifact schemas, validators, and synthetic examples.
 
-[Unreleased]: https://github.com/matk0shub/the-pass/compare/v0.9.1...HEAD
-[0.9.1]: https://github.com/matk0shub/the-pass/compare/v0.9.0...v0.9.1
-[0.9.0]: https://github.com/matk0shub/the-pass/compare/v0.8.0...v0.9.0
-[0.8.0]: https://github.com/matk0shub/the-pass/compare/v0.7.1...v0.8.0
-[0.7.1]: https://github.com/matk0shub/the-pass/compare/v0.7.0...v0.7.1
-[0.7.0]: https://github.com/matk0shub/the-pass/compare/f9fb5e0...v0.7.0
+[Unreleased]: https://github.com/mightymattys/the-pass/compare/v0.9.1...HEAD
+[0.9.1]: https://github.com/mightymattys/the-pass/compare/v0.9.0...v0.9.1
+[0.9.0]: https://github.com/mightymattys/the-pass/compare/v0.8.0...v0.9.0
+[0.8.0]: https://github.com/mightymattys/the-pass/compare/v0.7.1...v0.8.0
+[0.7.1]: https://github.com/mightymattys/the-pass/compare/v0.7.0...v0.7.1
+[0.7.0]: https://github.com/mightymattys/the-pass/compare/f9fb5e0...v0.7.0

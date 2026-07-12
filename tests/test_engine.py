@@ -14,7 +14,12 @@ from the_pass.cli import main as cli_main
 from the_pass.engine.baselines import generate_synthetic_bars
 from the_pass.engine.contracts import Fill, SimulatedIntent
 from the_pass.engine.costs import LinearCostModel
-from the_pass.engine.fills import BarFillModel, LimitEvidenceFillModel, MarketDepthFillModel
+from the_pass.engine.fills import (
+    BarFillModel,
+    DiagnosticMidpointFillModel,
+    LimitEvidenceFillModel,
+    MarketDepthFillModel,
+)
 from the_pass.engine.portfolio import AccountingPortfolio
 from the_pass.engine.screen import ReferenceScreenRunner
 from the_pass.validator import validate_package
@@ -77,6 +82,23 @@ class FillModelTests(unittest.TestCase):
         self.assertFalse(model.evaluate(intent, old_bar, LinearCostModel()).fills)
         self.assertEqual(model.evaluate(intent, next_bar, LinearCostModel()).fills[0].price, Decimal("100.0500"))
 
+    def test_midpoint_fill_rejects_cross_instrument_book(self) -> None:
+        intent = SimulatedIntent("i1", "OTHER", "buy", Decimal(1), 1, "mid_diagnostic")
+        book = event(
+            EventType.BOOK_SNAPSHOT,
+            timestamp=2,
+            payload={"bids": [["99", "2"]], "asks": [["101", "2"]]},
+        )
+        outcome = DiagnosticMidpointFillModel().evaluate(intent, book, LinearCostModel())
+        self.assertFalse(outcome.fills)
+        self.assertFalse(outcome.promotion_eligible)
+
+    def test_fill_contract_rejects_invalid_amounts(self) -> None:
+        with self.assertRaises(ValueError):
+            Fill("bad", "TEST", "buy", Decimal("-1"), Decimal(100), 1)
+        with self.assertRaises(ValueError):
+            Fill("bad", "TEST", "buy", Decimal(1), Decimal(100), 1, fee=Decimal("-1"))
+
 
 class PortfolioTests(unittest.TestCase):
     def test_known_round_trip_conserves_accounting(self) -> None:
@@ -132,6 +154,9 @@ class BaselineGoldenTests(unittest.TestCase):
             self.assertEqual(exit_code, 0)
             self.assertTrue(envelope["ok"])
             self.assertTrue(validate_package(package).ok)
+            metrics = json.loads((package / "metrics_report.json").read_text(encoding="utf-8"))
+            self.assertEqual(metrics["annualization"]["calendar"], "continuous_365.25_days")
+            self.assertNotEqual(metrics["gross_metrics"]["sharpe"], metrics["net_metrics"]["sharpe"])
 
     @unittest.skipUnless(importlib.util.find_spec("pandas"), "pandas is provided by the research extra")
     def test_screen_cli_emits_every_variant(self) -> None:

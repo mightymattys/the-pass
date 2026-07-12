@@ -661,6 +661,12 @@ def is_finite_number(value: Any) -> bool:
     )
 
 
+def normalize_identity(value: Any) -> str:
+    """Compare human reviewer/owner identifiers without whitespace or case bypasses."""
+
+    return value.strip().casefold() if isinstance(value, str) else ""
+
+
 def validate_agent_run_artifact(
     document: dict[str, Any], schema_dir: Path, artifact_path: Path
 ) -> list[ValidationIssue]:
@@ -1452,19 +1458,20 @@ def validate_package(
                     )
                 )
             reviewer = findings["reviewer"]
+            normalized_reviewer = normalize_identity(reviewer)
             owners = {
-                owner
+                normalize_identity(owner)
                 for owner in (strategy_spec.get("owner"), receipt.get("owner"))
-                if owner
+                if normalize_identity(owner)
             }
-            if reviewer in owners:
+            if normalized_reviewer in owners:
                 issues.append(
                     ValidationIssue(
                         "$.findings.reviewer",
                         "must be independent from strategy and run owners",
                     )
                 )
-            if verdict.get("owner") != reviewer:
+            if normalize_identity(verdict.get("owner")) != normalized_reviewer:
                 issues.append(
                     ValidationIssue(
                         "$.verdict_report.owner",
@@ -1553,6 +1560,20 @@ def validate_package(
             "turnover",
             "expectancy",
         )
+        annualization = metrics.get("annualization")
+        if (
+            not isinstance(annualization, dict)
+            or not is_finite_number(annualization.get("periods_per_year"))
+            or annualization["periods_per_year"] <= 0
+            or not isinstance(annualization.get("method"), str)
+            or not annualization["method"].strip()
+        ):
+            issues.append(
+                ValidationIssue(
+                    "$.metrics_report.annualization",
+                    "paper_candidate requires an explicit positive annualization policy",
+                )
+            )
         for metric_group in ("gross_metrics", "net_metrics"):
             values = metrics.get(metric_group, {})
             missing_metrics = [

@@ -25,7 +25,7 @@ that machine-readable file.
 All framework capability milestones are complete. The diagnostic candidate `paper_gate` and
 every public `live_gate` remain intentionally blocked; those states test the gate system and
 do not make the repository incomplete. The latest tracked human-readable hardening audit is
-[../../reports/SYSTEM_HARDENING_AUDIT_2026-07-09.md](../../reports/SYSTEM_HARDENING_AUDIT_2026-07-09.md).
+[../../reports/REPOSITORY_HARDENING_AUDIT_2026-07-10.md](../../reports/REPOSITORY_HARDENING_AUDIT_2026-07-10.md).
 
 Trading roadmap gate evidence is tracked separately:
 
@@ -53,6 +53,9 @@ Trading roadmap gate evidence is tracked separately:
 - [`v0.9.0` post-release verification](../../reports/POST_RELEASE_AUDIT_0.9.0.md)
 - [`v0.9.1` installation and usage release audit](../../reports/RELEASE_AUDIT_0.9.1.md)
 - [`v0.9.1` post-release verification](../../reports/POST_RELEASE_AUDIT_0.9.1.md)
+- [Repository hardening audit](../../reports/REPOSITORY_HARDENING_AUDIT_2026-07-10.md)
+- [Supervised workflow and model-routing plan](SUPERVISED_WORKFLOW_EXECUTION_PLAN.md)
+- [Supervised workflow implementation audit](../../reports/SUPERVISED_WORKFLOW_AUDIT_2026-07-11.md)
 
 ## Local Completion Commands
 
@@ -74,13 +77,11 @@ the-pass receipts verify --ledger /tmp/the-pass-ledger.jsonl
 Codex plugin developers should also run the bundled `plugin-creator/scripts/validate_plugin.py`
 validator against the repo root from their local Codex install.
 
-The published `v0.8.0` cross-version matrix is recorded in its
-[release audit](../../reports/RELEASE_AUDIT_0.8.0.md). The current `0.9.0` source-tree matrix,
-including all 37 schema-valid templates, is recorded in the
-[full repository stability audit](../../reports/FULL_REPOSITORY_STABILITY_AUDIT_2026-07-10.md)
-and [`v0.9.0` release audit](../../reports/RELEASE_AUDIT_0.9.0.md).
-Published asset and clean-install evidence is recorded in the
-[`v0.9.0` post-release audit](../../reports/POST_RELEASE_AUDIT_0.9.0.md).
+Historical cross-version matrices remain in their versioned release audits. The current source
+matrix, including 197 tests on Python 3.9 and 3.12, clean wheel validation, dependency audit, and
+explicit public adapter smoke, is recorded in the
+[repository hardening audit](../../reports/REPOSITORY_HARDENING_AUDIT_2026-07-10.md). Published
+`v0.9.1` installation evidence remains in its separate post-release audit.
 
 ## Safety Result
 

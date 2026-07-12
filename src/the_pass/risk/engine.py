@@ -74,12 +74,21 @@ class VersionedRiskPolicy:
         if abs(resulting) > self.max_position_units:
             return False, "max_position_units"
         marks = getattr(portfolio, "marks", {})
-        mark = marks.get(intent.instrument_id)
-        if mark is not None and abs(resulting * mark) > self.max_notional:
+        mark = marks.get(intent.instrument_id) or intent.limit_price
+        if mark is None or not Decimal(mark).is_finite() or Decimal(mark) <= 0:
+            return False, "missing_reference_price"
+        if abs(resulting * Decimal(mark)) > self.max_notional:
             return False, "max_notional"
-        initial_cash = getattr(portfolio, "initial_cash", None)
+        daily_start_equity = getattr(portfolio, "daily_start_equity", None)
         equity = portfolio.equity() if hasattr(portfolio, "equity") else None
-        if initial_cash is not None and equity is not None and Decimal(initial_cash) - Decimal(equity) >= self.max_daily_loss:
+        if (
+            daily_start_equity is None
+            or equity is None
+            or not Decimal(daily_start_equity).is_finite()
+            or not Decimal(equity).is_finite()
+        ):
+            return False, "missing_daily_equity"
+        if Decimal(daily_start_equity) - Decimal(equity) >= self.max_daily_loss:
             return False, "max_daily_loss"
         return True, ""
 

@@ -28,7 +28,7 @@ Framework completion and candidate outcomes are independent:
 
 Current baseline:
 
-- The GitHub repository is public at `matk0shub/the-pass`.
+- The GitHub repository is public at `mightymattys/the-pass`.
 - Commit `f9fb5e0` was the audited input baseline for this hardening cycle.
 - RW0 through RW6 implementation and local acceptance checks are complete.
 - `main` branch protection, required Python checks, review, and linear history are configured.

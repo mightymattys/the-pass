@@ -5,7 +5,7 @@ from __future__ import annotations
 import html
 import math
 from decimal import Decimal
-from statistics import mean, pstdev
+from statistics import mean, median, pstdev
 from typing import Any
 
 from .contracts import RunnerResult
@@ -46,17 +46,30 @@ def _stable_metric(value: float | None) -> float | None:
     return 0.0 if rounded == 0 else rounded
 
 
-def _metrics(result: RunnerResult, initial_cash: Decimal, pnl: Decimal) -> tuple[dict[str, float | None], dict[str, str]]:
-    equities = [float(row["equity"]) for row in result.equity_curve]
+def _metrics(
+    result: RunnerResult,
+    initial_cash: Decimal,
+    pnl: Decimal,
+    *,
+    equities: list[float],
+    periods_per_year: float,
+) -> tuple[dict[str, float | None], dict[str, str]]:
     returns = [equities[index] / equities[index - 1] - 1 for index in range(1, len(equities)) if equities[index - 1]]
     total_return = float(pnl / initial_cash)
-    annualized = (1 + total_return) ** (252 / max(len(returns), 1)) - 1 if total_return > -1 else -1.0
-    volatility = pstdev(returns) * math.sqrt(252) if len(returns) > 1 else None
+    annualized = None
+    if returns and total_return > -1:
+        try:
+            annualized = math.expm1(math.log1p(total_return) * periods_per_year / len(returns))
+        except OverflowError:
+            annualized = None
+    elif total_return == -1:
+        annualized = -1.0
+    volatility = pstdev(returns) * math.sqrt(periods_per_year) if len(returns) > 1 else None
     downside = [value for value in returns if value < 0]
-    downside_volatility = pstdev(downside) * math.sqrt(252) if len(downside) > 1 else None
+    downside_volatility = pstdev(downside) * math.sqrt(periods_per_year) if len(downside) > 1 else None
     average_return = mean(returns) if returns else None
-    sharpe = _safe_ratio(average_return * math.sqrt(252), pstdev(returns)) if average_return is not None and len(returns) > 1 else None
-    sortino = _safe_ratio(average_return * math.sqrt(252), pstdev(downside)) if average_return is not None and len(downside) > 1 else None
+    sharpe = _safe_ratio(average_return * math.sqrt(periods_per_year), pstdev(returns)) if average_return is not None and len(returns) > 1 else None
+    sortino = _safe_ratio(average_return * math.sqrt(periods_per_year), pstdev(downside)) if average_return is not None and len(downside) > 1 else None
 
     drawdowns = []
     peak = equities[0] if equities else float(initial_cash)
@@ -104,6 +117,58 @@ def _metrics(result: RunnerResult, initial_cash: Decimal, pnl: Decimal) -> tuple
     return values, reasons
 
 
+def _annualization_policy(result: RunnerResult, asset_class: str) -> dict[str, Any]:
+    timestamps = sorted({int(row["event_time_ns"]) for row in result.equity_curve})
+    intervals = [
+        current - previous
+        for previous, current in zip(timestamps, timestamps[1:])
+        if current > previous
+    ]
+    if not intervals:
+        raise ValueError("annualized metrics require at least two distinct equity timestamps")
+    interval_seconds = median(intervals) / 1_000_000_000
+    if asset_class == "futures":
+        calendar = "252_sessions_x_6.5_hours"
+        periods_per_year = 252 * 6.5 * 60 * 60 / interval_seconds
+    elif asset_class in {"crypto_spot", "prediction_market"}:
+        calendar = "continuous_365.25_days"
+        periods_per_year = 365.25 * 24 * 60 * 60 / interval_seconds
+    else:
+        raise ValueError(f"asset class requires an explicit annualization policy: {asset_class}")
+    if not math.isfinite(periods_per_year) or periods_per_year <= 0:
+        raise ValueError("annualization periods_per_year must be positive and finite")
+    return {
+        "method": "asset_calendar_over_median_equity_interval",
+        "calendar": calendar,
+        "median_interval_seconds": _stable_metric(interval_seconds),
+        "periods_per_year": _stable_metric(periods_per_year),
+    }
+
+
+def _gross_equities(result: RunnerResult) -> list[float]:
+    fill_costs = sorted(
+        (
+            fill.event_time_ns,
+            fill.fee + fill.spread_cost + fill.slippage_cost,
+        )
+        for fill in result.fills
+    )
+    total_allocated = sum((cost for _timestamp, cost in fill_costs), Decimal(0))
+    total_costs = sum(result.cost_components.values(), Decimal(0))
+    if total_allocated != total_costs:
+        raise ValueError("gross equity reconstruction requires every monetary cost to be timestamped")
+    gross = []
+    cumulative = Decimal(0)
+    cursor = 0
+    for row in result.equity_curve:
+        timestamp = int(row["event_time_ns"])
+        while cursor < len(fill_costs) and fill_costs[cursor][0] <= timestamp:
+            cumulative += fill_costs[cursor][1]
+            cursor += 1
+        gross.append(float(Decimal(row["equity"]) + cumulative))
+    return gross
+
+
 def build_metrics_and_costs(
     result: RunnerResult,
     *,
@@ -111,13 +176,30 @@ def build_metrics_and_costs(
     created_at: str,
     start_time: str,
     end_time: str,
+    asset_class: str,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     net_pnl = Decimal(result.final_snapshot["equity"]) - initial_cash
     costs = dict(result.cost_components)
     monetary_costs = sum(costs.values(), Decimal(0))
     gross_pnl = net_pnl + monetary_costs
-    net_metrics, net_reasons = _metrics(result, initial_cash, net_pnl)
-    gross_metrics, gross_reasons = _metrics(result, initial_cash, gross_pnl)
+    annualization = _annualization_policy(result, asset_class)
+    periods_per_year = float(annualization["periods_per_year"])
+    net_equities = [float(row["equity"]) for row in result.equity_curve]
+    gross_equities = _gross_equities(result)
+    net_metrics, net_reasons = _metrics(
+        result,
+        initial_cash,
+        net_pnl,
+        equities=net_equities,
+        periods_per_year=periods_per_year,
+    )
+    gross_metrics, gross_reasons = _metrics(
+        result,
+        initial_cash,
+        gross_pnl,
+        equities=gross_equities,
+        periods_per_year=periods_per_year,
+    )
     reasons = {f"gross_metrics.{name}": reason for name, reason in gross_reasons.items()}
     reasons.update({f"net_metrics.{name}": reason for name, reason in net_reasons.items()})
     cost_waterfall = {
@@ -149,6 +231,7 @@ def build_metrics_and_costs(
             "signals": result.signals,
             "instruments": sorted({intent.instrument_id for intent in result.intents}) or ["DIAGNOSTIC"],
         },
+        "annualization": annualization,
         "gross_metrics": gross_metrics,
         "net_metrics": net_metrics,
         "not_applicable_reasons": reasons,

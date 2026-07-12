@@ -23,6 +23,17 @@
         "instruments": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } }
       }
     },
+    "annualization": {
+      "type": "object",
+      "required": ["method", "calendar", "median_interval_seconds", "periods_per_year"],
+      "properties": {
+        "method": { "const": "asset_calendar_over_median_equity_interval" },
+        "calendar": { "enum": ["continuous_365.25_days", "252_sessions_x_6.5_hours"] },
+        "median_interval_seconds": { "type": "number", "exclusiveMinimum": 0 },
+        "periods_per_year": { "type": "number", "exclusiveMinimum": 0 }
+      },
+      "additionalProperties": false
+    },
     "gross_metrics": {
       "type": "object",
       "required": ["pnl", "total_return", "annualized_return", "volatility", "downside_volatility", "sharpe", "sortino", "calmar", "max_drawdown", "average_drawdown", "drawdown_duration", "win_rate", "payoff_ratio", "expectancy", "turnover", "average_holding_period", "expected_shortfall", "capacity_estimate"],

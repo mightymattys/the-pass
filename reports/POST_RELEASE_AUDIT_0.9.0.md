@@ -6,9 +6,9 @@ Result: **PASS**
 
 ## Published Release
 
-- Release: [The Pass v0.9.0](https://github.com/matk0shub/the-pass/releases/tag/v0.9.0)
-- Release workflow: [run 29109347035](https://github.com/matk0shub/the-pass/actions/runs/29109347035)
-- Release PR: [#9](https://github.com/matk0shub/the-pass/pull/9)
+- Release: [The Pass v0.9.0](https://github.com/mightymattys/the-pass/releases/tag/v0.9.0)
+- Release workflow: [run 29109347035](https://github.com/mightymattys/the-pass/actions/runs/29109347035)
+- Release PR: [#9](https://github.com/mightymattys/the-pass/pull/9)
 - Annotated tag: `v0.9.0`
 - Tagged commit: `49a0c285c8d775446937ac0dd958e018f03fb52d`
 - GitHub state: latest release, not draft, not prerelease

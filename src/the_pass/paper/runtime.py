@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -11,6 +12,9 @@ from pathlib import Path
 from typing import Any, Iterable
 
 from the_pass.data.contracts import CanonicalEvent, canonical_value, stable_fingerprint
+
+
+PAPER_ENV_ALLOWLIST = {"LANG", "LC_ALL", "PATH", "PYTHONPATH", "TMPDIR"}
 
 
 @dataclass(frozen=True)
@@ -34,6 +38,16 @@ def validate_observation(
     if not rows:
         return [{"code": "no_data", "severity": "critical", "blocks_runtime": True}]
     breaches = []
+    future_rows = [index for index, event in enumerate(rows) if event.receive_time_ns > observation_time_ns]
+    if future_rows:
+        breaches.append(
+            {
+                "code": "future_data",
+                "severity": "critical",
+                "blocks_runtime": True,
+                "event_indexes": future_rows,
+            }
+        )
     if observation_time_ns - rows[-1].receive_time_ns > policy.max_staleness_ns:
         breaches.append({"code": "stale_data", "severity": "critical", "blocks_runtime": True})
     for index, event in enumerate(rows):
@@ -41,11 +55,22 @@ def validate_observation(
             breaches.append(
                 {"code": "clock_skew", "severity": "critical", "blocks_runtime": True, "event_index": index}
             )
-    for index, (previous, current) in enumerate(zip(rows, rows[1:]), start=1):
-        if current.receive_time_ns - previous.receive_time_ns > policy.max_outage_gap_ns:
-            breaches.append(
-                {"code": "outage_gap", "severity": "critical", "blocks_runtime": True, "event_index": index}
-            )
+    streams: dict[tuple[str, str, str, str], list[CanonicalEvent]] = {}
+    for event in rows:
+        key = (event.source, event.venue, event.instrument_id, event.event_type.value)
+        streams.setdefault(key, []).append(event)
+    for stream, stream_rows in sorted(streams.items()):
+        for index, (previous, current) in enumerate(zip(stream_rows, stream_rows[1:]), start=1):
+            if current.receive_time_ns - previous.receive_time_ns > policy.max_outage_gap_ns:
+                breaches.append(
+                    {
+                        "code": "outage_gap",
+                        "severity": "critical",
+                        "blocks_runtime": True,
+                        "stream": ":".join(stream),
+                        "event_index": index,
+                    }
+                )
     return breaches
 
 
@@ -119,6 +144,7 @@ def run_virtual_paper_process(
             capture_output=True,
             text=True,
             timeout=60,
+            env={name: value for name, value in os.environ.items() if name in PAPER_ENV_ALLOWLIST},
         )
         if process.returncode != 0 or not worker_output.is_file():
             raise RuntimeError(f"virtual paper worker failed: {process.stderr.strip()}")

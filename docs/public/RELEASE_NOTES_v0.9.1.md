@@ -5,7 +5,7 @@
 ## Fixed
 
 - The repository now contains a Codex marketplace catalog, so
-  `codex plugin marketplace add matk0shub/the-pass --ref v0.9.1` exposes
+  `codex plugin marketplace add mightymattys/the-pass --ref v0.9.1` exposes
   `the-pass@the-pass-tools` instead of an empty marketplace.
 - Claude Code now clones the public plugin source over HTTPS and no longer requires a configured
   GitHub SSH key for marketplace installation.

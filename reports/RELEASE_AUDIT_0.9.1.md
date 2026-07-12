@@ -4,8 +4,8 @@ Audit date: 2026-07-10
 
 Candidate verdict: **PASS FOR RELEASE UNDER EXPLICIT OWNER EXCEPTION**
 
-Publication state: [PR #11](https://github.com/matk0shub/the-pass/pull/11) passed both required
-contexts in [CI run 29111305599](https://github.com/matk0shub/the-pass/actions/runs/29111305599)
+Publication state: [PR #11](https://github.com/mightymattys/the-pass/pull/11) passed both required
+contexts in [CI run 29111305599](https://github.com/mightymattys/the-pass/actions/runs/29111305599)
 and was administratively merged as `ff98ac4` under the documented owner exception. Publication
 still requires the annotated tag, release workflow, and downloaded-asset verification.
 

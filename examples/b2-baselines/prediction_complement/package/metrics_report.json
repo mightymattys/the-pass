@@ -1,4 +1,10 @@
 {
+  "annualization": {
+    "calendar": "continuous_365.25_days",
+    "median_interval_seconds": 60.0,
+    "method": "asset_calendar_over_median_equity_interval",
+    "periods_per_year": 525960.0
+  },
   "created_at": "2026-07-10T00:00:00Z",
   "gross_metrics": {
     "annualized_return": 0.0,

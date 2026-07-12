@@ -45,10 +45,10 @@ declined promotion.
 - `automation`, `incident`: scheduler-neutral jobs and fail-closed incidents.
 - `report`, `dashboard`: static read-only evidence bundles.
 - `receipts`: append-only run and gate-decision ledger operations.
-- `workflow`: validated local run state, evidence resume checks, package fingerprinting, and
-  immutable successor creation.
-- `agents`: provider discovery, non-executing task inspection, and explicit bounded delegation to
-  Codex or Claude Code.
+- `workflow`: validated local run state, evidence resume checks, package fingerprinting,
+  immutable successor creation, and explicitly enabled liveness supervision.
+- `agents`: provider discovery, stage-aware routing, non-executing task inspection, and explicit
+  bounded delegation to Codex or Claude Code.
 
 ## Compatibility
 
@@ -67,6 +67,7 @@ The additive workflow commands are:
 the-pass workflow start
 the-pass workflow advance
 the-pass workflow status
+the-pass workflow execute --state <state> [--execute] --driver auto|<trusted argv>
 the-pass workflow fingerprint
 the-pass workflow supersede
 ```
@@ -75,6 +76,11 @@ the-pass workflow supersede
 identity without recording it. `supersede` requires `--ledger`, `--run-id`, and `--created-at`;
 it proves that the exact source path is a valid recorded v2 run before creating a mutable
 successor.
+
+`execute` is inspect-only unless `--execute` is present. It invokes at most one stage per cycle,
+validates each resulting checkpoint, and cannot return exit `0` before the exact target gate has a
+recorded pass. `--driver auto` uses authenticated local Codex/Claude CLIs and can incur provider
+cost; a custom driver is treated as a trusted local executable and is launched without a shell.
 
 Workflow state is not promotion authority. Promotion and remediation use semantically replayed
 v2 ledger evidence bound to the exact package ID and resolved path. A v1 row, prose label,
@@ -88,6 +94,7 @@ The additive agent commands are:
 
 ```text
 the-pass agents doctor
+the-pass agents route --stage <stage> [--author-provider codex|claude]
 the-pass agents inspect <agent-task>
 the-pass agents dispatch <agent-task> --output-dir <dir> --execute
 ```
@@ -96,6 +103,10 @@ the-pass agents dispatch <agent-task> --output-dir <dir> --execute
 testing authentication, account entitlement, or making a model call. `inspect` validates the task,
 resolves its capability-aware model/effort profile, and prints a secret-free execution preview.
 `dispatch` requires the explicit `--execute` flag and writes a create-only `agent_run` receipt.
+
+`route` maps a workflow stage to its role, workload, provider, model profile, model request,
+reasoning effort, capabilities, rationale, and routing-policy fingerprint. Independent review
+routes require the author provider and fail closed when only that provider is available.
 
 Delegation is depth one. A delegated task cannot dispatch another agent, retry itself, approve a
 gate, alter governance or live-safety files, or apply its own patch. Read-only tasks return
