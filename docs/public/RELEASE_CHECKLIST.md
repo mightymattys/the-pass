@@ -2,7 +2,7 @@
 
 Use this before pushing or publishing The Pass.
 
-Status: `v0.10.0` release candidate validated on `main` on 2026-07-12; tag publication pending.
+Status: `v0.10.0` published and reverified from freshly downloaded release assets on 2026-07-12.
 
 ## Repository Safety
 
@@ -49,7 +49,7 @@ Status: `v0.10.0` release candidate validated on `main` on 2026-07-12; tag publi
       after both required CI contexts passed; no independent GitHub approval was recorded.
 - [x] The repository owner explicitly authorized completion of PR #13; it was administratively
       merged only after both required CI contexts and the full local release matrix passed.
-- [ ] The audited release commit is tagged `v0.10.0` and the release workflow publishes matching
+- [x] The audited release commit is tagged `v0.10.0` and the release workflow publishes matching
       assets and checksums.
 
 Release evidence:
@@ -57,6 +57,7 @@ Release evidence:
 - `https://github.com/mightymattys/the-pass/pull/11`
 - `https://github.com/mightymattys/the-pass/pull/13`
 - `reports/RELEASE_AUDIT_0.10.0.md`
+- `reports/POST_RELEASE_AUDIT_0.10.0.md`
 - `reports/RELEASE_AUDIT_0.9.1.md`
 - `reports/POST_RELEASE_AUDIT_0.9.1.md`
 - `docs/public/USAGE_GUIDE.md`
