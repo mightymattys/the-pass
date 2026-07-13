@@ -37,17 +37,18 @@ declined promotion.
 ## Command Groups
 
 - `validate`, `validate-package`: artifact and package validation.
-- `data`, `features`: canonical quality and deterministic feature evidence.
-- `screen`, `backtest`: preregistered diagnostics and deterministic reference simulation.
-- `robustness`, `risk`: statistical and policy-independent risk evidence.
+- `data`, `features`: immutable adapter ingest, canonical quality, and deterministic features.
+- `screen`, `backtest`: preregistered diagnostics and double-run strategy simulation.
+- `robustness`, `risk`: strategy-driven matrices, statistics, and independent risk evidence.
 - `gate`: artifact-backed candidate gate evaluation.
-- `paper`: isolated virtual paper execution.
-- `automation`, `incident`: scheduler-neutral jobs and fail-closed incidents.
+- `paper`: compatibility replay and resumable custom-strategy observation.
+- `automation`, `incident`: evidence-reading scheduler-neutral jobs and incidents.
 - `report`, `dashboard`: static read-only evidence bundles.
 - `receipts`: append-only run and gate-decision ledger operations.
 - `workflow`: validated local run state, evidence resume checks, package fingerprinting,
   immutable successor creation, and explicitly enabled liveness supervision.
-- `agents`: provider discovery, stage-aware routing, non-executing task inspection, and explicit
+- `research`: conservative source-evidence scope reporting.
+- `agents`: catalog freshness, provider discovery, stage-aware routing, task inspection, and explicit
   bounded delegation to Codex or Claude Code.
 
 ## Compatibility
@@ -88,12 +89,38 @@ verdict string, copied directory, out-of-order gate row, or duplicate package ID
 valid gate decision. Exhausted transition/remediation/no-progress budgets are terminal for that
 workflow ID.
 
+## Strategy Runtime Authority
+
+The additive execution commands are:
+
+```text
+the-pass data ingest --provider futures|binance|polymarket
+the-pass backtest run --descriptor <json> --strategy-spec <artifact> ...
+the-pass robustness sweep --descriptor <json> --variants <json> --splits <json> ...
+the-pass paper observe --descriptor <json> --batch-id <id> ...
+```
+
+`data ingest` publishes only through an atomic `COMMITTED` bundle and refuses existing output.
+Public network providers require `--network`; futures requires a local archive. `backtest run`
+cross-validates the StrategySpec, manifest, quality report, canonical event fingerprint, descriptor,
+and execution config. The quality report must bind the exact event fingerprint and row count. It
+executes two fresh credential-free workers and packages only identical
+results. Exit `0` means the diagnostic operation completed, not that its blocked verdict passed a
+gate.
+
+`robustness sweep` create-only writes `<output-stem>.registration.json` with all variants and
+non-overlapping splits before its first worker call. Every cell is retained, including failures.
+`paper observe` stores immutable batches, verifies cumulative replay prefixes and configuration
+continuity, and returns exit `2` on a sticky freeze. A worker failure after batch commit freezes and
+tracks that batch instead of leaving orphan evidence. Neither command may write a gate decision.
+
 ## Agent Delegation Authority
 
 The additive agent commands are:
 
 ```text
 the-pass agents doctor
+the-pass agents catalog-check
 the-pass agents route --stage <stage> [--author-provider codex|claude]
 the-pass agents inspect <agent-task>
 the-pass agents dispatch <agent-task> --output-dir <dir> --execute
@@ -107,6 +134,8 @@ resolves its capability-aware model/effort profile, and prints a secret-free exe
 `route` maps a workflow stage to its role, workload, provider, model profile, model request,
 reasoning effort, capabilities, rationale, and routing-policy fingerprint. Independent review
 routes require the author provider and fail closed when only that provider is available.
+`catalog-check` validates the human review date and model floor without asserting authentication or
+model access. A stale catalog exits `2` and model-based routes are forbidden until policy is reviewed.
 
 Delegation is depth one. A delegated task cannot dispatch another agent, retry itself, approve a
 gate, alter governance or live-safety files, or apply its own patch. Read-only tasks return

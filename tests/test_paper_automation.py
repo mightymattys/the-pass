@@ -119,6 +119,23 @@ class AutomationTests(unittest.TestCase):
             spec["allowed_writes"] = ["reports/automation"]
             spec_path = root / "automations" / "data-health.yaml"
             spec_path.write_text(yaml.safe_dump(spec, sort_keys=False), encoding="utf-8")
+            quality_path = root / "reports" / "fixture-quality.json"
+            quality_path.parent.mkdir(parents=True)
+            quality_path.write_text(
+                json.dumps(
+                    {
+                        "schema_version": 2,
+                        "id": "quality-fixture",
+                        "created_at": "2026-07-10T00:00:00Z",
+                        "dataset_id": "fixture",
+                        "checks": [],
+                        "summary": {"events": 1, "errors": 0, "warnings": 0, "status": "pass"},
+                        "quarantine": False,
+                        "promotion_impact": "none",
+                    }
+                ),
+                encoding="utf-8",
+            )
             first, first_path = run_automation_spec(
                 spec_path,
                 output_dir=root / "reports" / "automation",

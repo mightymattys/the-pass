@@ -177,6 +177,8 @@ def build_metrics_and_costs(
     start_time: str,
     end_time: str,
     asset_class: str,
+    limitations: list[str] | None = None,
+    execution_assumptions: dict[str, str] | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     net_pnl = Decimal(result.final_snapshot["equity"]) - initial_cash
     costs = dict(result.cost_components)
@@ -210,13 +212,13 @@ def build_metrics_and_costs(
         "gross_pnl": float(gross_pnl),
         "costs": {name: float(value) for name, value in costs.items()},
         "net_pnl": float(net_pnl),
-        "assumptions": {
+        "assumptions": execution_assumptions or {
             "fee_model": "explicit linear fee per fill",
             "fill_model": "subsequent evidence or next-bar open",
             "latency_model": "decision at receive time; no same-event fill",
             "depth_model": "available depth with conservative rejection",
         },
-        "limitations": ["synthetic diagnostic data"],
+        "limitations": limitations or ["synthetic diagnostic data"],
     }
     metrics_report = {
         "schema_version": 2,
@@ -242,7 +244,7 @@ def build_metrics_and_costs(
             "stress_results": [],
             "parameter_stability": "not evaluated until V3",
         },
-        "limitations": ["diagnostic synthetic baseline; no promotion claim"],
+        "limitations": limitations or ["diagnostic synthetic baseline; no promotion claim"],
     }
     return metrics_report, cost_waterfall
 

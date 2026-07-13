@@ -5,10 +5,35 @@ and the Keep a Changelog structure.
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-07-13
+
+### Added
+
+- Added a trusted local strategy runtime with strict descriptors, explicit execution profiles,
+  credential-free subprocesses, deterministic double execution, bounded output, and generic
+  diagnostic package generation from real StrategySpec/DataManifest/QualityReport inputs.
+- Added `data ingest` for atomic read-only adapter bundles, `robustness sweep` for complete
+  preregistered strategy matrices, and resumable `paper observe` with immutable batches and replay
+  prefix checks.
+- Added conservative research-evidence scope reports and fail-closed model-catalog freshness checks.
+- Added an executable offline custom-strategy example and end-to-end regression coverage.
+- Extended the explicit public network smoke to build temporary Binance backtest and Polymarket
+  scanner packages while retaining metadata fingerprints only.
+
 ### Changed
 
-- Refreshed current completion, release-process, and historical-plan pointers after the verified
-  `v0.10.0` publication.
+- Named automation jobs now execute domain-specific handlers and cannot report `complete` without
+  reading their declared evidence.
+- Simulator input validation now rejects malformed intent identifiers/times, out-of-universe
+  instruments, excessive intent counts, non-intent results, and canonical-event mutation.
+- Historical Binance bars now use provider close time as conservative decision availability while
+  preserving HTTP observation time in transport evidence.
+
+### Fixed
+
+- Generic run packages now preserve user data/specification claims instead of hard-coding synthetic
+  provider, date, command, and execution metadata.
+- Futures fixture reads now respect instrument/time/limit windows and use content-derived ingest IDs.
 
 ## [0.10.0] - 2026-07-12
 
@@ -144,7 +169,8 @@ and the Keep a Changelog structure.
 
 - Initial public plugin, slash skills, artifact schemas, validators, and synthetic examples.
 
-[Unreleased]: https://github.com/mightymattys/the-pass/compare/v0.10.0...HEAD
+[Unreleased]: https://github.com/mightymattys/the-pass/compare/v0.11.0...HEAD
+[0.11.0]: https://github.com/mightymattys/the-pass/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/mightymattys/the-pass/compare/v0.9.1...v0.10.0
 [0.9.1]: https://github.com/mightymattys/the-pass/compare/v0.9.0...v0.9.1
 [0.9.0]: https://github.com/mightymattys/the-pass/compare/v0.8.0...v0.9.0

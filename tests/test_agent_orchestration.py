@@ -9,6 +9,7 @@ import tempfile
 import time
 import unittest
 from copy import deepcopy
+from datetime import date
 from pathlib import Path
 
 import yaml
@@ -24,6 +25,7 @@ from the_pass.agent_orchestration import (
     dispatch_agent_task,
     inspect_agent_task,
     load_agent_policy,
+    model_catalog_status,
     route_workflow_stage,
     select_model,
     validate_agent_task_file,
@@ -47,6 +49,14 @@ REQUIRED_FORBIDDEN = [
 
 
 class AgentOrchestrationTests(unittest.TestCase):
+    def test_model_catalog_status_is_fail_closed_when_stale(self) -> None:
+        current = model_catalog_status(as_of=date(2026, 7, 13))
+        self.assertEqual(current["status"], "current")
+        self.assertFalse(current["model_access_checked"])
+        stale = model_catalog_status(as_of=date(2026, 8, 11))
+        self.assertEqual(stale["status"], "stale")
+        self.assertTrue(stale["stale"])
+
     def task_document(
         self,
         *,

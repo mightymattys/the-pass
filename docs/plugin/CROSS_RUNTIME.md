@@ -11,7 +11,7 @@ model call, and `the-pass agents inspect` never executes a provider.
 Install the pinned repository marketplace and plugin:
 
 ```bash
-codex plugin marketplace add mightymattys/the-pass --ref v0.10.0
+codex plugin marketplace add mightymattys/the-pass --ref v0.11.0
 codex plugin add the-pass@the-pass-tools
 ```
 

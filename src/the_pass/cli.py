@@ -7,7 +7,10 @@ import json
 import os
 import sys
 import tempfile
+from datetime import date
 from pathlib import Path
+
+import yaml
 
 from . import __version__
 from .automation import run_automation_spec
@@ -17,22 +20,38 @@ from .agent_orchestration import (
     dispatch_agent_task,
     doctor_agents,
     inspect_agent_task,
+    model_catalog_status,
     route_workflow_stage,
 )
 from .data.contracts import CanonicalEvent
+from .adapters.base import FetchRequest
 from .data.features import build_bar_features
+from .data.ingest import ingest_bundle
 from .data.quality import QualityPolicy, build_quality_report
+from .engine.package import preregister_search_space, write_run_package
 from .engine.screen import ReferenceScreenRunner
 from .engine.workflows import BASELINE_NAMES, run_baseline
 from .incident import build_incident_report
-from .paper import ObservationPolicy, run_virtual_paper_process
+from .paper import (
+    ObservationPolicy,
+    PaperObservationError,
+    observe_strategy,
+    run_virtual_paper_process,
+)
 from .reporting import build_static_dashboard
+from .research_evidence import build_research_evidence_report
 from .risk import build_risk_policy_artifact, build_risk_report
 from .robustness import (
     cscv_pbo,
     deflated_sharpe_ratio,
     probabilistic_sharpe_ratio,
     reality_check,
+    run_strategy_sweep,
+)
+from .strategy_runtime import (
+    StrategyRuntimeError,
+    run_strategy_verified,
+    runner_result_from_document,
 )
 from .ledger import (
     DEFAULT_LEDGER_PATH,
@@ -71,6 +90,7 @@ from .validator import (
     ValidationResult,
     validate_artifact,
     validate_package,
+    load_document,
 )
 
 
@@ -112,6 +132,37 @@ def load_event_jsonl(path: Path) -> list[CanonicalEvent]:
     if not events:
         raise ValueError(f"{path}: no canonical events")
     return events
+
+
+def load_fetch_request(path: Path) -> FetchRequest:
+    document = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(document, dict):
+        raise ValueError("fetch request must be a JSON object")
+    allowed = {"kind", "instrument_id", "start_ns", "end_ns", "limit", "parameters"}
+    unknown = set(document) - allowed
+    if unknown:
+        raise ValueError(f"unknown fetch request fields: {', '.join(sorted(unknown))}")
+    if not isinstance(document.get("kind"), str) or not document["kind"]:
+        raise ValueError("fetch request kind must be a non-empty string")
+    for field in ("start_ns", "end_ns", "limit"):
+        value = document.get(field)
+        if value is not None and (
+            not isinstance(value, int) or isinstance(value, bool) or value < 0
+        ):
+            raise ValueError(f"fetch request {field} must be a non-negative integer")
+    if document.get("limit") == 0:
+        raise ValueError("fetch request limit must be positive")
+    if (
+        document.get("start_ns") is not None
+        and document.get("end_ns") is not None
+        and document["start_ns"] >= document["end_ns"]
+    ):
+        raise ValueError("fetch request requires start_ns < end_ns")
+    if document.get("parameters") is not None and not isinstance(
+        document["parameters"], dict
+    ):
+        raise ValueError("fetch request parameters must be an object")
+    return FetchRequest(**document)
 
 
 def print_envelope(
@@ -229,6 +280,22 @@ def build_parser() -> argparse.ArgumentParser:
     data_quality.add_argument("--requested-start-ns", type=int)
     data_quality.add_argument("--requested-end-ns", type=int)
     data_quality.add_argument("--format", choices=("text", "json"), default="text")
+    data_ingest = data_subparsers.add_parser(
+        "ingest", help="Build one immutable adapter evidence bundle."
+    )
+    data_ingest.add_argument(
+        "--provider", choices=("binance", "polymarket", "futures"), required=True
+    )
+    data_ingest.add_argument(
+        "--request", type=Path, required=True, help="JSON FetchRequest object."
+    )
+    data_ingest.add_argument("--output", type=Path, required=True)
+    data_ingest.add_argument("--archive-root", type=Path)
+    data_ingest.add_argument("--network", action="store_true")
+    data_ingest.add_argument("--licensed-archive", action="store_true")
+    data_ingest.add_argument("--license-reviewed", action="store_true")
+    data_ingest.add_argument("--resolution-reviewed", action="store_true")
+    data_ingest.add_argument("--format", choices=("text", "json"), default="text")
 
     features_parser = subparsers.add_parser(
         "features", help="Build deterministic reference features."
@@ -292,6 +359,20 @@ def build_parser() -> argparse.ArgumentParser:
         "--output", type=Path, required=True, help="New package directory."
     )
     backtest_baseline.add_argument("--format", choices=("text", "json"), default="text")
+    backtest_run = backtest_subparsers.add_parser(
+        "run", help="Run a trusted local strategy twice and build diagnostic evidence."
+    )
+    backtest_run.add_argument("--descriptor", type=Path, required=True)
+    backtest_run.add_argument("--strategy-spec", type=Path, required=True)
+    backtest_run.add_argument("--events", type=Path, required=True)
+    backtest_run.add_argument("--data-manifest", type=Path, required=True)
+    backtest_run.add_argument("--quality-report", type=Path, required=True)
+    backtest_run.add_argument("--execution", type=Path, required=True)
+    backtest_run.add_argument("--workspace-root", type=Path, default=Path.cwd())
+    backtest_run.add_argument("--output", type=Path, required=True)
+    backtest_run.add_argument("--timeout-seconds", type=float, default=60.0)
+    backtest_run.add_argument("--output-limit-bytes", type=int, default=5_000_000)
+    backtest_run.add_argument("--format", choices=("text", "json"), default="text")
 
     robustness_parser = subparsers.add_parser(
         "robustness", help="Evaluate multiple testing and selection bias."
@@ -314,6 +395,19 @@ def build_parser() -> argparse.ArgumentParser:
     robustness_evaluate.add_argument(
         "--format", choices=("text", "json"), default="text"
     )
+    robustness_sweep = robustness_subparsers.add_parser(
+        "sweep", help="Build a preregistered return matrix by executing a custom strategy."
+    )
+    robustness_sweep.add_argument("--descriptor", type=Path, required=True)
+    robustness_sweep.add_argument("--events", type=Path, required=True)
+    robustness_sweep.add_argument("--execution", type=Path, required=True)
+    robustness_sweep.add_argument("--variants", type=Path, required=True)
+    robustness_sweep.add_argument("--splits", type=Path, required=True)
+    robustness_sweep.add_argument("--selected-index", type=int, required=True)
+    robustness_sweep.add_argument("--workspace-root", type=Path, default=Path.cwd())
+    robustness_sweep.add_argument("--timeout-seconds", type=float, default=60.0)
+    robustness_sweep.add_argument("--output", type=Path, required=True)
+    robustness_sweep.add_argument("--format", choices=("text", "json"), default="text")
 
     risk_parser = subparsers.add_parser(
         "risk", help="Build versioned strategy-independent risk evidence."
@@ -344,6 +438,20 @@ def build_parser() -> argparse.ArgumentParser:
     risk_build.add_argument("--output-dir", type=Path, required=True)
     risk_build.add_argument("--format", choices=("text", "json"), default="text")
 
+    research_parser = subparsers.add_parser(
+        "research", help="Audit the scope and promotion strength of research evidence."
+    )
+    research_subparsers = research_parser.add_subparsers(
+        dest="research_command", required=True
+    )
+    research_evidence = research_subparsers.add_parser(
+        "evidence", help="Build a conservative source-evidence scope report."
+    )
+    research_evidence.add_argument("--registry", type=Path, required=True)
+    research_evidence.add_argument("--output", type=Path, required=True)
+    research_evidence.add_argument("--require-promotion-evidence", action="store_true")
+    research_evidence.add_argument("--format", choices=("text", "json"), default="text")
+
     paper_parser = subparsers.add_parser(
         "paper", help="Run the isolated virtual paper worker."
     )
@@ -366,6 +474,22 @@ def build_parser() -> argparse.ArgumentParser:
     paper_run.add_argument("--max-outage-gap-ns", type=int, required=True)
     paper_run.add_argument("--output", type=Path, required=True)
     paper_run.add_argument("--format", choices=("text", "json"), default="text")
+    paper_observe = paper_subparsers.add_parser(
+        "observe", help="Append one immutable batch to a resumable custom-strategy observation."
+    )
+    paper_observe.add_argument("--descriptor", type=Path, required=True)
+    paper_observe.add_argument("--events", type=Path, required=True)
+    paper_observe.add_argument("--batch-id", required=True)
+    paper_observe.add_argument("--execution", type=Path, required=True)
+    paper_observe.add_argument("--risk-policy", type=Path, required=True)
+    paper_observe.add_argument("--observation-dir", type=Path, required=True)
+    paper_observe.add_argument("--workspace-root", type=Path, default=Path.cwd())
+    paper_observe.add_argument("--observation-time-ns", type=int, required=True)
+    paper_observe.add_argument("--max-staleness-ns", type=int, required=True)
+    paper_observe.add_argument("--max-clock-skew-ns", type=int, required=True)
+    paper_observe.add_argument("--max-outage-gap-ns", type=int, required=True)
+    paper_observe.add_argument("--timeout-seconds", type=float, default=60.0)
+    paper_observe.add_argument("--format", choices=("text", "json"), default="text")
 
     automation_parser = subparsers.add_parser(
         "automation", help="Run a scheduler-neutral whitelisted job."
@@ -395,6 +519,13 @@ def build_parser() -> argparse.ArgumentParser:
         "--provider", choices=("codex", "claude", "all"), default="all"
     )
     agents_doctor.add_argument("--format", choices=("text", "json"), default="text")
+    agents_catalog = agents_subparsers.add_parser(
+        "catalog-check", help="Fail closed when the reviewed model catalog is stale."
+    )
+    agents_catalog.add_argument(
+        "--as-of", help="Optional ISO date for deterministic maintenance checks."
+    )
+    agents_catalog.add_argument("--format", choices=("text", "json"), default="text")
     agents_route = agents_subparsers.add_parser(
         "route", help="Resolve the provider and model for one workflow stage."
     )
@@ -659,6 +790,79 @@ def main(argv: list[str] | None = None) -> int:
         return 0 if result.ok else 1
 
     if args.command == "data":
+        if args.data_command == "ingest":
+            if args.provider in {"binance", "polymarket"} and not args.network:
+                print_envelope(
+                    output_format=args.format,
+                    ok=False,
+                    status="forbidden",
+                    issues=[
+                        {
+                            "path": str(args.request),
+                            "message": "public provider ingest requires explicit --network",
+                        }
+                    ],
+                )
+                return 3
+            try:
+                request = load_fetch_request(args.request)
+                if args.provider == "binance":
+                    from .adapters.binance_spot import BinanceSpotAdapter
+
+                    adapter = BinanceSpotAdapter(license_reviewed=args.license_reviewed)
+                elif args.provider == "polymarket":
+                    from .adapters.polymarket import PolymarketAdapter
+
+                    adapter = PolymarketAdapter(
+                        license_reviewed=args.license_reviewed,
+                        resolution_reviewed=args.resolution_reviewed,
+                    )
+                else:
+                    from .adapters.databento_futures import (
+                        DatabentoCompatibleFuturesAdapter,
+                    )
+
+                    if args.archive_root is None:
+                        raise ValueError("futures ingest requires --archive-root")
+                    adapter = DatabentoCompatibleFuturesAdapter(
+                        args.archive_root, licensed_archive=args.licensed_archive
+                    )
+                result = ingest_bundle(adapter, request, args.output)
+                blocked = result.quality_report["promotion_impact"] == "blocked"
+                print_envelope(
+                    output_format=args.format,
+                    ok=not blocked,
+                    status="blocked" if blocked else "complete",
+                    artifact_paths=[
+                        result.raw_path,
+                        result.canonical_path,
+                        result.quality_path,
+                        result.manifest_path,
+                        result.receipt_path,
+                        result.committed_path,
+                    ],
+                    issues=[]
+                    if not blocked
+                    else [
+                        {
+                            "path": str(result.quality_path),
+                            "message": "ingested quality evidence blocks promotion",
+                        }
+                    ],
+                    details={
+                        "canonical_fingerprint": result.canonical_fingerprint,
+                        "event_count": result.event_count,
+                    },
+                )
+                return 2 if blocked else 0
+            except (json.JSONDecodeError, OSError, RuntimeError, TypeError, ValueError) as exc:
+                print_envelope(
+                    output_format=args.format,
+                    ok=False,
+                    status="error",
+                    issues=[{"path": str(args.request), "message": str(exc)}],
+                )
+                return 1
         try:
             events = load_event_jsonl(args.events)
             policy = QualityPolicy(
@@ -775,7 +979,97 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "backtest":
         try:
-            package = run_baseline(args.name, args.output)
+            if args.backtest_command == "baseline":
+                package = run_baseline(args.name, args.output)
+            else:
+                from decimal import Decimal
+
+                artifact_inputs = (
+                    (args.strategy_spec, "strategy_spec"),
+                    (args.data_manifest, "data_manifest"),
+                    (args.quality_report, "quality_report"),
+                )
+                for path, artifact_type in artifact_inputs:
+                    validation = validate_artifact(path, artifact_type=artifact_type)
+                    if not validation.ok:
+                        details = "; ".join(
+                            f"{issue.path}: {issue.message}" for issue in validation.issues
+                        )
+                        raise ValueError(f"invalid {artifact_type}: {details}")
+                strategy_spec = load_document(args.strategy_spec)
+                data_manifest = load_document(args.data_manifest)
+                quality_report = load_document(args.quality_report)
+                descriptor = load_document(args.descriptor)
+                execution = load_document(args.execution)
+                if not all(
+                    isinstance(document, dict)
+                    for document in (
+                        strategy_spec,
+                        data_manifest,
+                        quality_report,
+                        descriptor,
+                        execution,
+                    )
+                ):
+                    raise ValueError("backtest inputs must be JSON or YAML objects")
+                events = load_event_jsonl(args.events)
+                search_space = {
+                    "schema_version": 1,
+                    "registered_at": str(data_manifest["created_at"]),
+                    "family": str(strategy_spec["edge"]["primary_family"]),
+                    "variants": [descriptor["config"]],
+                    "selection_policy": "single user variant registered before execution",
+                    "selected_variant_id": 0,
+                }
+                preregister_search_space(args.output, search_space)
+                worker_result = run_strategy_verified(
+                    events,
+                    descriptor=descriptor,
+                    execution=execution,
+                    workspace_root=args.workspace_root,
+                    timeout_seconds=args.timeout_seconds,
+                    output_limit_bytes=args.output_limit_bytes,
+                )
+                result = runner_result_from_document(worker_result)
+                evidence_fields = {
+                    "schema_version",
+                    "status",
+                    "runtime_version",
+                    "strategy_id",
+                    "strategy_source_sha256",
+                    "descriptor_fingerprint",
+                    "strategy_config_fingerprint",
+                    "execution_fingerprint",
+                    "risk_fingerprint",
+                    "events_fingerprint",
+                    "process_isolated",
+                    "credentials_present",
+                    "network_or_order_modules_loaded",
+                    "promotion_eligible",
+                    "promotion_status",
+                    "result_fingerprint",
+                    "determinism_verified",
+                    "execution",
+                }
+                runtime_evidence = {
+                    key: value for key, value in worker_result.items() if key in evidence_fields
+                }
+                package = write_run_package(
+                    args.output,
+                    result=result,
+                    events=events,
+                    search_space=search_space,
+                    initial_cash=Decimal(str(execution["initial_cash"])),
+                    asset_class=str(descriptor["asset_class"]),
+                    random_seed=None,
+                    verdict="blocked",
+                    strategy_spec_document=strategy_spec,
+                    data_manifest_document=data_manifest,
+                    quality_report_document=quality_report,
+                    command="the-pass backtest run --descriptor <descriptor> --events <canonical-events>",
+                    runtime_evidence=runtime_evidence,
+                    created_at=str(data_manifest["created_at"]),
+                )
             print_envelope(
                 output_format=args.format,
                 ok=True,
@@ -783,7 +1077,7 @@ def main(argv: list[str] | None = None) -> int:
                 artifact_paths=[package],
             )
             return 0
-        except (OSError, RuntimeError, TypeError, ValueError) as exc:
+        except (OSError, RuntimeError, StrategyRuntimeError, TypeError, ValueError) as exc:
             print_envelope(
                 output_format=args.format,
                 ok=False,
@@ -794,6 +1088,52 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "robustness":
         try:
+            if args.robustness_command == "sweep":
+                descriptor = load_document(args.descriptor)
+                execution = load_document(args.execution)
+                variants = json.loads(args.variants.read_text(encoding="utf-8"))
+                splits = json.loads(args.splits.read_text(encoding="utf-8"))
+                if (
+                    not isinstance(descriptor, dict)
+                    or not isinstance(execution, dict)
+                    or not isinstance(variants, list)
+                    or not all(isinstance(row, dict) for row in variants)
+                    or not isinstance(splits, list)
+                    or not all(isinstance(row, dict) for row in splits)
+                ):
+                    raise ValueError("robustness sweep inputs have invalid structure")
+                registration_path = args.output.with_name(
+                    f"{args.output.stem}.registration.json"
+                )
+                document = run_strategy_sweep(
+                    load_event_jsonl(args.events),
+                    descriptor=descriptor,
+                    execution=execution,
+                    variants=variants,
+                    splits=splits,
+                    selected_index=args.selected_index,
+                    registration_path=registration_path,
+                    workspace_root=args.workspace_root,
+                    timeout_seconds=args.timeout_seconds,
+                )
+                write_json_atomic(args.output, document)
+                blocked = document["status"] == "blocked"
+                print_envelope(
+                    output_format=args.format,
+                    ok=not blocked,
+                    status=document["status"],
+                    artifact_paths=[registration_path.resolve(), args.output.resolve()],
+                    issues=[]
+                    if not blocked
+                    else [
+                        {
+                            "path": str(args.output),
+                            "message": "one or more preregistered variants failed",
+                        }
+                    ],
+                    details={"robustness": document},
+                )
+                return 2 if blocked else 0
             matrix = json.loads(args.matrix.read_text(encoding="utf-8"))
             if (
                 not isinstance(matrix, list)
@@ -839,7 +1179,12 @@ def main(argv: list[str] | None = None) -> int:
                 output_format=args.format,
                 ok=False,
                 status="error",
-                issues=[{"path": str(args.matrix), "message": str(exc)}],
+                issues=[
+                    {
+                        "path": str(getattr(args, "matrix", getattr(args, "events", "robustness"))),
+                        "message": str(exc),
+                    }
+                ],
             )
             return 1
 
@@ -889,6 +1234,45 @@ def main(argv: list[str] | None = None) -> int:
         try:
             events = load_event_jsonl(args.events)
             risk_policy = json.loads(args.risk_policy.read_text(encoding="utf-8"))
+            if args.paper_command == "observe":
+                result = observe_strategy(
+                    events,
+                    batch_id=args.batch_id,
+                    descriptor_path=args.descriptor,
+                    execution_path=args.execution,
+                    risk_policy=risk_policy,
+                    observation_policy=ObservationPolicy(
+                        args.max_staleness_ns,
+                        args.max_clock_skew_ns,
+                        args.max_outage_gap_ns,
+                    ),
+                    observation_time_ns=args.observation_time_ns,
+                    observation_dir=args.observation_dir,
+                    workspace_root=args.workspace_root,
+                    timeout_seconds=args.timeout_seconds,
+                )
+                frozen = result["status"] == "frozen"
+                print_envelope(
+                    output_format=args.format,
+                    ok=not frozen,
+                    status=result.get("invocation_status", result["status"]),
+                    artifact_paths=[
+                        args.observation_dir.resolve() / "observation.json",
+                        args.observation_dir.resolve() / "current-result.json",
+                    ]
+                    if not frozen
+                    else [args.observation_dir.resolve() / "observation.json"],
+                    issues=[]
+                    if not frozen
+                    else [
+                        {
+                            "path": str(args.observation_dir),
+                            "message": "paper observation froze closed",
+                        }
+                    ],
+                    details={"observation": result},
+                )
+                return 2 if frozen else 0
             result = run_virtual_paper_process(
                 strategy_name=args.strategy,
                 events=events,
@@ -917,6 +1301,7 @@ def main(argv: list[str] | None = None) -> int:
         except (
             json.JSONDecodeError,
             OSError,
+            PaperObservationError,
             RuntimeError,
             TypeError,
             ValueError,
@@ -926,6 +1311,39 @@ def main(argv: list[str] | None = None) -> int:
                 ok=False,
                 status="error",
                 issues=[{"path": str(args.events), "message": str(exc)}],
+            )
+            return 1
+
+    if args.command == "research":
+        try:
+            report = build_research_evidence_report(args.registry)
+            write_json_atomic(args.output, report)
+            blocked = bool(
+                args.require_promotion_evidence
+                and report["promotion_eligible_count"] == 0
+            )
+            print_envelope(
+                output_format=args.format,
+                ok=not blocked,
+                status="blocked" if blocked else "complete",
+                artifact_paths=[args.output.resolve()],
+                issues=[]
+                if not blocked
+                else [
+                    {
+                        "path": str(args.registry),
+                        "message": "no full-text source with an evidence locator",
+                    }
+                ],
+                details={"evidence": report},
+            )
+            return 2 if blocked else 0
+        except (OSError, TypeError, ValueError, yaml.YAMLError) as exc:
+            print_envelope(
+                output_format=args.format,
+                ok=False,
+                status="error",
+                issues=[{"path": str(args.registry), "message": str(exc)}],
             )
             return 1
 
@@ -965,6 +1383,24 @@ def main(argv: list[str] | None = None) -> int:
                     details=document,
                 )
                 return 0
+            if args.agents_command == "catalog-check":
+                as_of = date.fromisoformat(args.as_of) if args.as_of else None
+                document = model_catalog_status(as_of=as_of)
+                print_envelope(
+                    output_format=args.format,
+                    ok=not document["stale"],
+                    status=document["status"],
+                    issues=[]
+                    if not document["stale"]
+                    else [
+                        {
+                            "path": "config/agent-orchestration.v1.yaml",
+                            "message": "model catalog requires human review",
+                        }
+                    ],
+                    details={"catalog": document},
+                )
+                return 2 if document["stale"] else 0
             if args.agents_command == "route":
                 route = route_workflow_stage(
                     args.stage,

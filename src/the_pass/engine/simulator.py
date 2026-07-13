@@ -5,7 +5,7 @@ from __future__ import annotations
 from decimal import Decimal
 from typing import Iterable
 
-from the_pass.data.contracts import CanonicalEvent, EventType
+from the_pass.data.contracts import CanonicalEvent, EventType, stable_fingerprint
 
 from .contracts import CostModel, FillModel, RiskPolicy, RunnerContext, RunnerResult, SimulatedIntent, StrategyRunner
 from .portfolio import AccountingPortfolio
@@ -17,6 +17,8 @@ class AllowAllRiskPolicy:
 
 
 class EventSimulator:
+    MAX_INTENTS_PER_EVENT = 10_000
+
     def __init__(
         self,
         *,
@@ -34,6 +36,9 @@ class EventSimulator:
         ordered = sorted(events, key=CanonicalEvent.sort_key)
         if not ordered:
             raise ValueError("event simulator requires events")
+        if not isinstance(getattr(strategy, "strategy_id", None), str) or not strategy.strategy_id:
+            raise ValueError("strategy_id must be a non-empty string")
+        instruments = {event.instrument_id for event in ordered}
         portfolio = AccountingPortfolio(self.initial_cash)
         pending: list[SimulatedIntent] = []
         all_intents: list[SimulatedIntent] = []
@@ -95,9 +100,22 @@ class EventSimulator:
                 positions=portfolio.positions,
                 marks=dict(portfolio.marks),
             )
-            new_intents = list(strategy.on_event(event, context))
+            event_before = stable_fingerprint(event.as_dict())
+            proposed = strategy.on_event(event, context)
+            try:
+                new_intents = list(proposed)
+            except TypeError as exc:
+                raise TypeError("strategy on_event must return an iterable of SimulatedIntent") from exc
+            if stable_fingerprint(event.as_dict()) != event_before:
+                raise ValueError("strategy mutated its canonical input event")
+            if len(new_intents) > self.MAX_INTENTS_PER_EVENT:
+                raise ValueError("strategy exceeded the per-event intent limit")
             signals += len(new_intents)
             for intent in new_intents:
+                if not isinstance(intent, SimulatedIntent):
+                    raise TypeError("strategy must return only SimulatedIntent objects")
+                if intent.instrument_id not in instruments:
+                    raise ValueError("strategy intent references an instrument outside the dataset")
                 if intent.intent_id in intent_ids:
                     raise ValueError(f"duplicate strategy intent_id: {intent.intent_id}")
                 intent_ids.add(intent.intent_id)

@@ -18,13 +18,13 @@
       "path": "data_manifest.json"
     },
     {
-      "expected": "60cb77791b7e98c4b96105acf5d743fdeec994bb02d86d4eb3de1ad898c69ddb",
-      "observed": "60cb77791b7e98c4b96105acf5d743fdeec994bb02d86d4eb3de1ad898c69ddb",
+      "expected": "eee553f98c966be1d412822373e0b903c5e0be49eafbcfadbb9837027a02aeff",
+      "observed": "eee553f98c966be1d412822373e0b903c5e0be49eafbcfadbb9837027a02aeff",
       "path": "quality_report.json"
     },
     {
-      "expected": "840d8f6d75d6a10523f6f0909ea91050b2e4dad087713934dfe1c63d5c738679",
-      "observed": "840d8f6d75d6a10523f6f0909ea91050b2e4dad087713934dfe1c63d5c738679",
+      "expected": "ee8eeb6ef272c1f2ff4d60466008f6fa40b057539dcd1671ead59fd34e19c69b",
+      "observed": "ee8eeb6ef272c1f2ff4d60466008f6fa40b057539dcd1671ead59fd34e19c69b",
       "path": "run_receipt.json"
     },
     {
@@ -38,8 +38,8 @@
       "path": "cost_waterfall.json"
     },
     {
-      "expected": "593c0af38f20526a99c4b2121740caf906007fdb5b2c9b06b621a5269ad59106",
-      "observed": "593c0af38f20526a99c4b2121740caf906007fdb5b2c9b06b621a5269ad59106",
+      "expected": "4642a222dc1dd3f3590ee6b633ad9ada47d2997793cbbd68634b1b11ee84fa7f",
+      "observed": "4642a222dc1dd3f3590ee6b633ad9ada47d2997793cbbd68634b1b11ee84fa7f",
       "path": "verdict_report.json"
     },
     {

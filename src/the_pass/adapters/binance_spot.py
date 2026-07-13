@@ -97,6 +97,7 @@ class BinanceSpotAdapter:
         if request.kind == "klines":
             events = []
             for index, row in enumerate(raw):
+                close_time_ns = int(row[6]) * 1_000_000
                 events.append(
                     CanonicalEvent.from_raw(
                         raw=row,
@@ -106,7 +107,7 @@ class BinanceSpotAdapter:
                         instrument_id=instrument_id,
                         event_type=EventType.BAR,
                         event_time_ns=int(row[0]) * 1_000_000,
-                        receive_time_ns=receive_time_ns,
+                        receive_time_ns=close_time_ns,
                         ingest_id=f"binance-kline-{instrument_id}-{row[0]}-{index}",
                         payload={
                             "open": Decimal(row[1]),
@@ -114,7 +115,7 @@ class BinanceSpotAdapter:
                             "low": Decimal(row[3]),
                             "close": Decimal(row[4]),
                             "volume": Decimal(row[5]),
-                            "close_time_ns": int(row[6]) * 1_000_000,
+                            "close_time_ns": close_time_ns,
                             "quote_volume": Decimal(row[7]),
                             "trade_count": int(row[8]),
                         },

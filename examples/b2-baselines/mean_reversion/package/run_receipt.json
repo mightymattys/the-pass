@@ -1,6 +1,6 @@
 {
   "code_version": "the-pass-0.4.0-b2",
-  "command": "the-pass backtest baseline --strategy volatility_filtered_mean_reversion_v1",
+  "command": "the-pass backtest baseline --name volatility_filtered_mean_reversion_v1",
   "config_hash": "1884f34c41542fab2f54966dd0456d2872c4424f101f2ea4894b2a3191e05449",
   "created_at": "2026-07-10T00:00:00Z",
   "data_manifest": "data_manifest.json",

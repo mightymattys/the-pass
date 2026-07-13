@@ -1,6 +1,6 @@
 {
   "code_version": "the-pass-0.4.0-b2",
-  "command": "the-pass backtest baseline --strategy null_random_control_v1",
+  "command": "the-pass backtest baseline --name null_random_control_v1",
   "config_hash": "182ca6e190f0a6ffdecaeee0da708affcbd1e6383b218a7d17f0802dfc0b2a3d",
   "created_at": "2026-07-10T00:00:00Z",
   "data_manifest": "data_manifest.json",

@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
 from typing import Any, Iterable
 
-from .contracts import CanonicalEvent, EventType
+from .contracts import CanonicalEvent, EventType, stable_fingerprint
 
 
 @dataclass(frozen=True)
@@ -198,6 +198,9 @@ def build_quality_report(
         "id": f"quality-{dataset_id}",
         "created_at": created_at,
         "dataset_id": dataset_id,
+        "dataset_fingerprint": stable_fingerprint(
+            [event.as_dict() for event in ordered]
+        ),
         "checks": checks,
         "summary": {"events": len(original), "errors": errors, "warnings": warnings, "status": status},
         "quarantine": bool(errors),

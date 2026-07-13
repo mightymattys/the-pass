@@ -12,6 +12,7 @@ from .statistics import (
     sensitivity_report,
 )
 from .stress import StressParameters, run_stress_suite
+from .workflow import run_strategy_sweep
 
 __all__ = [
     "StressParameters",
@@ -24,5 +25,6 @@ __all__ = [
     "reality_check",
     "regime_statistics",
     "run_stress_suite",
+    "run_strategy_sweep",
     "sensitivity_report",
 ]

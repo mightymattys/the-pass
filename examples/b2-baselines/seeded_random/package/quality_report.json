@@ -93,6 +93,7 @@
     }
   ],
   "created_at": "2026-07-10T00:00:00Z",
+  "dataset_fingerprint": "54e0047b86e36e7782020f1491262c8fbb4bf07834ff0f41fa87c3d037db7237",
   "dataset_id": "null_random_control_v1",
   "id": "quality-null_random_control_v1",
   "promotion_impact": "none",

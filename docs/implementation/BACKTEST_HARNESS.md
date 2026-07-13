@@ -5,6 +5,18 @@ The reference B2 harness is deliberately small and engine-neutral. Strategies em
 are injected protocols. The same decision contract can therefore be replayed by the paper
 runtime without changing strategy logic.
 
+## User Strategy Runtime
+
+`the-pass backtest run` loads one trusted local strategy file from an explicit workspace root.
+The descriptor, source, config, execution assumptions, risk mode, and canonical events are hashed.
+Two fresh subprocess runs must match exactly before package creation. The worker strips credential
+environment variables, blocks known network/order imports, enforces a timeout/output limit, and
+returns a diagnostic-only result. This is failure containment for trusted code, not an OS sandbox.
+
+The generic package copies and cross-validates the supplied StrategySpec, DataManifest, and
+QualityReport. It never replaces them with synthetic claims. A generic run always starts with a
+`blocked` verdict and still requires robustness, risk, and independent review.
+
 ## Fill Evidence
 
 - Market intents consume opposing book depth and record unfilled remainder.
@@ -34,3 +46,4 @@ uv run --extra data --extra research python scripts/validate_b2_harness.py
 
 The generated packages are under `examples/b2-baselines/`. Search spaces are written
 before simulation. A non-empty output directory or changed preregistration is rejected.
+The executable custom path is documented under `examples/custom-strategy/`.

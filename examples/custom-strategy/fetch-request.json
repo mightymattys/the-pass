@@ -1,0 +1,7 @@
+{
+  "instrument_id": "ESZ6",
+  "kind": "bars",
+  "parameters": {
+    "fixture": "events.json"
+  }
+}

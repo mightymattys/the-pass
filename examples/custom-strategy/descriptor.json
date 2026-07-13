@@ -1,0 +1,11 @@
+{
+  "asset_class": "futures",
+  "config": {
+    "threshold": "4700"
+  },
+  "factory": "build_strategy",
+  "owner": "example-user",
+  "schema_version": 1,
+  "strategy_file": "strategy.py",
+  "strategy_id": "example_futures_threshold_v1"
+}

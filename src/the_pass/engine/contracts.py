@@ -20,14 +20,26 @@ class SimulatedIntent:
     limit_price: Decimal | None = None
 
     def __post_init__(self) -> None:
+        if not self.intent_id or not self.instrument_id:
+            raise ValueError("intent identifiers must not be empty")
         if self.side not in {"buy", "sell"}:
             raise ValueError("side must be buy or sell")
+        if (
+            not isinstance(self.decision_time_ns, int)
+            or isinstance(self.decision_time_ns, bool)
+            or self.decision_time_ns < 0
+        ):
+            raise ValueError("decision_time_ns must be non-negative UTC nanoseconds")
         if not self.quantity.is_finite() or self.quantity <= 0:
             raise ValueError("quantity must be positive and finite")
         if self.intent_type not in {"market", "limit", "bar", "mid_diagnostic"}:
             raise ValueError("unsupported simulated intent type")
         if self.intent_type == "limit" and self.limit_price is None:
             raise ValueError("limit intent requires limit_price")
+        if self.limit_price is not None and (
+            not self.limit_price.is_finite() or self.limit_price <= 0
+        ):
+            raise ValueError("limit_price must be positive and finite")
 
 
 @dataclass(frozen=True)
