@@ -2,12 +2,18 @@
 
 Audit date: 2026-07-13
 
-Framework status: **PASS FOR RELEASE CANDIDATE**
+Framework status: **PASS FOR RELEASE**
 
 Candidate status: **BLOCKED BY DESIGN**
 
 The framework is usable for trusted local strategy testing. No bundled strategy has enough real
 market, paper-window, or independent promotion evidence to pass a candidate gate.
+
+Publication state: [PR #17](https://github.com/mightymattys/the-pass/pull/17) passed Python 3.9 and
+3.12 before owner/admin merge. The resulting `main` commit `ff25a5f06c6d6c7806f58841ad2bc4161bd3f4b4`
+passed both contexts in [CI run 29239881953](https://github.com/mightymattys/the-pass/actions/runs/29239881953).
+The repository owner explicitly requested completion and publication; the administrative merge
+exception was used only after independent review and all required checks passed.
 
 ## Scope
 
@@ -78,7 +84,7 @@ framework failure.
 - [x] Local implementation, test, safety, distribution, and plugin matrix passes.
 - [x] README, usage guide, CLI contract, changelog, plan, and release notes describe v0.11.0.
 - [x] Independent final diff review is recorded with no unresolved P0/P1.
-- [ ] Pull request passes Python 3.9 and 3.12 required checks and is merged to `main`.
+- [x] Pull request passes Python 3.9 and 3.12 required checks and is merged to `main`.
 - [ ] Tag `v0.11.0` publishes wheel, sdist, checksums, and this audit.
 - [ ] Published release assets are downloaded and clean-install verified.
 
