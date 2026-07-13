@@ -24,12 +24,12 @@ Install the released CLI and all non-live research extras with `uv`:
 
 ```bash
 uv tool install \
-  "the-pass[data,research,paper] @ https://github.com/mightymattys/the-pass/releases/download/v0.10.0/the_pass-0.10.0-py3-none-any.whl"
+  "the-pass[data,research,paper] @ https://github.com/mightymattys/the-pass/releases/download/v0.11.0/the_pass-0.11.0-py3-none-any.whl"
 uv tool update-shell
 the-pass --version
 ```
 
-Open a new shell if `the-pass` is not immediately on `PATH`. The expected version is `0.10.0`.
+Open a new shell if `the-pass` is not immediately on `PATH`. The expected version is `0.11.0`.
 The base package is sufficient for artifact and ledger validation; the command above also installs
 Parquet, DuckDB, HTTP/WebSocket, NumPy, pandas, and SciPy support. It does not install a live
 trading client.
@@ -39,7 +39,7 @@ For repository development instead:
 ```bash
 git clone https://github.com/mightymattys/the-pass.git
 cd the-pass
-git checkout v0.10.0
+git checkout v0.11.0
 uv sync --locked --extra data --extra research --extra dev
 uv run the-pass --version
 ```
@@ -49,7 +49,7 @@ uv run the-pass --version
 ### Codex
 
 ```bash
-codex plugin marketplace add mightymattys/the-pass --ref v0.10.0
+codex plugin marketplace add mightymattys/the-pass --ref v0.11.0
 codex plugin add the-pass@the-pass-tools
 codex plugin list
 ```
@@ -90,11 +90,14 @@ Run these checks before the first strategy:
 ```bash
 the-pass --version
 the-pass agents doctor --provider all --format json
+the-pass agents catalog-check --format json
 ```
 
 `agents doctor` checks executable versions and the model-routing catalog. It does not contact a
 model or prove provider authentication. A missing Codex or Claude binary matters only when that
 provider is selected for cross-provider delegation.
+`agents catalog-check` verifies that the human-reviewed model allowlist has not exceeded its
+maximum age; stale policy exits `2` and model routing fails closed.
 
 In a source checkout, the complete offline repository check is:
 
@@ -263,12 +266,58 @@ A run receipt proves that a run happened. It never proves that a gate passed. A 
 the separate decision for the exact package ID, package path, reviewer, policy hash, and evidence
 fingerprints.
 
-## 9. Bring Your Own Strategy Engine
+## 9. Run Your Own Strategy
 
-The reference engine supports the bundled baselines and an auditable event simulation. An external
-engine may be used when it preserves The Pass contracts.
+The supported runtime accepts a trusted local Python file. The file exposes a factory such as
+`build_strategy(config)` and returns an object with a stable `strategy_id` plus
+`on_event(event, context)`. It may emit only validated `SimulatedIntent` objects. The runtime
+rejects path traversal, symlink escape, credential-like config, network/order imports, malformed
+intents, input mutation, same-event fills, timeouts, and oversized output.
 
-It must export a package containing at least:
+The subprocess boundary contains failures and strips credentials, but it is not an OS sandbox.
+Only run local strategy code you trust.
+
+Start with the complete offline example:
+
+```bash
+WORK="$(mktemp -d)"
+
+the-pass data ingest \
+  --provider futures \
+  --archive-root tests/fixtures/futures \
+  --request examples/custom-strategy/fetch-request.json \
+  --output "$WORK/data" --format json
+
+the-pass backtest run \
+  --descriptor examples/custom-strategy/descriptor.json \
+  --strategy-spec examples/custom-strategy/strategy-spec.json \
+  --events "$WORK/data/canonical-events.jsonl" \
+  --data-manifest "$WORK/data/data-manifest.json" \
+  --quality-report "$WORK/data/quality-report.json" \
+  --execution examples/custom-strategy/execution.json \
+  --workspace-root examples/custom-strategy \
+  --output "$WORK/package" --format json
+```
+
+The command runs two fresh workers. Any semantic difference blocks package creation. A completed
+diagnostic command still writes `verdict: blocked`; only a separate independent gate decision may
+promote the exact package.
+
+For preregistered parameter work, provide JSON arrays of variants and non-overlapping event-index
+splits to `the-pass robustness sweep`. Every cell is executed and failed variants remain in the
+report instead of disappearing from multiple-testing evidence. Before the first strategy worker
+runs, the command create-only writes `<output-stem>.registration.json`; a conflicting existing
+registration fails rather than being overwritten.
+
+After research passage, `the-pass paper observe` can append immutable event batches. Each resume
+replays all batches, verifies the previous intent/fill prefix, enforces the same strategy,
+execution and risk hashes, and maintains an append-only invocation chain. It deliberately records
+`elapsed_time_verified: false`; offline replay cannot manufacture a 30-day or 60-day paper window.
+A worker failure after an immutable batch commit persists a frozen observation and invocation, so
+the batch cannot become untracked orphan evidence.
+
+An external engine remains supported when it preserves the same contracts. It must export a
+package containing at least:
 
 - immutable StrategySpec copy;
 - data manifest and unblocked quality evidence;
@@ -290,6 +339,25 @@ bypasses chronology, cost, reviewer, ledger, or gate checks.
 - Polymarket fees are dynamic and token-specific; never use one global flat fee.
 - Paid data, provider credentials, authenticated user channels, and raw private outputs do not
   belong in the repository or evidence artifacts.
+
+`the-pass data ingest` connects the protocol to a bounded immutable bundle. Binance and Polymarket
+require explicit `--network`; futures requires `--archive-root`. A successful output contains
+`request.json`, raw response, canonical JSONL, quality report, DataManifest, ingest receipt, and a
+`COMMITTED` marker. An existing output path is never overwritten. Backtests must consume only the
+canonical events whose fingerprint matches the supplied manifest.
+
+Audit source depth separately:
+
+```bash
+the-pass research evidence \
+  --registry research/sources.yaml \
+  --output reports/research-evidence.json \
+  --format json
+```
+
+Only explicitly full-text evidence with a locator is independently eligible to support an edge
+claim. Abstracts, metadata, operator material, and unspecified reviews remain visible but cannot
+be silently upgraded.
 
 ## 11. Delegate To The Other Provider
 

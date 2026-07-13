@@ -130,6 +130,12 @@ def write_run_package(
     random_seed: int | None,
     verdict: str = "blocked",
     screen_results: list[dict[str, Any]] | None = None,
+    strategy_spec_document: dict[str, Any] | None = None,
+    data_manifest_document: dict[str, Any] | None = None,
+    quality_report_document: dict[str, Any] | None = None,
+    command: str | None = None,
+    runtime_evidence: dict[str, Any] | None = None,
+    created_at: str = "2026-07-10T00:00:00Z",
 ) -> Path:
     package = output_dir.resolve()
     registered_path = package / "search_space.json"
@@ -143,19 +149,15 @@ def write_run_package(
     rows = sorted(events, key=CanonicalEvent.sort_key)
     if not rows:
         raise ValueError("run package requires events")
-    created_at = "2026-07-10T00:00:00Z"
     start_time = _time(rows[0].event_time_ns)
     end_time = _time(rows[-1].event_time_ns)
     dataset_fingerprint = stable_fingerprint([event.as_dict() for event in rows])
-    quality = build_quality_report(
-        result.strategy_id,
-        rows,
-        policy=QualityPolicy(expected_interval_ns=60_000_000_000),
-        created_at=created_at,
+    quality = quality_report_document or build_quality_report(
+        result.strategy_id, rows, policy=QualityPolicy(expected_interval_ns=60_000_000_000), created_at=created_at
     )
     if quality["promotion_impact"] == "blocked":
         raise ValueError("cannot package a run over blocked quality evidence")
-    manifest = {
+    generated_manifest = {
         "schema_version": 2,
         "id": f"{result.strategy_id}-data",
         "dataset_name": f"{result.strategy_id}-synthetic-bars",
@@ -192,6 +194,50 @@ def write_run_package(
         "fingerprint": {"method": "sha256", "value": dataset_fingerprint},
         "limitations": ["synthetic diagnostic fixture"],
     }
+    manifest = data_manifest_document or generated_manifest
+    spec = strategy_spec_document or strategy_spec(
+        result.strategy_id, rows[0].instrument_id, asset_class, search_space
+    )
+    if strategy_spec_document is not None:
+        if spec.get("id") != result.strategy_id:
+            raise ValueError("StrategySpec id must match the runtime strategy_id")
+        market = spec.get("market")
+        if not isinstance(market, dict) or market.get("asset_class") != asset_class:
+            raise ValueError("StrategySpec asset class must match the run")
+        if not set(event.instrument_id for event in rows) <= set(market.get("instruments", [])):
+            raise ValueError("StrategySpec instruments must cover every runtime event")
+    if data_manifest_document is not None:
+        fingerprint = manifest.get("fingerprint")
+        if not isinstance(fingerprint, dict) or fingerprint.get("value") != dataset_fingerprint:
+            raise ValueError("DataManifest fingerprint must match canonical runtime events")
+        coverage = manifest.get("coverage")
+        if not isinstance(coverage, dict) or not set(
+            event.instrument_id for event in rows
+        ) <= set(coverage.get("instruments", [])):
+            raise ValueError("DataManifest coverage must include every runtime instrument")
+    if quality_report_document is not None and data_manifest_document is not None:
+        if quality.get("dataset_id") != manifest.get("id"):
+            raise ValueError("QualityReport dataset_id must match DataManifest id")
+        if quality.get("dataset_fingerprint") != dataset_fingerprint:
+            raise ValueError("QualityReport fingerprint must match canonical runtime events")
+        summary = quality.get("summary")
+        if not isinstance(summary, dict) or summary.get("events") != len(rows):
+            raise ValueError("QualityReport event count must match canonical runtime events")
+    generic = strategy_spec_document is not None
+    execution_assumptions = None
+    if runtime_evidence is not None:
+        execution = runtime_evidence.get("execution", {})
+        execution_assumptions = {
+            "fee_model": str(execution.get("fee_model", "explicit configured fee")),
+            "fill_model": str(execution.get("fill_model", "configured evidence model")),
+            "latency_model": "decision at receive time; no same-event fill",
+            "depth_model": str(execution.get("depth_model", "model-specific")),
+        }
+    run_limitations = (
+        ["user-supplied diagnostic run; robustness and independent review pending"]
+        if generic
+        else None
+    )
     metrics, waterfall = build_metrics_and_costs(
         result,
         initial_cash=initial_cash,
@@ -199,18 +245,19 @@ def write_run_package(
         start_time=start_time,
         end_time=end_time,
         asset_class=asset_class,
+        limitations=run_limitations,
+        execution_assumptions=execution_assumptions,
     )
-    spec = strategy_spec(result.strategy_id, rows[0].instrument_id, asset_class, search_space)
     receipt = {
         "schema_version": 2,
         "id": f"{result.strategy_id}-run",
         "created_at": created_at,
-        "owner": "strategy_implementer",
+        "owner": str(spec.get("owner", "strategy_implementer")),
         "strategy_spec": "strategy_spec.json",
-        "code_version": "the-pass-0.4.0-b2",
+        "code_version": "the-pass-0.11.0-runtime" if generic else "the-pass-0.4.0-b2",
         "data_manifest": "data_manifest.json",
-        "command": f"the-pass backtest baseline --strategy {result.strategy_id}",
-        "config_hash": stable_fingerprint(search_space),
+        "command": command or f"the-pass backtest baseline --name {result.strategy_id}",
+        "config_hash": stable_fingerprint(runtime_evidence or search_space),
         "random_seed": random_seed,
         "inputs": {"dataset_fingerprint": dataset_fingerprint, "search_space": "search_space.json"},
         "outputs": {
@@ -223,7 +270,11 @@ def write_run_package(
             "screen_results": "screen_results.json",
         },
         "safety": {"live_trading_enabled": False, "real_order_path_available": False, "credentials_available": False},
-        "notes": "Deterministic public synthetic B2 baseline.",
+        "notes": (
+            "Deterministic user-supplied diagnostic run; no promotion claim."
+            if generic
+            else "Deterministic public synthetic B2 baseline."
+        ),
     }
     verdict_document = {
         "schema_version": 2,
@@ -232,10 +283,14 @@ def write_run_package(
         "created_at": created_at,
         "owner": "framework_auditor",
         "verdict": verdict,
-        "summary": "B2 baseline completed; robustness and independent audit are not yet run.",
+        "summary": (
+            "User strategy diagnostic completed; robustness and independent audit are not yet run."
+            if generic
+            else "B2 baseline completed; robustness and independent audit are not yet run."
+        ),
         "gate_results": {
             "universal_hard_gates": ["package validates", "accounting identities hold", "costs explicit"],
-            "asset_class_gates": ["synthetic diagnostic only"],
+            "asset_class_gates": ["user diagnostic only" if generic else "synthetic diagnostic only"],
             "failed_gates": ["V3 robustness and independent audit pending"],
         },
         "evidence": {
@@ -245,10 +300,10 @@ def write_run_package(
             "source_notes": [],
         },
         "risks": {
-            "statistical": ["synthetic diagnostic sample"],
-            "execution": ["next-bar model is not order-book replay"],
-            "data": ["generated fixture"],
-            "operational": ["no external process"],
+            "statistical": ["diagnostic sample; multiple-testing controls pending"],
+            "execution": ["configured simulation is not live execution"],
+            "data": ["user-supplied canonical evidence" if generic else "generated fixture"],
+            "operational": ["trusted local strategy subprocess" if generic else "no external process"],
         },
         "next_action": "Run V3 walk-forward, overfit diagnostics, stress, risk, and independent audit.",
         "review_required_by": ["stats_auditor", "execution_skeptic"],
@@ -278,6 +333,8 @@ def write_run_package(
         },
         "screen_results.json": screen_results or [],
     }
+    if runtime_evidence is not None:
+        documents["runtime_evidence.json"] = runtime_evidence
     for name, document in documents.items():
         _json(package / name, document)
     _write(package / "run_report.md", render_markdown(result.strategy_id, metrics, waterfall))

@@ -1,0 +1,84 @@
+{
+  "binance": {
+    "rest_base": "https://data-api.binance.vision",
+    "results": [
+      {
+        "credentials_used": false,
+        "events": 2,
+        "instrument_id": "BTCUSDT",
+        "ordered": true
+      },
+      {
+        "credentials_used": false,
+        "events": 2,
+        "instrument_id": "ETHUSDT",
+        "ordered": true
+      }
+    ],
+    "status": "pass"
+  },
+  "created_at": "2026-07-13T09:28:59Z",
+  "diagnostic_pipeline": {
+    "binance": {
+      "canonical_fingerprint": "4dc6cf1539ec1c76e9ebcf185b971b6ac6be377857497dd8348bf323fd80cc8f",
+      "determinism_verified": true,
+      "event_count": 16,
+      "run_package_id": "pkg_5857b2a8010e125ac2ce1fdc",
+      "runtime_result_fingerprint": "019dc2a4c170fcab4a4867c69f246925fad619633fd6d1e4039a03b510cd4360",
+      "verdict": "blocked"
+    },
+    "payload_retention": "temporary_only_metadata_reported",
+    "polymarket": {
+      "canonical_fingerprint": "60b7b997e06b4691264692276b743bdd98a698792749c6ee3cb864712a557ee6",
+      "event_count": 1,
+      "scanner_package_fingerprint": "a9bb6470b89d5b19f617c1024ce10d02c9f89fbd173595f84a98b3fd366b81f5",
+      "scanner_report": {
+        "best_ask": "0.986",
+        "best_bid": "0.981",
+        "blockers": [
+          "single REST snapshot is not replay evidence",
+          "complementary outcome and resolution semantics require separate evidence"
+        ],
+        "canonical_fingerprint": "60b7b997e06b4691264692276b743bdd98a698792749c6ee3cb864712a557ee6",
+        "cost_snapshot": {
+          "dynamic": true,
+          "fee_rate": "1000",
+          "instrument_id": "103705222348348023632358209307161171933864556870678885035120650593331360918837",
+          "observed_at_ns": 1783934939562527000,
+          "source": "https://clob.polymarket.com/fee-rate/{token_id}"
+        },
+        "instrument_id": "103705222348348023632358209307161171933864556870678885035120650593331360918837",
+        "manifest_fingerprint": "28ac9b3e48c80ffe7b939d1b5bc775ec4ae0d2c2f3004e93e2b5d6e499f8eced",
+        "mode": "diagnostic_read_only",
+        "promotion_eligible": false,
+        "quality_fingerprint": "9e81e17a1288e7e655fb83331c1348dd5f65c9440c989764b260f5baedbaa393",
+        "report_fingerprint": "ce89e2820123d0113921194c2e3213880123c1c21bf0184919d779199367776f",
+        "schema_version": 1,
+        "spread": "0.005"
+      }
+    },
+    "promotion_eligible": false,
+    "status": "pass"
+  },
+  "futures_fixture": {
+    "events": 2,
+    "promotion_mode": "diagnostic",
+    "status": "pass"
+  },
+  "mode": "public_read_only",
+  "network_opt_in": true,
+  "polymarket": {
+    "book_events": 1,
+    "book_has_hash": true,
+    "credentials_used": false,
+    "discovered_instruments": 40,
+    "dynamic_fee_observed": true,
+    "status": "pass"
+  },
+  "safety": {
+    "authenticated_channels_used": false,
+    "credentials_used": false,
+    "writes_to_provider": false
+  },
+  "schema_version": 1
+}

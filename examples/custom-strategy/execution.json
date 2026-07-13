@@ -1,0 +1,7 @@
+{
+  "fee_rate": "0.0001",
+  "fill_model": "bar_next_open",
+  "initial_cash": "100000",
+  "schema_version": 1,
+  "slippage_bps": "5"
+}

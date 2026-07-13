@@ -235,6 +235,7 @@ class AdapterContractTests(unittest.TestCase):
         events = adapter.normalize(raw, FetchRequest(kind="klines", instrument_id="BTCUSDT"), receive_time_ns=1704067260000000000)
         self.assertIsInstance(adapter, ReadOnlyAdapter)
         self.assertEqual(events[0].payload["close"], Decimal("42050.25"))
+        self.assertEqual(events[0].receive_time_ns, 1704067259999000000)
         self.assertEqual(adapter.capabilities.maximum_promotion_mode, "diagnostic")
 
     def test_polymarket_dynamic_fee_and_book_normalization(self) -> None:

@@ -22,6 +22,10 @@ jobs:
         run: uv sync --locked --extra data --extra research
       - name: Public safety validation
         run: uv run python scripts/validate_public_repo.py
+      - name: Model catalog freshness
+        run: uv run the-pass agents catalog-check --format json
+      - name: Research evidence scope
+        run: uv run the-pass research evidence --registry research/sources.yaml --output reports/network/research-evidence.json --format json
       - name: Dependency vulnerability audit
         run: uv run --with pip-audit pip-audit
       - name: Research link and recency evidence

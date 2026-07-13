@@ -7,7 +7,7 @@ from decimal import Decimal
 from pathlib import Path
 from typing import Any, Iterable
 
-from the_pass.data.contracts import CanonicalEvent, EventType, Instrument
+from the_pass.data.contracts import CanonicalEvent, EventType, Instrument, stable_fingerprint
 
 from .base import AdapterCapabilities, FetchRequest, manifest_for_events
 
@@ -59,11 +59,19 @@ class DatabentoCompatibleFuturesAdapter:
 
     def fetch_raw(self, request: FetchRequest) -> Any:
         relative = str((request.parameters or {}).get("fixture", "events.json"))
-        return json.loads(self._safe_path(relative).read_text(encoding="utf-8"))
+        rows = json.loads(self._safe_path(relative).read_text(encoding="utf-8"))
+        filtered = [
+            row
+            for row in rows
+            if (request.instrument_id is None or row["instrument_id"] == request.instrument_id)
+            and (request.start_ns is None or int(row["event_time_ns"]) >= request.start_ns)
+            and (request.end_ns is None or int(row["event_time_ns"]) < request.end_ns)
+        ]
+        return filtered[: request.limit] if request.limit is not None else filtered
 
     def normalize(self, raw: Any, request: FetchRequest, *, receive_time_ns: int) -> list[CanonicalEvent]:
         events = []
-        for index, row in enumerate(raw):
+        for row in raw:
             event_type = EventType(row["event_type"])
             payload = {
                 key: Decimal(value) if key in {"price", "size", "open", "high", "low", "close", "volume", "settlement_price"} else value
@@ -79,7 +87,7 @@ class DatabentoCompatibleFuturesAdapter:
                     event_type=event_type,
                     event_time_ns=int(row["event_time_ns"]),
                     receive_time_ns=int(row.get("receive_time_ns", receive_time_ns)),
-                    ingest_id=f"futures-fixture-{row['instrument_id']}-{index}",
+                    ingest_id=f"futures-fixture-{row['instrument_id']}-{stable_fingerprint(row)[:16]}",
                     sequence=row.get("sequence"),
                     payload=payload,
                 )

@@ -1,0 +1,69 @@
+{
+  "created_at": "2026-07-13",
+  "data": {
+    "manifest_path": "data-manifest.json",
+    "minimum_history": "bounded public endpoint smoke only",
+    "required_fields": [
+      "event_time_ns",
+      "receive_time_ns",
+      "open",
+      "high",
+      "low",
+      "close",
+      "volume"
+    ],
+    "required_sources": ["Binance public read-only klines"]
+  },
+  "done_when": ["diagnostic package validates and reproduces"],
+  "edge": {
+    "expected_failure_modes": ["tiny sample", "bar fill approximation", "diagnostic provider mode"],
+    "primary_family": "public_pipeline_smoke",
+    "secondary_tags": ["example", "diagnostic", "network-opt-in"],
+    "thesis": "A trivial threshold proves the public ingest-to-runtime path and does not claim an edge.",
+    "why_now": "Exercise the complete public read-only diagnostic pipeline."
+  },
+  "execution": {
+    "fee_model": "explicit diagnostic fee configured by the user",
+    "fill_model": "next bar open",
+    "latency_assumption_ms": 1,
+    "order_type": "paper_only",
+    "slippage_model": "five adverse basis points"
+  },
+  "gates": {
+    "live_gate": ["forbidden"],
+    "paper_gate": ["not eligible"],
+    "research_gate": ["archived trades or book data, cost evidence, and independent robustness required"]
+  },
+  "id": "example_binance_threshold_v1",
+  "kill_when": ["the bounded endpoint sample is mistaken for market evidence"],
+  "market": {
+    "asset_class": "crypto_spot",
+    "instruments": ["BTCUSDT"],
+    "timeframes": ["1m"],
+    "venues": ["binance"]
+  },
+  "name": "Binance public pipeline diagnostic smoke",
+  "notes": "Trusted local code over bounded public data. Diagnostic only; no promotion claim.",
+  "owner": "the-pass-public-smoke",
+  "risk": {
+    "kill_switches": ["data quality failure", "accounting failure"],
+    "max_drawdown": "diagnostic only",
+    "max_exposure": "one virtual unit",
+    "sizing_rule": "fixed one unit"
+  },
+  "schema_version": 2,
+  "signal": {
+    "decision_time_policy": "decide after receive time and fill only on a later bar",
+    "inputs": ["canonical close"],
+    "lookahead_controls": ["no same-event fill"],
+    "transforms": ["fixed close threshold"]
+  },
+  "status": "research",
+  "validation": {
+    "holdout_policy": "none for endpoint smoke; promotion forbidden",
+    "null_baselines": ["seeded random"],
+    "parameter_sweeps": [{"threshold": ["0"]}],
+    "required_metrics": ["net pnl", "max drawdown", "turnover", "trade count"],
+    "train_test_split": "diagnostic full sample"
+  }
+}

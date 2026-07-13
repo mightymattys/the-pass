@@ -59,11 +59,14 @@ policy hash.
 
 ## Current Status
 
-The framework is operational. All capability milestones in the machine-readable roadmap pass,
-while candidate promotion remains deliberately separate.
+The framework is operational. In addition to bundled controls, the source tree supports trusted
+local strategy files, immutable adapter ingest bundles, deterministic double-run backtests,
+strategy-driven robustness sweeps, and resumable replay-based paper observations. Candidate
+promotion remains deliberately separate.
 
-The source tree, plugin manifests, and latest published release are versioned `0.10.0`. The
+The source tree and plugin manifests are versioned `0.11.0`. The
 release badge above remains the authority for the latest published tag. Readiness is recorded in the
+[`v0.11.0` release audit](reports/RELEASE_AUDIT_0.11.0.md), the
 [`v0.9.0` cross-agent audit](reports/CROSS_AGENT_ORCHESTRATION_AUDIT_0.9.0.md) and the
 [full repository stability audit](reports/FULL_REPOSITORY_STABILITY_AUDIT_2026-07-10.md). Versioned
 publication evidence for the installation fix is tracked in the
@@ -76,10 +79,10 @@ imply that any bundled strategy candidate passed promotion.
 | Area | Framework capability | Bundled candidate state |
 | --- | --- | --- |
 | Research and schemas | Complete | Synthetic/public-safe evidence only |
-| Canonical data and adapters | Complete | Venue-specific restrictions apply |
-| Screen and backtest harness | Complete | No pre-approved profitable strategy |
+| Canonical data and adapters | Immutable ingest CLI plus three adapter lanes | Venue-specific restrictions apply |
+| Screen and backtest harness | Bundled controls plus trusted local strategy runtime | No pre-approved profitable strategy |
 | Robustness, risk, and audit | Complete | Promotion requires independent evidence |
-| Paper, automation, and reporting | Complete | Included observation remains blocked |
+| Paper, automation, and reporting | Resumable observer and evidence-reading job handlers | Included observation remains blocked |
 | Live execution | Contracts defined | Technically locked and forbidden |
 
 See the [machine-readable roadmap](docs/implementation/roadmap-status.yaml),
@@ -119,6 +122,33 @@ For the complete workflow from CLI/plugin installation through a real research r
 gate review, paper observation, external engines, and agent delegation, follow the
 [Usage Guide](docs/public/USAGE_GUIDE.md).
 
+Run the supported custom-strategy smoke entirely offline:
+
+```bash
+WORK="$(mktemp -d)"
+uv run the-pass data ingest \
+  --provider futures --archive-root tests/fixtures/futures \
+  --request examples/custom-strategy/fetch-request.json \
+  --output "$WORK/data" --format json
+
+uv run the-pass backtest run \
+  --descriptor examples/custom-strategy/descriptor.json \
+  --strategy-spec examples/custom-strategy/strategy-spec.json \
+  --events "$WORK/data/canonical-events.jsonl" \
+  --data-manifest "$WORK/data/data-manifest.json" \
+  --quality-report "$WORK/data/quality-report.json" \
+  --execution examples/custom-strategy/execution.json \
+  --workspace-root examples/custom-strategy \
+  --output "$WORK/package" --format json
+
+uv run the-pass validate-package "$WORK/package" --format json
+```
+
+The runtime executes two fresh subprocesses and packages only identical semantic results. The
+example verdict is still `blocked`: two fixture bars prove machinery, not a trading edge.
+The opt-in `scripts/smoke_public_adapters.py` additionally builds a temporary diagnostic Binance
+run package and Polymarket scanner package while retaining only metadata fingerprints.
+
 ## First Evidence Check
 
 Validate the two public-safe packages, then write and verify an append-only ledger:
@@ -151,16 +181,16 @@ uv run the-pass <group> --help
 | Group | Responsibility |
 | --- | --- |
 | `validate`, `validate-package` | Validate one artifact or a complete run package |
-| `data`, `features` | Build canonical quality and deterministic feature evidence |
-| `screen`, `backtest` | Run preregistered diagnostics and deterministic simulations |
-| `robustness`, `risk` | Evaluate selection bias, stress, and independent risk policy |
+| `data`, `features` | Ingest immutable adapter evidence and build quality/features |
+| `screen`, `backtest` | Run bundled controls or a trusted local strategy twice |
+| `robustness`, `risk` | Execute preregistered sweeps and evaluate selection bias/risk |
 | `gate` | Evaluate artifact-backed candidate gates |
-| `paper` | Run an isolated virtual paper worker |
-| `automation`, `incident` | Execute whitelisted jobs and create fail-closed incident evidence |
+| `paper` | Run compatibility replay or resume a custom-strategy observation |
+| `automation`, `incident` | Execute evidence-reading job handlers and create incidents |
 | `report`, `dashboard` | Build static, read-only evidence bundles |
 | `receipts` | Append and semantically replay run and gate-decision ledgers |
 | `workflow` | Start, advance, inspect, supervise, or supersede a bounded slash-skill run |
-| `agents` | Route, inspect, or explicitly dispatch bounded Codex/Claude agent tasks |
+| `agents` | Check catalog freshness, route, inspect, or dispatch bounded agent tasks |
 
 All commands support `--format text|json`. Stable JSON responses contain `ok`, `status`,
 `artifact_paths`, `issues`, and `receipt_id`. See the full [CLI contract](docs/public/CLI_CONTRACT.md).
@@ -186,7 +216,7 @@ machine interface and source of validation truth.
 Install the Codex plugin from the pinned marketplace:
 
 ```bash
-codex plugin marketplace add mightymattys/the-pass --ref v0.10.0
+codex plugin marketplace add mightymattys/the-pass --ref v0.11.0
 codex plugin add the-pass@the-pass-tools
 ```
 
@@ -241,7 +271,7 @@ provider for gate review. It selects the cheapest profile satisfying the stage's
 capability floor. Preflight and gate recording are deterministic and never ask a model to approve
 itself.
 
-The reviewed `0.10.0` catalog contains only GPT-5.6 Luna, Terra, and Sol for Codex, plus Claude
+The reviewed `0.11.0` catalog contains only GPT-5.6 Luna, Terra, and Sol for Codex, plus Claude
 Sonnet 5, Opus 4.8, and Fable 5. Policy validation rejects a Codex model below GPT-5.6, more than
 three provider models, and any model outside the current allowlist; there is no legacy fallback.
 
@@ -252,6 +282,10 @@ driver may replace `auto` after `--driver` when another orchestrator should own 
 `agents doctor` does not verify authentication or model entitlement. Authenticate both providers
 for the default route, or pass `--available-provider codex|claude`; provider failures are not
 automatically retried through a second model.
+
+`the-pass agents catalog-check` independently enforces the policy review age. A stale catalog
+returns exit `2` and blocks model routing until a human verifies provider primary documentation;
+the command never claims authentication or model entitlement.
 
 The complete behavioral contract is in [The Pass Commands](docs/plugin/COMMANDS.md) and
 [Skill Contracts](docs/implementation/SKILL_CONTRACTS.md). The consolidation rationale and
@@ -334,6 +368,9 @@ promotion mode.
 Raw data is immutable, normalized data points back to raw fingerprints, and feature outputs
 include code and configuration provenance. DuckDB is a local query layer, not the source of
 truth. Paid data and provider credentials must never enter the repository, artifacts, or logs.
+`the-pass data ingest` requires explicit `--network` for Binance or Polymarket and emits a
+`COMMITTED` marker only after raw response, request, canonical events, quality, manifest, receipt,
+cost snapshot, and transport evidence are durably written.
 
 Read the [Adapter Contract](docs/adapter-contract.md) and
 [Canonical Data Foundation](docs/adapters/DATA_FOUNDATION.md) before adding a provider.
@@ -341,8 +378,10 @@ Read the [Adapter Contract](docs/adapter-contract.md) and
 ## Execution, Statistics, and Risk
 
 The reference simulator is intentionally small and auditable. It models order lifecycle,
-partial fills, depth, fees, slippage, funding, borrow, rolls, missed fills, and portfolio
-conservation. Mid-price fills are diagnostic-only and cannot support promotion.
+partial fills, depth, fees, slippage, missed fills, and portfolio conservation. Funding, borrow,
+and roll are explicit accounting components but remain zero unless a strategy workflow supplies
+and reconciles those events; the engine does not invent them. Mid-price fills are diagnostic-only
+and cannot support promotion.
 
 Gross and net path metrics use separate equity curves. Annualization records the asset calendar,
 median observation interval, and periods per year instead of assuming every market has 252 data
@@ -359,12 +398,14 @@ See [Backtest Harness](docs/implementation/BACKTEST_HARNESS.md) and
 
 ## Paper, Automation, and Reports
 
-Paper observation runs in a separate virtual process with no live trading client. It fails
-closed on stale data, clock skew, outages, or risk breaches and records decisions, simulated
-intents, fills, missed fills, latency, and divergence.
+Paper observation runs in a separate process with no live trading client. `paper observe` stores
+immutable batches, replays the cumulative event set, verifies the historical intent/fill prefix,
+and freezes on stale data, clock skew, outages, risk breaches, config drift, overlap, or tampering.
+Offline event timestamps never prove that a real paper window elapsed.
 
 Automation is exposed as idempotent CLI jobs for cron, GitHub Actions, or an external
-orchestrator. The project intentionally does not ship its own scheduler. Reports and dashboards
+orchestrator. Named jobs execute domain-specific evidence checks; missing domain inputs cannot
+produce a generic `complete` snapshot. The project intentionally does not ship its own scheduler. Reports and dashboards
 are static, read-only HTML bundles; they cannot alter gates, limits, strategy specs, or approval
 state.
 
@@ -428,6 +469,7 @@ Report vulnerabilities according to [SECURITY.md](SECURITY.md).
 ## Documentation
 
 - [Main research plan](docs/research/the-pass-plan.md)
+- [Usable strategy runtime plan](docs/implementation/USABLE_STRATEGY_RUNTIME_PLAN.md)
 - [Trading roadmap execution plan](docs/implementation/TRADING_ROADMAP_EXECUTION_PLAN.md)
 - [Artifact lifecycle](docs/implementation/ARTIFACT_LIFECYCLE.md)
 - [Validation and safety](docs/implementation/VALIDATION_AND_SAFETY.md)
@@ -447,6 +489,8 @@ Report vulnerabilities according to [SECURITY.md](SECURITY.md).
 - [`v0.10.0` supervised workflow release notes](docs/public/RELEASE_NOTES_v0.10.0.md)
 - [`v0.10.0` release audit](reports/RELEASE_AUDIT_0.10.0.md)
 - [`v0.10.0` post-release verification](reports/POST_RELEASE_AUDIT_0.10.0.md)
+- [`v0.11.0` usable runtime release notes](docs/public/RELEASE_NOTES_v0.11.0.md)
+- [`v0.11.0` release audit](reports/RELEASE_AUDIT_0.11.0.md)
 - [Supervised workflow implementation audit](reports/SUPERVISED_WORKFLOW_AUDIT_2026-07-11.md)
 - [Repository hardening audit](reports/REPOSITORY_HARDENING_AUDIT_2026-07-10.md)
 - [CLI contract](docs/public/CLI_CONTRACT.md)

@@ -1,0 +1,12 @@
+{
+  "asset_class": "crypto_spot",
+  "config": {
+    "strategy_id": "example_binance_threshold_v1",
+    "threshold": "0"
+  },
+  "factory": "build_strategy",
+  "owner": "the-pass-public-smoke",
+  "schema_version": 1,
+  "strategy_file": "strategy.py",
+  "strategy_id": "example_binance_threshold_v1"
+}

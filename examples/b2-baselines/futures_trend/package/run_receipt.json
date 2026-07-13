@@ -1,6 +1,6 @@
 {
   "code_version": "the-pass-0.4.0-b2",
-  "command": "the-pass backtest baseline --strategy futures_diversified_trend_v1",
+  "command": "the-pass backtest baseline --name futures_diversified_trend_v1",
   "config_hash": "e2b08980fe2a62c4c85a1cca3e76fd6e9caea64ce5e8a195882dfb9323843179",
   "created_at": "2026-07-10T00:00:00Z",
   "data_manifest": "data_manifest.json",

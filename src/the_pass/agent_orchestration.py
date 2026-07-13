@@ -15,7 +15,7 @@ import time
 import uuid
 from contextlib import contextmanager
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from pathlib import Path, PurePosixPath
 from typing import Any, Iterator, Mapping, Sequence
 
@@ -216,6 +216,17 @@ def _validate_model_routing_policy(routing: Any) -> None:
         )
     if routing.get("codex_minimum_family") != "gpt-5.6":
         raise AgentSafetyError("Codex model floor must remain gpt-5.6")
+    try:
+        reviewed_at = date.fromisoformat(str(routing["catalog_reviewed_at"]))
+        max_age_days = int(routing["catalog_max_age_days"])
+    except (KeyError, TypeError, ValueError) as exc:
+        raise AgentOrchestrationError(
+            "model catalog review date and maximum age must be valid"
+        ) from exc
+    if max_age_days < 1 or max_age_days > 90:
+        raise AgentSafetyError("model catalog maximum age must be between 1 and 90 days")
+    if reviewed_at > datetime.now(timezone.utc).date():
+        raise AgentSafetyError("model catalog review date cannot be in the future")
     for provider, catalog in providers.items():
         if not isinstance(catalog, dict) or set(catalog) != set(profiles):
             raise AgentOrchestrationError(
@@ -264,6 +275,45 @@ def _validate_model_routing_policy(routing: Any) -> None:
         "default_workload_class"
     ) != "auto":
         raise AgentSafetyError("model routing defaults must remain automatic")
+
+
+def model_catalog_status(
+    *,
+    as_of: date | None = None,
+    policy: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Report catalog age without claiming provider authentication or model access."""
+
+    active = dict(policy or load_agent_policy())
+    routing = active["model_routing"]
+    reviewed_at = date.fromisoformat(str(routing["catalog_reviewed_at"]))
+    checked_at = as_of or datetime.now(timezone.utc).date()
+    if checked_at < reviewed_at:
+        raise AgentSafetyError("catalog check date cannot precede its review date")
+    age_days = (checked_at - reviewed_at).days
+    max_age_days = int(routing["catalog_max_age_days"])
+    stale = age_days > max_age_days
+    return {
+        "status": "stale" if stale else "current",
+        "catalog_reviewed_at": reviewed_at.isoformat(),
+        "checked_at": checked_at.isoformat(),
+        "age_days": age_days,
+        "max_age_days": max_age_days,
+        "stale": stale,
+        "authentication_checked": False,
+        "model_access_checked": False,
+        "current_models": routing["current_models"],
+    }
+
+
+def require_current_model_catalog(
+    *, policy: Mapping[str, Any] | None = None, as_of: date | None = None
+) -> None:
+    status = model_catalog_status(as_of=as_of, policy=policy)
+    if status["stale"]:
+        raise AgentSafetyError(
+            "model catalog is stale; review provider primary documentation and commit policy evidence"
+        )
 
 
 def _validate_workflow_routing_policy(routing: Any) -> None:
@@ -348,6 +398,7 @@ def route_workflow_stage(
         }
     if stage not in routing["stages"]:
         raise AgentOrchestrationError(f"unknown workflow stage for routing: {stage}")
+    require_current_model_catalog(policy=active)
 
     route = routing["stages"][stage]
     preferred = route["preferred_provider"]
@@ -409,6 +460,7 @@ def route_workflow_stage(
 def select_model(context: TaskContext) -> ModelSelection:
     """Resolve a capability-checked provider model without free-text classification."""
 
+    require_current_model_catalog(policy=context.policy)
     routing = context.policy["model_routing"]
     profiles = list(routing["profile_order"])
     requested_profile = str(

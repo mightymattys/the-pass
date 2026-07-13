@@ -31,13 +31,13 @@
       "generated fixture"
     ],
     "execution": [
-      "next-bar model is not order-book replay"
+      "configured simulation is not live execution"
     ],
     "operational": [
       "no external process"
     ],
     "statistical": [
-      "synthetic diagnostic sample"
+      "diagnostic sample; multiple-testing controls pending"
     ]
   },
   "run_receipt": "run_receipt.json",

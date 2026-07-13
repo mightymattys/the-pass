@@ -9,6 +9,7 @@
     "id": { "type": "string", "minLength": 1 },
     "created_at": { "type": "string", "format": "date-time" },
     "dataset_id": { "type": "string", "minLength": 1 },
+    "dataset_fingerprint": { "type": "string", "pattern": "^[A-Fa-f0-9]{64}$" },
     "checks": {
       "type": "array",
       "items": {

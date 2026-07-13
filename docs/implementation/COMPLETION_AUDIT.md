@@ -1,6 +1,6 @@
 # Completion Audit
 
-Audit date: 2026-07-12.
+Audit date: 2026-07-13.
 
 This file maps the build plan to the evidence that proves the current public framework is
 complete. It does not claim that any trading strategy has edge.
@@ -28,6 +28,8 @@ do not make the repository incomplete. The current implementation result is reco
 [supervised workflow audit](../../reports/SUPERVISED_WORKFLOW_AUDIT_2026-07-11.md), while published
 distribution evidence is recorded in the
 [`v0.10.0` post-release audit](../../reports/POST_RELEASE_AUDIT_0.10.0.md).
+The supported user-strategy runtime and its current verification matrix are recorded in the
+[`v0.11.0` release audit](../../reports/RELEASE_AUDIT_0.11.0.md).
 
 Trading roadmap gate evidence is tracked separately:
 
@@ -57,6 +59,7 @@ Trading roadmap gate evidence is tracked separately:
 - [`v0.9.1` post-release verification](../../reports/POST_RELEASE_AUDIT_0.9.1.md)
 - [`v0.10.0` supervised workflow release audit](../../reports/RELEASE_AUDIT_0.10.0.md)
 - [`v0.10.0` post-release verification](../../reports/POST_RELEASE_AUDIT_0.10.0.md)
+- [`v0.11.0` usable strategy runtime release audit](../../reports/RELEASE_AUDIT_0.11.0.md)
 - [Repository hardening audit](../../reports/REPOSITORY_HARDENING_AUDIT_2026-07-10.md)
 - [Supervised workflow and model-routing plan](SUPERVISED_WORKFLOW_EXECUTION_PLAN.md)
 - [Supervised workflow implementation audit](../../reports/SUPERVISED_WORKFLOW_AUDIT_2026-07-11.md)
@@ -81,15 +84,15 @@ the-pass receipts verify --ledger /tmp/the-pass-ledger.jsonl
 Codex plugin developers should also run the bundled `plugin-creator/scripts/validate_plugin.py`
 validator against the repo root from their local Codex install.
 
-Historical cross-version matrices remain in their versioned release audits. The current source
-matrix, including 197 tests on Python 3.9 and 3.12, clean wheel validation, dependency audit, and
-explicit public adapter smoke, is recorded in the
-[repository hardening audit](../../reports/REPOSITORY_HARDENING_AUDIT_2026-07-10.md). Published
-`v0.10.0` asset and clean-install evidence is recorded in its post-release audit.
+Historical cross-version matrices remain in their versioned release audits. The current local
+source matrix includes 215 tests, clean wheel installation, both plugin validations, the public
+repository validator, and an explicit read-only public diagnostic pipeline. GitHub Python 3.9 and
+3.12 results are release gates and are recorded in the versioned release audit after publication.
 
 ## Safety Result
 
 - No live trading or real order placement path is present.
-- Public examples use synthetic or descriptor-only data.
+- Tracked examples use synthetic or descriptor-only data; public network payloads remain temporary
+  and only metadata fingerprints are retained.
 - Adapter descriptors can document market-specific requirements, but diagnostic adapters cannot promote to paper.
 - The release checklist has passed for the public repository state.

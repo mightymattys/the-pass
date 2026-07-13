@@ -1,6 +1,6 @@
 {
   "code_version": "the-pass-0.4.0-b2",
-  "command": "the-pass backtest baseline --strategy crypto_spot_time_series_momentum_v1",
+  "command": "the-pass backtest baseline --name crypto_spot_time_series_momentum_v1",
   "config_hash": "40bf9e5a4239a3a1a4e277f11d2fa589cc6755973cef350f3409eca98a06f0bb",
   "created_at": "2026-07-10T00:00:00Z",
   "data_manifest": "data_manifest.json",

@@ -1,6 +1,6 @@
 {
   "code_version": "the-pass-0.4.0-b2",
-  "command": "the-pass backtest baseline --strategy crypto_spot_buy_hold_benchmark_v1",
+  "command": "the-pass backtest baseline --name crypto_spot_buy_hold_benchmark_v1",
   "config_hash": "6398fbd4b18831accf795658a8632aebafbd48d2de191eb08d752b0b09bd79f5",
   "created_at": "2026-07-10T00:00:00Z",
   "data_manifest": "data_manifest.json",
