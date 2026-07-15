@@ -64,6 +64,7 @@ Trading roadmap gate evidence is tracked separately:
 - [`v0.11.0` usable strategy runtime release audit](../../reports/RELEASE_AUDIT_0.11.0.md)
 - [`v0.12.0` post-audit hardening plan](POST_AUDIT_HARDENING_PLAN.md)
 - [`v0.12.0` release audit](../../reports/RELEASE_AUDIT_0.12.0.md)
+- [`v0.12.0` post-release verification](../../reports/POST_RELEASE_AUDIT_0.12.0.md)
 - [Repository hardening audit](../../reports/REPOSITORY_HARDENING_AUDIT_2026-07-10.md)
 - [Supervised workflow and model-routing plan](SUPERVISED_WORKFLOW_EXECUTION_PLAN.md)
 - [Supervised workflow implementation audit](../../reports/SUPERVISED_WORKFLOW_AUDIT_2026-07-11.md)

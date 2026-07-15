@@ -1,6 +1,6 @@
 # Post-Audit Hardening Plan
 
-Status: implemented and locally verified
+Status: implemented, verified, merged, and released as `v0.12.0`
 Scope: workflow integrity, real-data reproducibility, reviewer authority
 Target release: `0.12.0`
 
@@ -215,3 +215,5 @@ Implemented on `codex/harden-workflow-reproduction-attestation` for release `0.1
 
 The release audit and exact command results are recorded in
 [`reports/RELEASE_AUDIT_0.12.0.md`](../../reports/RELEASE_AUDIT_0.12.0.md).
+Published asset verification is recorded in
+[`reports/POST_RELEASE_AUDIT_0.12.0.md`](../../reports/POST_RELEASE_AUDIT_0.12.0.md).
