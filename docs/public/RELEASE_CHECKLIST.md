@@ -2,8 +2,7 @@
 
 Use this before pushing or publishing The Pass.
 
-Status: `v0.13.0` release candidate locally verified on 2026-07-15; publication evidence is added
-only after pull-request CI, merge, tag workflow, and downloaded-asset verification pass.
+Status: `v0.13.0` published and reverified from freshly downloaded release assets on 2026-07-15.
 
 ## Repository Safety
 
@@ -59,8 +58,8 @@ only after pull-request CI, merge, tag workflow, and downloaded-asset verificati
       CI contexts pass on the final audit commit.
 - [x] The audited release commit is tagged `v0.10.0` and the release workflow publishes matching
       assets and checksums.
-- [ ] The audited `v0.13.0` commit is merged, tagged, published, and reverified from downloaded
-      assets. This item is checked only in the post-release evidence commit.
+- [x] The audited `v0.13.0` commit is merged, tagged, published, and reverified from downloaded
+      assets.
 
 Release evidence:
 
@@ -70,6 +69,11 @@ Release evidence:
 - `https://github.com/mightymattys/the-pass/pull/15`
 - `https://github.com/mightymattys/the-pass/pull/23`
 - `https://github.com/mightymattys/the-pass/actions/runs/29408107493`
+- `https://github.com/mightymattys/the-pass/actions/runs/29408241767`
+- `https://github.com/mightymattys/the-pass/actions/runs/29408348106`
+- `https://github.com/mightymattys/the-pass/actions/runs/29408453692`
+- `https://github.com/mightymattys/the-pass/releases/tag/v0.13.0`
+- `reports/POST_RELEASE_AUDIT_0.13.0.md`
 - `https://github.com/mightymattys/the-pass/actions/runs/29206594772`
 - `https://github.com/mightymattys/the-pass/actions/runs/29206779773`
 - `https://github.com/mightymattys/the-pass/releases/tag/v0.10.0`
