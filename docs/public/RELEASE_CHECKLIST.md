@@ -2,7 +2,8 @@
 
 Use this before pushing or publishing The Pass.
 
-Status: `v0.10.0` published and reverified from freshly downloaded release assets on 2026-07-12.
+Status: `v0.13.0` release candidate locally verified on 2026-07-15; publication evidence is added
+only after pull-request CI, merge, tag workflow, and downloaded-asset verification pass.
 
 ## Repository Safety
 
@@ -26,6 +27,10 @@ Status: `v0.10.0` published and reverified from freshly downloaded release asset
 
 - [x] Templates and versioned schemas exist for all registered research, core, adapter,
   gate-decision, and slash-workflow artifacts.
+- [x] Dataset receipt v2 binds every committed chunk artifact and resume revalidates the bundle.
+- [x] Reviewer attestation v2 verifies from public Ed25519 evidence without a signing secret.
+- [x] Auto-agent stages use transactional worktrees and reject source symlinks before execution.
+- [x] Trusted-local and hardened strategy runtime evidence states its actual isolation boundary.
 - [x] Artifact lifecycle is documented.
 - [x] Public examples are synthetic or public-safe.
 - [x] Synthetic golden path package is present and stays blocked from paper promotion.
@@ -51,6 +56,8 @@ Status: `v0.10.0` published and reverified from freshly downloaded release asset
       merged only after both required CI contexts and the full local release matrix passed.
 - [x] The audited release commit is tagged `v0.10.0` and the release workflow publishes matching
       assets and checksums.
+- [ ] The audited `v0.13.0` commit is merged, tagged, published, and reverified from downloaded
+      assets. This item is checked only in the post-release evidence commit.
 
 Release evidence:
 
@@ -80,7 +87,7 @@ python3 -m unittest discover -s tests
 the-pass validate-package examples/synthetic-breakout/package
 the-pass validate-package examples/synthetic-random-baseline/package
 the-pass validate examples/adapters/crypto-binance-spot-klines.yaml --type adapter
-the-pass receipts add examples/synthetic-breakout/package --ledger /tmp/the-pass-ledger.jsonl
-the-pass receipts add examples/synthetic-random-baseline/package --ledger /tmp/the-pass-ledger.jsonl
-the-pass receipts verify --ledger /tmp/the-pass-ledger.jsonl
+the-pass receipts --ledger /tmp/the-pass-ledger.jsonl add examples/synthetic-breakout/package
+the-pass receipts --ledger /tmp/the-pass-ledger.jsonl add examples/synthetic-random-baseline/package
+the-pass receipts --ledger /tmp/the-pass-ledger.jsonl verify
 ```

@@ -169,6 +169,40 @@ class DatasetBuildTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "receipt fingerprint"):
                 build_dataset(ChunkAdapter(), plan(), output, clock_ns=lambda: 10_000)
 
+    def test_every_committed_chunk_artifact_is_revalidated(self) -> None:
+        mutations = {
+            "request.json": b'{"changed":true}\n',
+            "raw/response.json": b'{"changed":true}\n',
+            "canonical-events.jsonl": b'{}\n',
+            "quality-report.json": b'{"changed":true}\n',
+            "data-manifest.json": b'{"changed":true}\n',
+            "ingest-receipt.json": b'{"changed":true}\n',
+            "COMMITTED": b"0" * 64 + b"\n",
+        }
+        for relative, payload in mutations.items():
+            with self.subTest(relative=relative), tempfile.TemporaryDirectory() as tmp:
+                output = Path(tmp) / "dataset"
+                build_dataset(ChunkAdapter(), plan(), output, clock_ns=lambda: 10_000)
+                chunk_artifact = output / "chunks" / "chunk-000000" / relative
+                chunk_artifact.write_bytes(payload)
+                with self.assertRaises(ValueError):
+                    build_dataset(ChunkAdapter(), plan(), output, clock_ns=lambda: 10_000)
+
+    def test_dataset_receipt_binds_complete_chunk_bundle(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            output = Path(tmp) / "dataset"
+            result = build_dataset(
+                ChunkAdapter(), plan(), output, clock_ns=lambda: 10_000
+            )
+            receipt = json.loads(result.receipt_path.read_text(encoding="utf-8"))
+            self.assertEqual(receipt["schema_version"], 2)
+            self.assertTrue(
+                all(len(row["bundle_fingerprint"]) == 64 for row in receipt["chunks"])
+            )
+            self.assertTrue(
+                validate_artifact(result.receipt_path, artifact_type="dataset_receipt").ok
+            )
+
     def test_conflicting_duplicate_blocks_publication(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             output = Path(tmp) / "dataset"

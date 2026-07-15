@@ -5,6 +5,35 @@ and the Keep a Changelog structure.
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-07-15
+
+### Added
+
+- Added full committed-ingest bundle validation and dataset-receipt v2 chunk fingerprints covering
+  requests, raw responses, canonical events, quality, manifests, receipts, and commit markers.
+- Added explicit `trusted_local` and `hardened` strategy runtime modes, fingerprinted external
+  sandbox-launcher evidence, and reproduction-spec v2 isolation metadata.
+- Added Ed25519 reviewer keys, public reviewer-key registries, reviewer-attestation v2, and
+  secret-free historical gate and ledger verification.
+
+### Changed
+
+- Automated workflow stages now execute in a detached worktree and apply only a validated,
+  scope-limited patch after confirming the caller snapshot is unchanged.
+- Automated independent review stops at a signed-evidence waiting checkpoint instead of minting
+  approval from a supervisor-wide shared secret.
+- Public documentation now distinguishes trusted code containment, OS-enforced isolation,
+  cryptographic integrity, and organizational reviewer identity.
+
+### Fixed
+
+- Dataset resume no longer trusts changed raw, request, or auxiliary chunk evidence that happens to
+  preserve the canonical-event fingerprint.
+- Failed or malformed auto-agent cycles can no longer leave workspace mutations behind before state
+  validation.
+- Reviewer evidence remains verifiable after signing-key removal or rotation; legacy HMAC evidence
+  remains readable but cannot authorize a new gate pass.
+
 ## [0.12.0] - 2026-07-15
 
 ### Added
@@ -199,7 +228,8 @@ and the Keep a Changelog structure.
 
 - Initial public plugin, slash skills, artifact schemas, validators, and synthetic examples.
 
-[Unreleased]: https://github.com/mightymattys/the-pass/compare/v0.12.0...HEAD
+[Unreleased]: https://github.com/mightymattys/the-pass/compare/v0.13.0...HEAD
+[0.13.0]: https://github.com/mightymattys/the-pass/compare/v0.12.0...v0.13.0
 [0.12.0]: https://github.com/mightymattys/the-pass/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/mightymattys/the-pass/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/mightymattys/the-pass/compare/v0.9.1...v0.10.0

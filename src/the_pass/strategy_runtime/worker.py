@@ -124,7 +124,7 @@ def execute_request(request: Mapping[str, Any]) -> Dict[str, Any]:
         "execution": execution.as_dict(),
         "process_isolated": True,
         "credentials_present": any(is_sensitive_key(name) for name in os.environ),
-        "network_or_order_modules_loaded": False,
+        "network_or_order_modules_loaded": bool(loaded_after),
         "events_processed": result.events_processed,
         "signals": result.signals,
         "intents": _serialize_rows(result.intents),

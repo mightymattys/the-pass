@@ -13,7 +13,7 @@ from typing import Any, Callable, Iterator, Mapping
 from the_pass.adapters.base import FetchRequest, ReadOnlyAdapter
 
 from .contracts import CanonicalEvent, canonical_json_bytes, stable_fingerprint
-from .ingest import OfflineIngestService
+from .ingest import OfflineIngestService, validate_ingest_bundle
 from .quality import QualityPolicy, build_quality_report
 
 
@@ -271,29 +271,17 @@ def _write_atomic(path: Path, value: Any) -> None:
         raise
 
 
-def _load_chunk(chunk_dir: Path, expected_request: Mapping[str, Any]) -> tuple[list[CanonicalEvent], dict[str, Any]]:
-    request_path = chunk_dir / "request.json"
-    receipt_path = chunk_dir / "ingest-receipt.json"
-    events_path = chunk_dir / "canonical-events.jsonl"
-    committed_path = chunk_dir / "COMMITTED"
-    if not all(path.is_file() for path in (request_path, receipt_path, events_path, committed_path)):
-        raise ValueError(f"dataset chunk is incomplete: {chunk_dir.name}")
-    if _read_json(request_path) != expected_request:
-        raise ValueError(f"dataset chunk request changed: {chunk_dir.name}")
-    receipt = _read_json(receipt_path)
-    receipt_core = {key: value for key, value in receipt.items() if key != "receipt_fingerprint"}
-    if receipt.get("receipt_fingerprint") != stable_fingerprint(receipt_core):
-        raise ValueError(f"dataset chunk receipt fingerprint is invalid: {chunk_dir.name}")
-    if committed_path.read_text(encoding="ascii").strip() != receipt.get("receipt_fingerprint"):
-        raise ValueError(f"dataset chunk commit fingerprint is invalid: {chunk_dir.name}")
-    events = [
-        CanonicalEvent.from_dict(json.loads(line))
-        for line in events_path.read_text(encoding="utf-8").splitlines()
-        if line.strip()
-    ]
-    if stable_fingerprint([event.as_dict() for event in events]) != receipt.get("canonical_fingerprint"):
-        raise ValueError(f"dataset chunk canonical fingerprint is invalid: {chunk_dir.name}")
-    return events, receipt
+def _load_chunk(
+    chunk_dir: Path, expected_request: Mapping[str, Any]
+) -> tuple[list[CanonicalEvent], dict[str, Any], str]:
+    try:
+        bundle = validate_ingest_bundle(
+            chunk_dir,
+            expected_request=expected_request,
+        )
+    except ValueError as exc:
+        raise ValueError(f"dataset chunk {chunk_dir.name} is invalid: {exc}") from exc
+    return list(bundle.events), dict(bundle.receipt), bundle.bundle_fingerprint
 
 
 def _read_canonical_events(path: Path) -> list[CanonicalEvent]:
@@ -351,10 +339,13 @@ def _validate_committed_dataset(
     chunk_rows = receipt.get("chunks")
     if not isinstance(chunk_rows, list) or len(chunk_rows) != len(plan["requests"]):
         raise ValueError("committed dataset chunk receipt count does not match")
+    receipt_version = receipt.get("schema_version")
+    if receipt_version not in {1, 2} or isinstance(receipt_version, bool):
+        raise ValueError("committed dataset receipt schema version is invalid")
     for descriptor, row in zip(plan["requests"], chunk_rows):
         if not isinstance(row, dict) or row.get("chunk_id") != descriptor["chunk_id"]:
             raise ValueError("committed dataset chunk order does not match")
-        _, chunk_receipt = _load_chunk(
+        _, chunk_receipt, bundle_fingerprint = _load_chunk(
             root / "chunks" / descriptor["chunk_id"], descriptor["request"]
         )
         expected = {
@@ -365,6 +356,8 @@ def _validate_committed_dataset(
             "event_count": chunk_receipt["event_count"],
             "cross_check": chunk_receipt["cross_check"],
         }
+        if receipt_version == 2:
+            expected["bundle_fingerprint"] = bundle_fingerprint
         if row != expected:
             raise ValueError("committed dataset chunk evidence does not match")
     return receipt, events
@@ -422,7 +415,9 @@ def _build_dataset_locked(
         chunk_dir = root / "chunks" / chunk_id
         request = request_from_document(descriptor["request"])
         if chunk_dir.exists():
-            events, receipt = _load_chunk(chunk_dir, descriptor["request"])
+            events, receipt, bundle_fingerprint = _load_chunk(
+                chunk_dir, descriptor["request"]
+            )
             resumed += 1
         else:
             result = service.ingest(
@@ -431,7 +426,9 @@ def _build_dataset_locked(
                 chunk_dir,
                 cross_check_reference=references.get(chunk_id),
             )
-            events, receipt = _load_chunk(chunk_dir, descriptor["request"])
+            events, receipt, bundle_fingerprint = _load_chunk(
+                chunk_dir, descriptor["request"]
+            )
             if result.canonical_fingerprint != receipt["canonical_fingerprint"]:
                 raise ValueError(f"dataset chunk result mismatch: {chunk_id}")
             fetched += 1
@@ -444,6 +441,7 @@ def _build_dataset_locked(
                 "canonical_fingerprint": receipt["canonical_fingerprint"],
                 "event_count": receipt["event_count"],
                 "cross_check": receipt["cross_check"],
+                "bundle_fingerprint": bundle_fingerprint,
             }
         )
 
@@ -506,7 +504,7 @@ def _build_dataset_locked(
     if cross_check_blocked:
         manifest["limitations"].append("required cross-source checks are incomplete")
     receipt_core = {
-        "schema_version": 1,
+        "schema_version": 2,
         "id": f"receipt-{plan['id']}",
         "created_at": plan["created_at"],
         "plan_fingerprint": plan["plan_fingerprint"],

@@ -256,7 +256,7 @@ def write_run_package(
         "created_at": created_at,
         "owner": str(spec.get("owner", "strategy_implementer")),
         "strategy_spec": "strategy_spec.json",
-        "code_version": "the-pass-0.12.0-runtime" if generic else "the-pass-0.4.0-b2",
+        "code_version": "the-pass-0.13.0-runtime" if generic else "the-pass-0.4.0-b2",
         "data_manifest": "data_manifest.json",
         "command": command or f"the-pass backtest baseline --name {result.strategy_id}",
         "config_hash": stable_fingerprint(runtime_evidence or search_space),
@@ -403,12 +403,21 @@ def write_run_package(
             "run_report.html",
             "reproduction_spec.json",
         ]
+        isolation = dict((runtime_evidence or {}).get("isolation", {}))
         reproduction_spec = {
-            "schema_version": 1,
+            "schema_version": 2,
             "id": f"{result.strategy_id}-reproduction",
             "created_at": created_at,
             "runner_id": "the_pass.backtest.run.v1",
-            "network_allowed": False,
+            "isolation": {
+                "mode": isolation.get("mode", "trusted_local"),
+                "network_enforcement": isolation.get("network_enforcement", "none"),
+                "filesystem_enforcement": isolation.get("filesystem_enforcement", "none"),
+                "resource_enforcement": isolation.get(
+                    "resource_enforcement", "process_timeout_and_output_limit"
+                ),
+                "launcher_sha256": isolation.get("launcher_sha256"),
+            },
             "inputs": {
                 "strategy_spec": "strategy_spec.json",
                 "data_manifest": "data_manifest.json",

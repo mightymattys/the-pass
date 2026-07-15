@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://the-pass.dev/schemas/reviewer_attestation.v2.schema.json",
+  "title": "ReviewerAttestation",
+  "type": "object",
+  "required": ["schema_version", "id", "created_at", "gate_id", "package_id", "reviewer", "principal", "separation", "evidence", "signature_algorithm", "signer", "signature"],
+  "properties": {
+    "schema_version": { "const": 2 },
+    "id": { "type": "string", "minLength": 1 },
+    "created_at": { "type": "string", "format": "date-time" },
+    "gate_id": { "enum": ["research_gate", "paper_gate", "risk_review"] },
+    "package_id": { "type": "string", "pattern": "^pkg_[a-f0-9]{24}$" },
+    "reviewer": { "type": "string", "minLength": 1 },
+    "principal": {
+      "type": "object",
+      "required": ["type", "provider", "model", "run_id"],
+      "properties": {
+        "type": { "enum": ["provider", "human"] },
+        "provider": { "type": "string", "minLength": 1 },
+        "model": { "type": "string", "minLength": 1 },
+        "run_id": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+    "separation": {
+      "type": "object",
+      "required": ["author_provider", "reviewer_provider"],
+      "properties": {
+        "author_provider": { "type": "string", "minLength": 1 },
+        "reviewer_provider": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+    "evidence": {
+      "type": "object",
+      "required": ["state_before_sha256", "state_after_sha256", "stdout_sha256", "stderr_sha256", "task_sha256"],
+      "properties": {
+        "state_before_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "state_after_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "stdout_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "stderr_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "task_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+      },
+      "additionalProperties": false
+    },
+    "signature_algorithm": { "const": "ed25519" },
+    "signer": {
+      "type": "object",
+      "required": ["key_id", "public_key", "registry_id", "registry_fingerprint"],
+      "properties": {
+        "key_id": { "type": "string", "pattern": "^key_[a-f0-9]{16}$" },
+        "public_key": { "type": "string", "pattern": "^[A-Za-z0-9+/]{43}=$" },
+        "registry_id": { "type": "string", "minLength": 1 },
+        "registry_fingerprint": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+      },
+      "additionalProperties": false
+    },
+    "signature": { "type": "string", "pattern": "^[A-Za-z0-9+/]{86}==$" }
+  },
+  "additionalProperties": false
+}

@@ -1,8 +1,13 @@
-schema_version: 1
+schema_version: 2
 id: example-blocked-reproduction
 created_at: "2026-07-15T00:00:00Z"
 runner_id: the_pass.backtest.run.v1
-network_allowed: false
+isolation:
+  mode: trusted_local
+  network_enforcement: none
+  filesystem_enforcement: none
+  resource_enforcement: process_timeout_and_output_limit
+  launcher_sha256: null
 inputs:
   strategy_spec: strategy_spec.json
   data_manifest: data_manifest.json

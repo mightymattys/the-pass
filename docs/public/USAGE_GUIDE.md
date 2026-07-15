@@ -97,12 +97,16 @@ For independent review, `--author-provider` identifies the provider that produce
 The route fails closed if no different provider is available. A custom trusted executable may be
 placed after `--driver` instead of `auto`; it receives documented `THE_PASS_WORKFLOW_*` and
 `THE_PASS_ROUTE_*` environment variables and must advance exactly one stage per invocation.
-The supervisor report is written beside the workflow state. Auto mode does not forward venue keys
-or direct API-key environment variables to provider processes; it uses the CLIs' local authenticated
-configuration. Promotion-capable review transitions also require
-`THE_PASS_REVIEW_ATTESTATION_KEY` in the parent supervisor environment. The supervisor signs the
-review provenance and removes that key from the child environment before invoking Codex, Claude,
-or a custom driver.
+The supervisor report is written beside the workflow state. Auto mode does not forward venue keys,
+direct API-key environment variables, or reviewer signing keys to provider processes; it uses the
+CLIs' local authenticated configuration. Automated stages run in a detached worktree and the parent
+applies only the validated evidence patch. A custom driver is trusted and runs directly against the
+caller workspace.
+
+An automated independent review does not sign its own result. It stops at `waiting` with completed
+review evidence. A designated reviewer must then create the Ed25519 attestation described below.
+After signing, resume the workflow from that checkpoint so the deterministic gate stage can verify
+the public evidence and continue.
 
 ## 4. Use Focused Skills When Needed
 
@@ -150,12 +154,24 @@ the-pass receipts --ledger .the-pass/receipts.jsonl --format json add \
 the-pass receipts --ledger .the-pass/receipts.jsonl --format json verify
 ```
 
-Only an independent review should evaluate a gate. `workflow execute --driver auto` creates the
-attestation automatically. For a manual or externally orchestrated review, keep a 32-byte-or-longer
-key in a local secret manager and attest the completed review evidence before evaluation:
+Only an independent review should evaluate a gate. Generate each reviewer key once, distribute the
+public registry through a reviewed channel, and keep the private key outside the repository. The
+command writes a raw Ed25519 private key with mode `0600` and a non-secret public registry:
 
 ```bash
-export THE_PASS_REVIEW_ATTESTATION_KEY="$(openssl rand -hex 32)"
+the-pass gate keygen \
+  --registry-id trading-reviewers-v1 \
+  --reviewer independent-reviewer \
+  --principal-type human \
+  --provider human \
+  --created-at 2026-07-15T00:00:00Z \
+  --valid-from 2026-07-15T00:00:00Z \
+  --valid-until 2027-07-15T00:00:00Z \
+  --private-key-output "$HOME/.config/the-pass/independent-reviewer.key" \
+  --registry-output reviewer-keys.json \
+  --format json
+
+export THE_PASS_REVIEW_SIGNING_KEY="$(cat "$HOME/.config/the-pass/independent-reviewer.key")"
 
 the-pass gate attest experiments/runs/<strategy>/<run>/package \
   --gate research_gate \
@@ -169,8 +185,12 @@ the-pass gate attest experiments/runs/<strategy>/<run>/package \
   --state-before .the-pass/runs/<run-id>/state-before.yaml \
   --state-after .the-pass/runs/<run-id>/state-after.yaml \
   --task-evidence experiments/runs/<strategy>/<run>/package/findings.json \
+  --key-registry reviewer-keys.json \
+  --created-at 2026-07-15T00:00:00Z \
   --output experiments/runs/<strategy>/<run>/package/reviewer_attestation.research_gate.json \
   --format json
+
+unset THE_PASS_REVIEW_SIGNING_KEY
 
 the-pass gate evaluate experiments/runs/<strategy>/<run>/package \
   --gate research_gate \
@@ -185,8 +205,10 @@ the-pass receipts --ledger .the-pass/receipts.jsonl --format json add-decision \
 
 A run receipt proves that a run happened. It never proves that a gate passed. A gate pass requires
 a valid reviewer attestation and the separate decision for the exact package ID, package path,
-reviewer, policy hash, and evidence fingerprints. An HMAC attestation proves integrity and control
-of the configured local key; it does not replace organizational identity management.
+reviewer, policy hash, and evidence fingerprints. Gate evaluation copies the public registry
+snapshot into the package, and ledger replay needs no private key or secret environment variable.
+The registry establishes a cryptographic key binding, not organizational identity by itself;
+approve and distribute registries through your own identity and access process.
 
 ## 6. Run Your Own Strategy
 
@@ -196,8 +218,20 @@ The supported runtime accepts a trusted local Python file. The file exposes a fa
 rejects path traversal, symlink escape, credential-like config, network/order imports, malformed
 intents, input mutation, same-event fills, timeouts, and oversized output.
 
-The subprocess boundary contains failures and strips credentials, but it is not an OS sandbox.
-Only run local strategy code you trust.
+The default `trusted_local` mode contains failures and strips credentials, but it has no OS-enforced
+network or filesystem denial. Only run code you trust. `hardened` mode is available only when an
+operator supplies an executable sandbox launcher that enforces the request contract and writes the
+matching launcher attestation:
+
+```bash
+the-pass backtest run ... \
+  --runtime-mode hardened \
+  --sandbox-launcher /absolute/path/to/audited-sandbox-launcher
+```
+
+The Pass fingerprints the launcher and verifies its attestation. It does not ship a portable
+privileged sandbox because enforcement differs by operating system. Missing or mismatched launcher
+evidence fails closed; `trusted_local` evidence is always diagnostic and non-promotional.
 
 Start with the complete offline example:
 
@@ -218,6 +252,7 @@ the-pass backtest run \
   --quality-report "$WORK/data/quality-report.json" \
   --execution examples/custom-strategy/execution.json \
   --workspace-root examples/custom-strategy \
+  --runtime-mode trusted_local \
   --output "$WORK/package" --format json
 
 the-pass audit reproduce "$WORK/package" \
@@ -228,8 +263,8 @@ The command runs two fresh workers. Any semantic difference blocks package creat
 diagnostic command still writes `verdict: blocked`; only a separate independent gate decision may
 promote the exact package. `audit reproduce` verifies every bundled input, copies only declared
 strategy files into a clean temporary workspace, invokes the fixed internal runner without a shell,
-and compares the rebuilt artifacts. The strategy runtime contains failures and blocks direct
-network/order imports, but it is not an OS sandbox; only test trusted local strategy code.
+and compares the rebuilt artifacts. Its reproduction specification records the exact runtime mode
+and isolation evidence instead of inferring sandboxing from an import filter.
 
 For preregistered parameter work, provide JSON arrays of variants and non-overlapping event-index
 splits to `the-pass robustness sweep`. Every cell is executed and failed variants remain in the

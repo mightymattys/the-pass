@@ -11,7 +11,7 @@ model call, and `the-pass agents inspect` never executes a provider.
 Install the pinned repository marketplace and plugin:
 
 ```bash
-codex plugin marketplace add mightymattys/the-pass --ref v0.12.0
+codex plugin marketplace add mightymattys/the-pass --ref v0.13.0
 codex plugin add the-pass@the-pass-tools
 ```
 
@@ -114,8 +114,18 @@ the-pass workflow execute --state <state> --author-provider codex \
 
 The auto driver gives the selected CLI workspace tools for exactly one stage, so it is distinct
 from the narrower cross-provider broker below. It is explicitly enabled, may incur provider cost,
-and is supervised through durable state and gate verification. The broker remains preferable for
-one isolated read-only review or unapplied worktree patch.
+and is supervised through durable state and gate verification. Agent stages execute in a detached
+worktree copied from the exact caller snapshot. The parent validates the transition and
+declared evidence scope before applying the patch atomically; failures leave caller state and files
+unchanged. Local virtual environments, caches, and build outputs are excluded, and any other source
+symlink blocks before agent execution. A custom driver is a trusted direct-workspace integration and does not receive this
+isolation claim. The broker remains preferable for one isolated read-only review or unapplied
+worktree patch.
+
+Automated independent review may produce review evidence, but it cannot mint reviewer authority.
+The workflow stops at `waiting` until a designated reviewer creates an Ed25519 attestation with
+`the-pass gate attest`. The subsequent deterministic stage verifies the package-local public key
+registry and can then evaluate the gate without access to the private signing key.
 
 Explicit execution:
 

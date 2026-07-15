@@ -99,8 +99,9 @@ The additive execution commands are:
 the-pass data ingest --provider futures|binance|polymarket
 the-pass data plan --provider futures|binance|polymarket ...
 the-pass data build --plan <dataset-plan> --output <dataset>
-the-pass backtest run --descriptor <json> --strategy-spec <artifact> ...
-the-pass audit reproduce <package> --output <report>
+the-pass backtest run --descriptor <json> --strategy-spec <artifact> ... \
+  [--runtime-mode trusted_local|hardened] [--sandbox-launcher <executable>]
+the-pass audit reproduce <package> --output <report> [--sandbox-launcher <executable>]
 the-pass robustness sweep --descriptor <json> --variants <json> --splits <json> ...
 the-pass paper observe --descriptor <json> --batch-id <id> ...
 ```
@@ -113,6 +114,13 @@ executes two fresh credential-free workers and packages only identical
 results. Exit `0` means the diagnostic operation completed, not that its blocked verdict passed a
 gate.
 
+`trusted_local` is the portable default. It reports process separation, credential stripping, and
+import filtering, while explicitly reporting no OS network/filesystem enforcement and no runtime
+promotion eligibility. `hardened` requires an explicit executable launcher. The launcher receives
+one JSON request, must enforce no network, read-only strategy inputs, temporary-output-only writes,
+and OS resource limits, and must emit an exact attestation. The launcher and attestation are
+fingerprinted; missing or mismatched evidence fails closed.
+
 `data plan` freezes a contiguous, non-overlapping chunk set. `data build` serializes builders for
 one output, resumes only valid committed chunks, rejects conflicting duplicate events, and fully
 revalidates an existing committed aggregate before returning it. `audit reproduce` accepts only a
@@ -124,10 +132,13 @@ relative paths. It executes without a shell and returns `2` when rebuilt evidenc
 New `research_gate`, `paper_gate`, and `risk_review` passes require
 `reviewer_attestation.<gate>.json`. `the-pass gate attest` signs the exact package, gate, reviewer,
 provider/model/run provenance, author/reviewer separation, and review evidence hashes using
-HMAC-SHA256. The key is read from `THE_PASS_REVIEW_ATTESTATION_KEY`, must contain at least 32 bytes,
-and is never serialized. Automated review requires a reviewer provider different from the author
-provider. Missing, mismatched, or unverifiable attestations produce a valid blocked gate result;
-`live_gate` remains forbidden. Historical ledger rows remain readable.
+Ed25519. `the-pass gate keygen` writes a create-only mode-`0600` private key and a public
+`reviewer_key_registry`. Signing reads the base64 raw private key from
+`THE_PASS_REVIEW_SIGNING_KEY`; verification uses only the package-local public registry snapshot.
+Automated review requires a reviewer provider different from the author provider and stops at
+`waiting` until an external reviewer signs. Missing, mismatched, expired, revoked, or unverifiable
+attestations produce a valid blocked gate result. Legacy HMAC attestations remain readable but can
+never authorize a new pass; `live_gate` remains forbidden.
 
 `robustness sweep` create-only writes `<output-stem>.registration.json` with all variants and
 non-overlapping splits before its first worker call. Every cell is retained, including failures.

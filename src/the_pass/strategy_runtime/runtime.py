@@ -6,6 +6,7 @@ import hashlib
 import json
 import os
 import signal
+import stat
 import subprocess
 import sys
 import tempfile
@@ -32,6 +33,12 @@ from .paths import PathLike
 
 WORKER_ENV_ALLOWLIST = {"LANG", "LC_ALL", "PATH", "TMPDIR"}
 DEFAULT_OUTPUT_LIMIT_BYTES = 5_000_000
+RUNTIME_MODES = {"trusted_local", "hardened"}
+HARDENED_REQUIREMENTS = {
+    "network_enforcement": "denied",
+    "filesystem_enforcement": "read_only_inputs_temp_output_only",
+    "resource_enforcement": "os_enforced",
+}
 
 
 class StrategyRuntimeError(RuntimeError):
@@ -69,6 +76,45 @@ def _worker_environment() -> Dict[str, str]:
     return environment
 
 
+def _file_sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _sandbox_launcher(path: Path | None) -> Path:
+    if path is None:
+        raise StrategyRuntimeError("hardened runtime requires an explicit sandbox launcher")
+    launcher = path.expanduser().resolve(strict=True)
+    mode = launcher.stat().st_mode
+    if not stat.S_ISREG(mode) or launcher.is_symlink() or not os.access(launcher, os.X_OK):
+        raise StrategyRuntimeError("sandbox launcher must be a regular executable file")
+    return launcher
+
+
+def _hardened_attestation(
+    path: Path,
+    *,
+    launcher_sha256: str,
+    request_fingerprint: str,
+) -> Dict[str, Any]:
+    try:
+        document = load_json_object(path, label="sandbox attestation")
+    except ValueError as exc:
+        raise StrategyRuntimeError("hardened sandbox attestation is missing or invalid") from exc
+    expected = {
+        "schema_version": 1,
+        "launcher_sha256": launcher_sha256,
+        "request_fingerprint": request_fingerprint,
+        **HARDENED_REQUIREMENTS,
+    }
+    if document != expected:
+        raise StrategyRuntimeError("hardened sandbox attestation does not match the request")
+    return document
+
+
 def _failure_metadata(stderr_path: Path, stdout_path: Path, *, timed_out: bool) -> Dict[str, Any]:
     stderr = stderr_path.read_bytes() if stderr_path.is_file() else b""
     stdout = stdout_path.read_bytes() if stdout_path.is_file() else b""
@@ -98,6 +144,8 @@ def run_strategy(
     timeout_seconds: float = 60.0,
     output_limit_bytes: int = DEFAULT_OUTPUT_LIMIT_BYTES,
     risk_policy: Mapping[str, Any] | None = None,
+    runtime_mode: str = "trusted_local",
+    sandbox_launcher: Path | None = None,
 ) -> Dict[str, Any]:
     """Run a ``CanonicalEvent`` sequence in a credential-free child process."""
 
@@ -109,6 +157,11 @@ def run_strategy(
         or output_limit_bytes <= 0
     ):
         raise ValueError("output_limit_bytes must be a positive integer")
+    if runtime_mode not in RUNTIME_MODES:
+        raise ValueError("runtime_mode must be trusted_local or hardened")
+    launcher = _sandbox_launcher(sandbox_launcher) if runtime_mode == "hardened" else None
+    if runtime_mode == "trusted_local" and sandbox_launcher is not None:
+        raise ValueError("sandbox_launcher is valid only for hardened runtime mode")
 
     root = Path(workspace_root).expanduser().resolve(strict=True)
     parsed_descriptor = _descriptor(descriptor, root)
@@ -135,20 +188,49 @@ def run_strategy(
         output_path = temp_root / "result.json"
         stdout_path = temp_root / "stdout.log"
         stderr_path = temp_root / "stderr.log"
+        sandbox_request_path = temp_root / "sandbox-request.json"
+        sandbox_attestation_path = temp_root / "sandbox-attestation.json"
         request_path.write_text(
             json.dumps(request, ensure_ascii=True, separators=(",", ":"), sort_keys=True),
             encoding="utf-8",
         )
+        worker_argv = [
+            sys.executable,
+            "-m",
+            "the_pass.strategy_runtime.worker",
+            str(request_path),
+            str(output_path),
+            str(output_limit_bytes),
+        ]
+        launcher_sha256 = _file_sha256(launcher) if launcher is not None else None
+        sandbox_request_fingerprint = None
+        process_argv = worker_argv
+        if launcher is not None:
+            sandbox_request_fingerprint = stable_fingerprint(
+                {
+                    "strategy_request": request,
+                    "output_limit_bytes": output_limit_bytes,
+                    "launcher_sha256": launcher_sha256,
+                    "requirements": HARDENED_REQUIREMENTS,
+                }
+            )
+            sandbox_request = {
+                "schema_version": 1,
+                "worker_argv": worker_argv,
+                "working_directory": str(temp_root),
+                "attestation_path": str(sandbox_attestation_path),
+                "launcher_sha256": launcher_sha256,
+                "request_fingerprint": sandbox_request_fingerprint,
+                "requirements": HARDENED_REQUIREMENTS,
+            }
+            sandbox_request_path.write_text(
+                json.dumps(sandbox_request, ensure_ascii=True, separators=(",", ":"), sort_keys=True),
+                encoding="utf-8",
+            )
+            process_argv = [str(launcher), str(sandbox_request_path)]
         with stdout_path.open("wb") as stdout, stderr_path.open("wb") as stderr:
             process = subprocess.Popen(
-                [
-                    sys.executable,
-                    "-m",
-                    "the_pass.strategy_runtime.worker",
-                    str(request_path),
-                    str(output_path),
-                    str(output_limit_bytes),
-                ],
+                process_argv,
                 cwd=temp_root,
                 stdin=subprocess.DEVNULL,
                 stdout=stdout,
@@ -174,6 +256,15 @@ def run_strategy(
         except ValueError as exc:
             raise StrategyRuntimeError("strategy worker returned malformed JSON", metadata=metadata) from exc
 
+        if runtime_mode == "hardened":
+            sandbox_attestation = _hardened_attestation(
+                sandbox_attestation_path,
+                launcher_sha256=str(launcher_sha256),
+                request_fingerprint=str(sandbox_request_fingerprint),
+            )
+        else:
+            sandbox_attestation = None
+
     fingerprint = result.pop("result_fingerprint", None)
     if not isinstance(fingerprint, str) or stable_fingerprint(result) != fingerprint:
         raise StrategyRuntimeError("strategy worker result fingerprint is invalid")
@@ -189,6 +280,30 @@ def run_strategy(
         raise StrategyRuntimeError("strategy worker result does not match requested inputs")
     if result.get("credentials_present") or result.get("network_or_order_modules_loaded"):
         raise StrategyRuntimeError("strategy worker crossed its safety boundary")
+    isolation = {
+        "mode": runtime_mode,
+        "process_separation": True,
+        "credentials_stripped": True,
+        "import_filter": "known_module_denylist",
+        "network_enforcement": "none",
+        "filesystem_enforcement": "none",
+        "resource_enforcement": "process_timeout_and_output_limit",
+        "launcher_sha256": None,
+        "attestation_fingerprint": None,
+    }
+    if sandbox_attestation is not None:
+        isolation.update(
+            {
+                **HARDENED_REQUIREMENTS,
+                "launcher_sha256": launcher_sha256,
+                "attestation_fingerprint": stable_fingerprint(sandbox_attestation),
+            }
+        )
+    result["isolation"] = isolation
+    result["runtime_promotion_eligible"] = runtime_mode == "hardened"
+    result["result_fingerprint"] = stable_fingerprint(
+        {key: value for key, value in result.items() if key != "result_fingerprint"}
+    )
     return result
 
 
@@ -201,6 +316,8 @@ def run_strategy_verified(
     timeout_seconds: float = 60.0,
     output_limit_bytes: int = DEFAULT_OUTPUT_LIMIT_BYTES,
     risk_policy: Mapping[str, Any] | None = None,
+    runtime_mode: str = "trusted_local",
+    sandbox_launcher: Path | None = None,
 ) -> Dict[str, Any]:
     """Require two fresh workers to produce the same semantic result."""
 
@@ -213,6 +330,8 @@ def run_strategy_verified(
         timeout_seconds=timeout_seconds,
         output_limit_bytes=output_limit_bytes,
         risk_policy=risk_policy,
+        runtime_mode=runtime_mode,
+        sandbox_launcher=sandbox_launcher,
     )
     second = run_strategy(
         rows,
@@ -222,6 +341,8 @@ def run_strategy_verified(
         timeout_seconds=timeout_seconds,
         output_limit_bytes=output_limit_bytes,
         risk_policy=risk_policy,
+        runtime_mode=runtime_mode,
+        sandbox_launcher=sandbox_launcher,
     )
     if first != second:
         raise StrategyRuntimeError(

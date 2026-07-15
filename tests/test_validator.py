@@ -14,8 +14,11 @@ from unittest.mock import patch
 
 import the_pass.validator as validator_module
 from the_pass.attestation import (
-    ATTESTATION_KEY_ENV,
+    create_reviewer_key_registry,
     create_reviewer_attestation,
+    generate_reviewer_keypair,
+    registry_snapshot_path,
+    write_registry_snapshot,
     write_reviewer_attestation,
 )
 from the_pass.cli import main as cli_main
@@ -46,7 +49,7 @@ ADAPTER_EXAMPLES = (
     ROOT / "examples" / "adapters" / "generic-prediction-market.yaml",
 )
 SCHEMA_DIR = ROOT / "schemas"
-ATTESTATION_TEST_KEY = "validator-review-attestation-key-32-bytes"
+ATTESTATION_TEST_PRIVATE, ATTESTATION_TEST_PUBLIC = generate_reviewer_keypair()
 
 
 def add_reviewer_attestation(package: Path, gate: str, reviewer: str) -> None:
@@ -56,6 +59,16 @@ def add_reviewer_attestation(package: Path, gate: str, reviewer: str) -> None:
         package / "findings.json"
         if gate == "research_gate"
         else package / f"audit_report.{gate}.json"
+    )
+    registry = create_reviewer_key_registry(
+        registry_id=f"test-reviewers-{gate}",
+        reviewer=reviewer,
+        principal_type="provider",
+        provider="claude",
+        public_key=ATTESTATION_TEST_PUBLIC,
+        created_at="2026-07-15T00:00:00Z",
+        valid_from="2026-01-01T00:00:00Z",
+        valid_until="2036-01-01T00:00:00Z",
     )
     document = create_reviewer_attestation(
         gate=gate,
@@ -74,9 +87,11 @@ def add_reviewer_attestation(package: Path, gate: str, reviewer: str) -> None:
             "stderr_sha256": empty_hash,
             "task_sha256": hashlib.sha256(task_path.read_bytes()).hexdigest(),
         },
-        key=ATTESTATION_TEST_KEY,
+        private_key=ATTESTATION_TEST_PRIVATE,
+        registry=registry,
         created_at="2026-07-15T00:00:00Z",
     )
+    write_registry_snapshot(registry_snapshot_path(package, gate), registry)
     write_reviewer_attestation(
         package / f"reviewer_attestation.{gate}.json", document
     )
@@ -699,13 +714,6 @@ def add_paper_gate_artifacts(
 
 
 class ValidatorTests(unittest.TestCase):
-    def setUp(self) -> None:
-        self.attestation_environment = patch.dict(
-            os.environ, {ATTESTATION_KEY_ENV: ATTESTATION_TEST_KEY}
-        )
-        self.attestation_environment.start()
-        self.addCleanup(self.attestation_environment.stop)
-
     def test_concurrent_receipt_appends_preserve_hash_chain(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

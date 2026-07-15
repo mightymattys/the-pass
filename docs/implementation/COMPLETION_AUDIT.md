@@ -31,7 +31,10 @@ distribution evidence is recorded in the
 The supported user-strategy runtime and its current verification matrix are recorded in the
 [`v0.11.0` release audit](../../reports/RELEASE_AUDIT_0.11.0.md). Transactional workflow state,
 resumable datasets, clean generic reproduction, and signed reviewer provenance are recorded in the
-[`v0.12.0` release audit](../../reports/RELEASE_AUDIT_0.12.0.md).
+[`v0.12.0` release audit](../../reports/RELEASE_AUDIT_0.12.0.md). Complete dataset provenance,
+transactional agent worktrees, truthful runtime isolation, and publicly verifiable reviewer
+signatures are recorded in the [`v0.13.0` trust-boundary plan](TRUST_BOUNDARY_HARDENING_PLAN.md) and
+[`v0.13.0` release audit](../../reports/RELEASE_AUDIT_0.13.0.md).
 
 Trading roadmap gate evidence is tracked separately:
 
@@ -65,6 +68,8 @@ Trading roadmap gate evidence is tracked separately:
 - [`v0.12.0` post-audit hardening plan](POST_AUDIT_HARDENING_PLAN.md)
 - [`v0.12.0` release audit](../../reports/RELEASE_AUDIT_0.12.0.md)
 - [`v0.12.0` post-release verification](../../reports/POST_RELEASE_AUDIT_0.12.0.md)
+- [`v0.13.0` trust-boundary hardening plan](TRUST_BOUNDARY_HARDENING_PLAN.md)
+- [`v0.13.0` release audit](../../reports/RELEASE_AUDIT_0.13.0.md)
 - [Repository hardening audit](../../reports/REPOSITORY_HARDENING_AUDIT_2026-07-10.md)
 - [Supervised workflow and model-routing plan](SUPERVISED_WORKFLOW_EXECUTION_PLAN.md)
 - [Supervised workflow implementation audit](../../reports/SUPERVISED_WORKFLOW_AUDIT_2026-07-11.md)
@@ -81,16 +86,16 @@ the-pass validate examples/adapters/crypto-binance-spot-klines.yaml --type adapt
 the-pass validate examples/adapters/generic-futures-contract.yaml --type adapter
 the-pass validate examples/adapters/generic-prediction-market.yaml --type adapter
 the-pass validate examples/adapters/crypto-binance-spot-klines-source-note.json --type source_note
-the-pass receipts add examples/synthetic-breakout/package --ledger /tmp/the-pass-ledger.jsonl
-the-pass receipts add examples/synthetic-random-baseline/package --ledger /tmp/the-pass-ledger.jsonl
-the-pass receipts verify --ledger /tmp/the-pass-ledger.jsonl
+the-pass receipts --ledger /tmp/the-pass-ledger.jsonl add examples/synthetic-breakout/package
+the-pass receipts --ledger /tmp/the-pass-ledger.jsonl add examples/synthetic-random-baseline/package
+the-pass receipts --ledger /tmp/the-pass-ledger.jsonl verify
 ```
 
 Codex plugin developers should also run the bundled `plugin-creator/scripts/validate_plugin.py`
 validator against the repo root from their local Codex install.
 
 Historical cross-version matrices remain in their versioned release audits. The current local
-source matrix includes 231 tests, clean wheel installation, both plugin validations, the public
+source matrix includes 241 tests, clean wheel installation, both plugin validations, the public
 repository validator, and an explicit read-only public diagnostic pipeline. GitHub Python 3.9 and
 3.12 results are release gates and are recorded in the versioned release audit after publication.
 

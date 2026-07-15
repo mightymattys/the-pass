@@ -19,8 +19,13 @@ from .audit import ReproductionError, reproduce_package
 from .attestation import (
     ATTESTABLE_GATES,
     AttestationError,
+    create_reviewer_key_registry,
     create_reviewer_attestation,
+    generate_reviewer_keypair,
+    registry_snapshot_path,
     review_task_path,
+    write_private_signing_key,
+    write_registry_snapshot,
     write_reviewer_attestation,
 )
 from .agent_orchestration import (
@@ -439,6 +444,12 @@ def build_parser() -> argparse.ArgumentParser:
     backtest_run.add_argument("--output", type=Path, required=True)
     backtest_run.add_argument("--timeout-seconds", type=float, default=60.0)
     backtest_run.add_argument("--output-limit-bytes", type=int, default=5_000_000)
+    backtest_run.add_argument(
+        "--runtime-mode",
+        choices=("trusted_local", "hardened"),
+        default="trusted_local",
+    )
+    backtest_run.add_argument("--sandbox-launcher", type=Path)
     backtest_run.add_argument("--format", choices=("text", "json"), default="text")
 
     audit_parser = subparsers.add_parser(
@@ -451,6 +462,7 @@ def build_parser() -> argparse.ArgumentParser:
     audit_reproduce.add_argument("package", type=Path)
     audit_reproduce.add_argument("--output", type=Path, required=True)
     audit_reproduce.add_argument("--timeout-seconds", type=int, default=120)
+    audit_reproduce.add_argument("--sandbox-launcher", type=Path)
     audit_reproduce.add_argument("--format", choices=("text", "json"), default="text")
 
     robustness_parser = subparsers.add_parser(
@@ -771,6 +783,21 @@ def build_parser() -> argparse.ArgumentParser:
         "gate", help="Evaluate artifact-backed promotion gates."
     )
     gate_subparsers = gate_parser.add_subparsers(dest="gate_command", required=True)
+    gate_keygen = gate_subparsers.add_parser(
+        "keygen", help="Create an Ed25519 reviewer key and public identity registry."
+    )
+    gate_keygen.add_argument("--registry-id", required=True)
+    gate_keygen.add_argument("--reviewer", required=True)
+    gate_keygen.add_argument(
+        "--principal-type", choices=("provider", "human"), required=True
+    )
+    gate_keygen.add_argument("--provider", required=True)
+    gate_keygen.add_argument("--created-at", required=True)
+    gate_keygen.add_argument("--valid-from", required=True)
+    gate_keygen.add_argument("--valid-until", required=True)
+    gate_keygen.add_argument("--private-key-output", type=Path, required=True)
+    gate_keygen.add_argument("--registry-output", type=Path, required=True)
+    gate_keygen.add_argument("--format", choices=("text", "json"), default="text")
     gate_evaluate = gate_subparsers.add_parser(
         "evaluate", help="Evaluate a package and write a gate decision."
     )
@@ -820,6 +847,8 @@ def build_parser() -> argparse.ArgumentParser:
     gate_attest.add_argument("--task-evidence", type=Path, required=True)
     gate_attest.add_argument("--stdout-evidence", type=Path)
     gate_attest.add_argument("--stderr-evidence", type=Path)
+    gate_attest.add_argument("--key-registry", type=Path, required=True)
+    gate_attest.add_argument("--created-at")
     gate_attest.add_argument("--output", type=Path, required=True)
     gate_attest.add_argument(
         "--format", choices=("text", "json"), default="text", help="Output format."
@@ -1234,6 +1263,8 @@ def main(argv: list[str] | None = None) -> int:
                     workspace_root=args.workspace_root,
                     timeout_seconds=args.timeout_seconds,
                     output_limit_bytes=args.output_limit_bytes,
+                    runtime_mode=args.runtime_mode,
+                    sandbox_launcher=args.sandbox_launcher,
                 )
                 result = runner_result_from_document(worker_result)
                 evidence_fields = {
@@ -1250,6 +1281,8 @@ def main(argv: list[str] | None = None) -> int:
                     "process_isolated",
                     "credentials_present",
                     "network_or_order_modules_loaded",
+                    "isolation",
+                    "runtime_promotion_eligible",
                     "promotion_eligible",
                     "promotion_status",
                     "result_fingerprint",
@@ -1309,6 +1342,7 @@ def main(argv: list[str] | None = None) -> int:
             report = reproduce_package(
                 args.package,
                 timeout_seconds=args.timeout_seconds,
+                sandbox_launcher=args.sandbox_launcher,
             )
             write_json_atomic(args.output, report)
             passed = report["status"] == "pass"
@@ -1934,6 +1968,35 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "gate":
         try:
+            if args.gate_command == "keygen":
+                private_key, public_key = generate_reviewer_keypair()
+                registry = create_reviewer_key_registry(
+                    registry_id=args.registry_id,
+                    reviewer=args.reviewer,
+                    principal_type=args.principal_type,
+                    provider=args.provider,
+                    public_key=public_key,
+                    created_at=args.created_at,
+                    valid_from=args.valid_from,
+                    valid_until=args.valid_until,
+                )
+                write_private_signing_key(args.private_key_output, private_key)
+                try:
+                    write_registry_snapshot(args.registry_output, registry)
+                except Exception:
+                    args.private_key_output.unlink(missing_ok=True)
+                    raise
+                print_envelope(
+                    output_format=args.format,
+                    ok=True,
+                    status="complete",
+                    artifact_paths=[args.private_key_output, args.registry_output],
+                    details={
+                        "registry_id": registry["id"],
+                        "key_id": registry["keys"][0]["key_id"],
+                    },
+                )
+                return 0
             package_dir = args.package.resolve()
             output_path = args.output.resolve()
             if output_path.parent != package_dir:
@@ -1973,6 +2036,18 @@ def main(argv: list[str] | None = None) -> int:
                     else empty_hash,
                 }
                 package_id = build_run_entry(package_dir)["package_id"]
+                registry_validation = validate_artifact(
+                    args.key_registry, artifact_type="reviewer_key_registry"
+                )
+                if not registry_validation.ok:
+                    details = "; ".join(
+                        f"{issue.path}: {issue.message}"
+                        for issue in registry_validation.issues
+                    )
+                    raise AttestationError(f"invalid reviewer key registry: {details}")
+                registry = load_document(args.key_registry)
+                if not isinstance(registry, dict):
+                    raise AttestationError("reviewer key registry must be an object")
                 attestation = create_reviewer_attestation(
                     gate=args.gate,
                     package_id=package_id,
@@ -1984,13 +2059,17 @@ def main(argv: list[str] | None = None) -> int:
                     author_provider=args.author_provider,
                     reviewer_provider=args.reviewer_provider,
                     evidence=evidence,
+                    registry=registry,
+                    created_at=args.created_at,
                 )
+                snapshot = registry_snapshot_path(package_dir, args.gate)
+                write_registry_snapshot(snapshot, registry)
                 write_reviewer_attestation(output_path, attestation)
                 print_envelope(
                     output_format=args.format,
                     ok=True,
                     status="complete",
-                    artifact_paths=[output_path],
+                    artifact_paths=[snapshot, output_path],
                     details={"attestation": attestation},
                 )
                 return 0

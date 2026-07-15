@@ -1,5 +1,5 @@
 schema_version: 1
-interface_version: 0.12.0
+interface_version: 0.13.0
 public_skills:
   run: [complete, waiting, blocked, killed]
   research: [research_ready, rejected, blocked]
@@ -112,10 +112,10 @@ cli_contracts:
     outputs: [gate_decision]
     capability: exact_package_and_signed_independent_reviewer
   gate_attest:
-    argv: [gate, attest, package, --gate, research_gate, --reviewer, independent-reviewer, --principal-type, human, --provider, human, --model, manual-review, --run-id, review-1, --author-provider, codex, --reviewer-provider, human, --state-before, state-before.yaml, --state-after, state-after.yaml, --task-evidence, findings.json, --output, package/reviewer_attestation.research_gate.json, --format, json]
+    argv: [gate, attest, package, --gate, research_gate, --reviewer, independent-reviewer, --principal-type, human, --provider, human, --model, manual-review, --run-id, review-1, --author-provider, codex, --reviewer-provider, human, --state-before, state-before.yaml, --state-after, state-after.yaml, --task-evidence, findings.json, --key-registry, reviewer-keys.json, --created-at, "2026-07-15T00:00:00Z", --output, package/reviewer_attestation.research_gate.json, --format, json]
     accepted_exit_codes: [0, 1]
     outputs: [reviewer_attestation]
-    capability: attestation_key_and_completed_independent_review
+    capability: ed25519_signing_key_registry_and_completed_independent_review
   receipts_add:
     argv: [receipts, add, package, --ledger, ledger.jsonl]
     accepted_exit_codes: [0, 1]

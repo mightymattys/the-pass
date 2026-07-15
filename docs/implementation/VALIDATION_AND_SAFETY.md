@@ -162,9 +162,9 @@ the-pass validate examples/adapters/dummy-diagnostic.yaml --type adapter
 the-pass validate examples/adapters/crypto-binance-spot-klines.yaml --type adapter
 the-pass validate examples/adapters/generic-futures-contract.yaml --type adapter
 the-pass validate examples/adapters/generic-prediction-market.yaml --type adapter
-the-pass receipts add examples/synthetic-breakout/package --ledger /tmp/the-pass-ledger.jsonl
-the-pass receipts add examples/synthetic-random-baseline/package --ledger /tmp/the-pass-ledger.jsonl
-the-pass receipts verify --ledger /tmp/the-pass-ledger.jsonl
+the-pass receipts --ledger /tmp/the-pass-ledger.jsonl add examples/synthetic-breakout/package
+the-pass receipts --ledger /tmp/the-pass-ledger.jsonl add examples/synthetic-random-baseline/package
+the-pass receipts --ledger /tmp/the-pass-ledger.jsonl verify
 ```
 
 Codex plugin developers should also run the bundled plugin validator from their local Codex

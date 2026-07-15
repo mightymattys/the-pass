@@ -16,6 +16,7 @@ import yaml
 from .attestation import (
     AttestationError,
     attestation_path,
+    registry_snapshot_path,
     review_task_path,
     verify_reviewer_attestation,
 )
@@ -233,10 +234,10 @@ def gate_attestation_artifact(
     gate: str,
     reviewer: str,
     package_id: str,
-) -> tuple[Path | None, list[str]]:
+) -> tuple[list[Path], list[str]]:
     path = attestation_path(package_dir, gate)
     if not path.is_file():
-        return None, [f"missing reviewer_attestation.{gate} artifact"]
+        return [], [f"missing reviewer_attestation.{gate} artifact"]
     document, blockers = verify_reviewer_attestation(
         path,
         gate=gate,
@@ -255,7 +256,11 @@ def gate_attestation_artifact(
         )
         if task_hash != hashlib.sha256(task_path.read_bytes()).hexdigest():
             blockers.append("reviewer attestation task evidence fingerprint does not match")
-    return path, blockers
+    evidence = [path]
+    registry = registry_snapshot_path(package_dir, gate)
+    if registry.is_file():
+        evidence.append(registry)
+    return evidence, blockers
 
 
 def evaluate_gate(
@@ -299,14 +304,18 @@ def evaluate_gate(
     extra_evidence: list[dict[str, Any]] = []
     if gate != "live_gate":
         blockers.extend(reviewer_identity_blockers(package_dir, reviewer))
-        attestation_file, attestation_issues = gate_attestation_artifact(
+        attestation_files, attestation_issues = gate_attestation_artifact(
             package_dir, gate, reviewer, package_id
         )
         blockers.extend(attestation_issues)
-        if attestation_file is not None:
+        for attestation_file in attestation_files:
             extra_evidence.append(
                 {
-                    "type": "reviewer_attestation",
+                    "type": (
+                        "reviewer_attestation"
+                        if attestation_file.name.startswith("reviewer_attestation.")
+                        else "reviewer_key_registry"
+                    ),
                     "path": attestation_file.name,
                     "sha256": hashlib.sha256(attestation_file.read_bytes()).hexdigest(),
                 }

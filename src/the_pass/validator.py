@@ -65,10 +65,20 @@ ARTIFACT_SCHEMAS["agent_task"] = {1: "agent_task.schema.json"}
 ARTIFACT_SCHEMAS["agent_result"] = {1: "agent_result.schema.json"}
 ARTIFACT_SCHEMAS["agent_run"] = {1: "agent_run.schema.json"}
 ARTIFACT_SCHEMAS["dataset_plan"] = {1: "dataset_plan.v1.schema.json"}
-ARTIFACT_SCHEMAS["dataset_receipt"] = {1: "dataset_receipt.v1.schema.json"}
-ARTIFACT_SCHEMAS["reproduction_spec"] = {1: "reproduction_spec.v1.schema.json"}
+ARTIFACT_SCHEMAS["dataset_receipt"] = {
+    1: "dataset_receipt.v1.schema.json",
+    2: "dataset_receipt.v2.schema.json",
+}
+ARTIFACT_SCHEMAS["reproduction_spec"] = {
+    1: "reproduction_spec.v1.schema.json",
+    2: "reproduction_spec.v2.schema.json",
+}
 ARTIFACT_SCHEMAS["reviewer_attestation"] = {
-    1: "reviewer_attestation.v1.schema.json"
+    1: "reviewer_attestation.v1.schema.json",
+    2: "reviewer_attestation.v2.schema.json",
+}
+ARTIFACT_SCHEMAS["reviewer_key_registry"] = {
+    1: "reviewer_key_registry.v1.schema.json"
 }
 ARTIFACT_TYPES = {
     artifact_type: versions[max(versions)]

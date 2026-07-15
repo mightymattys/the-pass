@@ -1,5 +1,5 @@
 schema_version: 1
-updated_at: 2026-07-10
+updated_at: 2026-07-15
 order: [H0, R0, D1, B2, V3, P4, L5_L6]
 allowed_statuses: [not_started, in_progress, blocked, gate_failed, complete]
 milestones:
@@ -14,6 +14,11 @@ milestones:
     evidence:
       - reports/gates/H0_2026-07-10.md
       - tests/test_validator.py
+      - docs/implementation/TRUST_BOUNDARY_HARDENING_PLAN.md
+      - tests/test_attestation.py
+      - tests/test_dataset.py
+      - tests/test_strategy_runtime.py
+      - tests/test_workflow_supervisor.py
   - id: R0
     name: research_operating_system
     owner: head_researcher

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 import shutil
 import tempfile
@@ -10,7 +11,7 @@ import inspect
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Callable
+from typing import Any, Callable, Mapping
 
 from the_pass.adapters.base import FetchRequest, ReadOnlyAdapter
 
@@ -46,6 +47,18 @@ class IngestResult:
     event_count: int
     quality_report: dict[str, object]
     data_manifest: dict[str, object]
+
+
+@dataclass(frozen=True)
+class ValidatedIngestBundle:
+    output_dir: Path
+    request: dict[str, object]
+    raw: object
+    events: tuple[CanonicalEvent, ...]
+    quality_report: dict[str, object]
+    data_manifest: dict[str, object]
+    receipt: dict[str, object]
+    bundle_fingerprint: str
 
 
 class OfflineIngestService:
@@ -174,6 +187,7 @@ class OfflineIngestService:
                 staging / COMMITTED_PATH,
                 (ingest_receipt["receipt_fingerprint"] + "\n").encode("ascii"),
             )
+            validate_ingest_bundle(staging, expected_request=request_document)
             if os.path.lexists(target):
                 raise BundleExistsError(f"ingest bundle already exists: {target}")
             try:
@@ -242,6 +256,143 @@ def _bind_manifest_paths(manifest: dict[str, object]) -> None:
         raise TypeError("adapter manifest source must be a dictionary")
     source["raw_path"] = RAW_PATH.as_posix()
     source["normalized_path"] = CANONICAL_PATH.as_posix()
+
+
+def _read_json(path: Path, *, label: str) -> Any:
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError, UnicodeError) as exc:
+        raise ValueError(f"ingest bundle {label} is invalid") from exc
+
+
+def _artifact_fingerprint(receipt: Mapping[str, object]) -> str:
+    return stable_fingerprint(
+        {
+            "request_fingerprint": receipt["request_fingerprint"],
+            "raw_fingerprint": receipt["raw_fingerprint"],
+            "canonical_fingerprint": receipt["canonical_fingerprint"],
+            "quality_report_fingerprint": receipt["quality_report_fingerprint"],
+            "data_manifest_fingerprint": receipt["data_manifest_fingerprint"],
+            "receipt_fingerprint": receipt["receipt_fingerprint"],
+            "event_count": receipt["event_count"],
+        }
+    )
+
+
+def validate_ingest_bundle(
+    output_dir: Path,
+    *,
+    expected_request: Mapping[str, object] | None = None,
+) -> ValidatedIngestBundle:
+    """Recompute every immutable ingest artifact and return trusted bundle contents."""
+
+    root = Path(os.path.abspath(output_dir))
+    paths = {
+        "request": root / REQUEST_PATH,
+        "raw response": root / RAW_PATH,
+        "canonical events": root / CANONICAL_PATH,
+        "quality report": root / QUALITY_PATH,
+        "data manifest": root / MANIFEST_PATH,
+        "receipt": root / RECEIPT_PATH,
+        "commit marker": root / COMMITTED_PATH,
+    }
+    for label, path in paths.items():
+        if not path.is_file() or path.is_symlink():
+            raise ValueError(f"ingest bundle {label} is missing or not a regular file")
+
+    request = _read_json(paths["request"], label="request")
+    raw = _read_json(paths["raw response"], label="raw response")
+    quality = _read_json(paths["quality report"], label="quality report")
+    manifest = _read_json(paths["data manifest"], label="data manifest")
+    receipt = _read_json(paths["receipt"], label="receipt")
+    if not all(isinstance(value, dict) for value in (request, quality, manifest, receipt)):
+        raise ValueError("ingest bundle structured artifacts must be JSON objects")
+    if expected_request is not None and request != dict(expected_request):
+        raise ValueError("ingest bundle request changed")
+
+    from the_pass.validator import validate_artifact
+
+    for label, artifact_type in (
+        ("quality report", "quality_report"),
+        ("data manifest", "data_manifest"),
+    ):
+        validation = validate_artifact(paths[label], artifact_type=artifact_type)
+        if not validation.ok:
+            details = "; ".join(
+                f"{issue.path}: {issue.message}" for issue in validation.issues
+            )
+            raise ValueError(f"ingest bundle {label} does not validate: {details}")
+
+    try:
+        events = tuple(
+            CanonicalEvent.from_dict(json.loads(line))
+            for line in paths["canonical events"].read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        )
+    except (json.JSONDecodeError, KeyError, OSError, TypeError, UnicodeError, ValueError) as exc:
+        raise ValueError("ingest bundle canonical events are invalid") from exc
+    if not events:
+        raise ValueError("ingest bundle canonical events are empty")
+
+    receipt_core = {
+        key: value for key, value in receipt.items() if key != "receipt_fingerprint"
+    }
+    expected_receipt = stable_fingerprint(receipt_core)
+    if receipt.get("receipt_fingerprint") != expected_receipt:
+        raise ValueError("ingest bundle receipt fingerprint is invalid")
+    try:
+        marker = paths["commit marker"].read_text(encoding="ascii").strip()
+    except (OSError, UnicodeError) as exc:
+        raise ValueError("ingest bundle commit marker is invalid") from exc
+    if marker != expected_receipt:
+        raise ValueError("ingest bundle commit fingerprint is invalid")
+
+    checks = (
+        ("request", stable_fingerprint(request), receipt.get("request_fingerprint")),
+        ("raw response", stable_fingerprint(raw), receipt.get("raw_fingerprint")),
+        (
+            "canonical events",
+            stable_fingerprint([event.as_dict() for event in events]),
+            receipt.get("canonical_fingerprint"),
+        ),
+        ("quality report", stable_fingerprint(quality), receipt.get("quality_report_fingerprint")),
+        ("data manifest", stable_fingerprint(manifest), receipt.get("data_manifest_fingerprint")),
+    )
+    for label, observed, expected in checks:
+        if observed != expected:
+            raise ValueError(f"ingest bundle {label} fingerprint is invalid")
+    if receipt.get("event_count") != len(events):
+        raise ValueError("ingest bundle event count is invalid")
+    canonical_fingerprint = checks[2][1]
+    if quality.get("dataset_fingerprint") != canonical_fingerprint:
+        raise ValueError("ingest bundle quality report dataset fingerprint is invalid")
+    if quality.get("summary", {}).get("events") != len(events):
+        raise ValueError("ingest bundle quality report event count is invalid")
+    if manifest.get("quality", {}).get("row_count") != len(events):
+        raise ValueError("ingest bundle data manifest row count is invalid")
+    if manifest.get("fingerprint", {}).get("value") != canonical_fingerprint:
+        raise ValueError("ingest bundle data manifest canonical fingerprint is invalid")
+
+    source = manifest.get("source")
+    if not isinstance(source, dict):
+        raise ValueError("ingest bundle data manifest source is invalid")
+    if source.get("raw_path") != RAW_PATH.as_posix():
+        raise ValueError("ingest bundle data manifest raw_path is invalid")
+    if source.get("normalized_path") != CANONICAL_PATH.as_posix():
+        raise ValueError("ingest bundle data manifest normalized_path is invalid")
+    if manifest.get("id") != quality.get("dataset_id"):
+        raise ValueError("ingest bundle quality report and manifest dataset IDs differ")
+
+    return ValidatedIngestBundle(
+        output_dir=root,
+        request=request,
+        raw=raw,
+        events=events,
+        quality_report=quality,
+        data_manifest=manifest,
+        receipt=receipt,
+        bundle_fingerprint=_artifact_fingerprint(receipt),
+    )
 
 
 def _write_bytes(path: Path, payload: bytes) -> None:

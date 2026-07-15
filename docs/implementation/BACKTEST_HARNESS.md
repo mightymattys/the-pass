@@ -7,11 +7,17 @@ runtime without changing strategy logic.
 
 ## User Strategy Runtime
 
-`the-pass backtest run` loads one trusted local strategy file from an explicit workspace root.
-The descriptor, source, config, execution assumptions, risk mode, and canonical events are hashed.
-Two fresh subprocess runs must match exactly before package creation. The worker strips credential
-environment variables, blocks known network/order imports, enforces a timeout/output limit, and
-returns a diagnostic-only result. This is failure containment for trusted code, not an OS sandbox.
+`the-pass backtest run` loads one strategy file from an explicit workspace root. The descriptor,
+source, config, execution assumptions, risk mode, and canonical events are hashed. Two fresh
+subprocess runs must match exactly before package creation.
+
+The default `trusted_local` mode strips credential environment variables, blocks known
+network/order imports, and enforces a process timeout/output limit. It explicitly records
+`network_enforcement: none` and `filesystem_enforcement: none`; this is failure containment for
+trusted code, not an OS sandbox. The optional `hardened` mode requires an operator-supplied
+executable sandbox launcher. That launcher must enforce the declared OS boundary and write an exact
+attestation tied to its own hash and the request fingerprint. No launcher is bundled, and missing or
+mismatched evidence fails closed.
 
 The generic package copies and cross-validates the supplied StrategySpec, DataManifest, and
 QualityReport. It never replaces them with synthetic claims. A generic run always starts with a

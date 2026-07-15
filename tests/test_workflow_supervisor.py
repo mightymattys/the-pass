@@ -2,16 +2,14 @@ from __future__ import annotations
 
 import json
 import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from the_pass.attestation import (
-    ATTESTATION_KEY_ENV,
-    verify_reviewer_attestation,
-)
+from the_pass.attestation import ATTESTATION_KEY_ENV, SIGNING_KEY_ENV
 from the_pass.gates import GateEvaluation
 from the_pass.ledger import append_ledger_entry, build_run_entry
 from the_pass.orchestration import new_workflow_state, write_workflow_state_atomic
@@ -31,6 +29,20 @@ DRIVER = ROOT / "tests" / "fixtures" / "fake_workflow_driver.py"
 
 
 class WorkflowSupervisorTests(unittest.TestCase):
+    def init_git_root(self, root: Path) -> None:
+        subprocess.run(["git", "init", "-q"], cwd=root, check=True)
+        subprocess.run(
+            ["git", "config", "user.email", "workflow-tests@example.invalid"],
+            cwd=root,
+            check=True,
+        )
+        subprocess.run(
+            ["git", "config", "user.name", "Workflow Tests"], cwd=root, check=True
+        )
+        (root / "README.md").write_text("fixture\n", encoding="utf-8")
+        subprocess.run(["git", "add", "README.md"], cwd=root, check=True)
+        subprocess.run(["git", "commit", "-qm", "fixture"], cwd=root, check=True)
+
     def make_state(self, root: Path) -> Path:
         path = root / "state.yaml"
         state = new_workflow_state(
@@ -301,8 +313,217 @@ class WorkflowSupervisorTests(unittest.TestCase):
                 )
             self.assertEqual((report["status"], exit_code), ("blocked", 2))
 
-    def test_review_transition_creates_attestation_without_leaking_key(self) -> None:
-        key = "supervisor-review-attestation-key-32-bytes"
+    def test_failed_auto_agent_leaves_caller_workspace_unchanged(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.init_git_root(root)
+            state_path = self.make_state(root)
+            state = read_workflow_state(state_path)
+            state = advance_workflow_state(
+                state,
+                to_stage="research",
+                status="in_progress",
+                next_action="run isolated research",
+                timestamp="2026-07-11T00:00:01Z",
+            )
+            write_workflow_state_atomic(state_path, state)
+            before = state_path.read_bytes()
+
+            def malformed_driver(*_args, **kwargs):
+                Path(kwargs["cwd"], "uncommitted-side-effect.txt").write_text(
+                    "must not escape", encoding="utf-8"
+                )
+                proposal = Path(kwargs["environment"]["THE_PASS_WORKFLOW_STATE"])
+                proposal.write_text("{", encoding="utf-8")
+                return {
+                    "exit_code": 0,
+                    "duration_ms": 1,
+                    "timed_out": False,
+                    "output_exceeded": False,
+                    "stdout_sha256": "a" * 64,
+                    "stderr_sha256": "b" * 64,
+                }
+
+            with (
+                patch("the_pass.workflow_supervisor.shutil.which", return_value="/fake/cli"),
+                patch(
+                    "the_pass.workflow_supervisor._run_driver",
+                    side_effect=malformed_driver,
+                ),
+                self.assertRaisesRegex(WorkflowSupervisorError, "invalid state"),
+            ):
+                supervise_workflow(
+                    state_path,
+                    driver_argv=["auto"],
+                    cwd=root,
+                    report_path=root / "supervisor.json",
+                    max_cycles=1,
+                    timeout_seconds=5,
+                )
+            self.assertEqual(state_path.read_bytes(), before)
+            self.assertFalse((root / "uncommitted-side-effect.txt").exists())
+
+    def test_auto_agent_rejects_workspace_symlink_before_driver_execution(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.init_git_root(root)
+            state_path = self.make_state(root)
+            state = advance_workflow_state(
+                read_workflow_state(state_path),
+                to_stage="research",
+                status="in_progress",
+                next_action="run isolated research",
+                timestamp="2026-07-11T00:00:01Z",
+            )
+            write_workflow_state_atomic(state_path, state)
+            outside = root.parent / f"{root.name}-outside.txt"
+            outside.write_text("outside\n", encoding="utf-8")
+            (root / "outside-link").symlink_to(outside)
+            try:
+                with (
+                    patch("the_pass.workflow_supervisor.shutil.which", return_value="/fake/cli"),
+                    patch("the_pass.workflow_supervisor._run_driver") as driver,
+                    self.assertRaisesRegex(
+                        WorkflowSupervisorError, "source cannot contain symlinks"
+                    ),
+                ):
+                    supervise_workflow(
+                        state_path,
+                        driver_argv=["auto"],
+                        cwd=root,
+                        report_path=root / "supervisor.json",
+                        max_cycles=1,
+                        timeout_seconds=5,
+                    )
+                driver.assert_not_called()
+                self.assertEqual(outside.read_text(encoding="utf-8"), "outside\n")
+            finally:
+                outside.unlink(missing_ok=True)
+
+    def test_valid_auto_agent_commits_declared_evidence_transactionally(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.init_git_root(root)
+            state_path = self.make_state(root)
+            state = read_workflow_state(state_path)
+            state = advance_workflow_state(
+                state,
+                to_stage="research",
+                status="in_progress",
+                next_action="run isolated research",
+                timestamp="2026-07-11T00:00:01Z",
+            )
+            write_workflow_state_atomic(state_path, state)
+
+            def valid_driver(*_args, **kwargs):
+                worktree = Path(kwargs["cwd"])
+                evidence = worktree / "reports" / "isolated-research.txt"
+                evidence.parent.mkdir(parents=True, exist_ok=True)
+                evidence.write_text("validated evidence\n", encoding="utf-8")
+                proposal = Path(kwargs["environment"]["THE_PASS_WORKFLOW_STATE"])
+                current = read_workflow_state(proposal)
+                blocked = advance_workflow_state(
+                    current,
+                    to_stage=None,
+                    status="blocked",
+                    next_action="supply external research input",
+                    evidence_paths=[evidence],
+                    blockers=["fixture research input is unavailable"],
+                    timestamp="2026-07-11T00:00:02Z",
+                )
+                write_workflow_state_atomic(proposal, blocked)
+                return {
+                    "exit_code": 2,
+                    "duration_ms": 1,
+                    "timed_out": False,
+                    "output_exceeded": False,
+                    "stdout_sha256": "a" * 64,
+                    "stderr_sha256": "b" * 64,
+                }
+
+            with (
+                patch("the_pass.workflow_supervisor.shutil.which", return_value="/fake/cli"),
+                patch("the_pass.workflow_supervisor._run_driver", side_effect=valid_driver),
+            ):
+                report, exit_code = supervise_workflow(
+                    state_path,
+                    driver_argv=["auto"],
+                    cwd=root,
+                    report_path=root / "supervisor.json",
+                    max_cycles=1,
+                    timeout_seconds=5,
+                )
+            transaction = report["cycles"][0]["workspace_transaction"]
+            self.assertEqual(exit_code, 2)
+            self.assertEqual(transaction["workspace_mode"], "detached_worktree_transaction")
+            self.assertEqual(transaction["changed_paths"], ["reports/isolated-research.txt"])
+            self.assertEqual(len(transaction["patch_sha256"]), 64)
+            self.assertEqual(
+                (root / "reports" / "isolated-research.txt").read_text(encoding="utf-8"),
+                "validated evidence\n",
+            )
+
+    def test_concurrent_caller_change_blocks_auto_agent_patch(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.init_git_root(root)
+            evidence = root / "reports" / "isolated-research.txt"
+            evidence.parent.mkdir(parents=True)
+            evidence.write_text("caller baseline\n", encoding="utf-8")
+            state_path = self.make_state(root)
+            state = advance_workflow_state(
+                read_workflow_state(state_path),
+                to_stage="research",
+                status="in_progress",
+                next_action="run isolated research",
+                timestamp="2026-07-11T00:00:01Z",
+            )
+            write_workflow_state_atomic(state_path, state)
+            state_before = state_path.read_bytes()
+
+            def racing_driver(*_args, **kwargs):
+                isolated_evidence = Path(kwargs["cwd"]) / "reports" / "isolated-research.txt"
+                isolated_evidence.write_text("agent proposal\n", encoding="utf-8")
+                evidence.write_text("concurrent caller edit\n", encoding="utf-8")
+                proposal = Path(kwargs["environment"]["THE_PASS_WORKFLOW_STATE"])
+                blocked = advance_workflow_state(
+                    read_workflow_state(proposal),
+                    to_stage=None,
+                    status="blocked",
+                    next_action="supply external research input",
+                    evidence_paths=[isolated_evidence],
+                    blockers=["fixture research input is unavailable"],
+                    timestamp="2026-07-11T00:00:02Z",
+                )
+                write_workflow_state_atomic(proposal, blocked)
+                return {
+                    "exit_code": 2,
+                    "duration_ms": 1,
+                    "timed_out": False,
+                    "output_exceeded": False,
+                    "stdout_sha256": "a" * 64,
+                    "stderr_sha256": "b" * 64,
+                }
+
+            with (
+                patch("the_pass.workflow_supervisor.shutil.which", return_value="/fake/cli"),
+                patch("the_pass.workflow_supervisor._run_driver", side_effect=racing_driver),
+                self.assertRaisesRegex(
+                    WorkflowSupervisorError, "caller workspace changed during agent execution"
+                ),
+            ):
+                supervise_workflow(
+                    state_path,
+                    driver_argv=["auto"],
+                    cwd=root,
+                    report_path=root / "supervisor.json",
+                    max_cycles=1,
+                    timeout_seconds=5,
+                )
+            self.assertEqual(state_path.read_bytes(), state_before)
+            self.assertEqual(evidence.read_text(encoding="utf-8"), "concurrent caller edit\n")
+
+    def test_review_transition_waits_for_external_signature_without_leaking_keys(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             package = root / "package"
@@ -328,6 +549,7 @@ class WorkflowSupervisorTests(unittest.TestCase):
 
             def review_driver(*_args, **kwargs):
                 self.assertNotIn(ATTESTATION_KEY_ENV, kwargs["environment"])
+                self.assertNotIn(SIGNING_KEY_ENV, kwargs["environment"])
                 proposal = Path(kwargs["environment"]["THE_PASS_WORKFLOW_STATE"])
                 current = read_workflow_state(proposal)
                 reviewed = advance_workflow_state(
@@ -359,23 +581,24 @@ class WorkflowSupervisorTests(unittest.TestCase):
                     author_provider="codex",
                     available_providers=("claude",),
                     max_cycles=1,
-                    environment={ATTESTATION_KEY_ENV: key},
+                    environment={
+                        ATTESTATION_KEY_ENV: "legacy-key-must-not-leak-32-bytes",
+                        SIGNING_KEY_ENV: "private-key-must-not-leak",
+                    },
                 )
 
             attestation_path = (
                 package / "reviewer_attestation.research_gate.json"
             )
-            _, blockers = verify_reviewer_attestation(
-                attestation_path,
-                gate="research_gate",
-                package_id=package_id,
-                reviewer="independent-auditor",
-                key=key,
-            )
-            self.assertEqual(exit_code, 1)
-            self.assertEqual(report["cycles"][0]["stage_after"], "research_gate")
-            self.assertEqual(blockers, [])
-            self.assertNotIn(key, (root / "supervisor.json").read_text())
+            final_state = read_workflow_state(state_path)
+            self.assertEqual(exit_code, 2)
+            self.assertEqual(report["cycles"][0]["stage_after"], "review_research")
+            self.assertEqual(final_state["status"], "waiting")
+            self.assertIn("Ed25519", final_state["blockers"][0])
+            self.assertFalse(attestation_path.exists())
+            report_text = (root / "supervisor.json").read_text()
+            self.assertNotIn("legacy-key-must-not-leak", report_text)
+            self.assertNotIn("private-key-must-not-leak", report_text)
 
     def test_report_cannot_overwrite_workflow_state(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

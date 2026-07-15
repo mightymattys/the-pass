@@ -61,7 +61,7 @@ Codex or Claude Code plugin provides the guided `/the-pass:*` commands.
 
 ```bash
 uv tool install \
-  "the-pass[data,research,paper] @ https://github.com/mightymattys/the-pass/releases/download/v0.12.0/the_pass-0.12.0-py3-none-any.whl"
+  "the-pass[data,research,paper] @ https://github.com/mightymattys/the-pass/releases/download/v0.13.0/the_pass-0.13.0-py3-none-any.whl"
 uv tool update-shell
 the-pass --version
 ```
@@ -74,7 +74,7 @@ smoke test. The public package contains no live trading client.
 Codex:
 
 ```bash
-codex plugin marketplace add mightymattys/the-pass --ref v0.12.0
+codex plugin marketplace add mightymattys/the-pass --ref v0.13.0
 codex plugin add the-pass@the-pass-tools
 ```
 
@@ -143,6 +143,11 @@ consistent. It does **not** prove that a gate passed. Promotion requires a signe
 `reviewer_attestation` plus a separate `gate_decision` tied to the exact package, evidence
 fingerprints, reviewer, policy version, and policy hash.
 
+New attestations use Ed25519. The reviewer keeps the private key outside the repository; the
+package carries a public key-registry snapshot, so gate and ledger verification require no signing
+secret. Automated review produces evidence but stops at `waiting` until the designated reviewer
+signs it.
+
 ## Current Status
 
 The framework is operational. In addition to bundled controls, the source tree supports trusted
@@ -150,10 +155,9 @@ local strategy files, immutable adapter ingest bundles, deterministic double-run
 strategy-driven robustness sweeps, and resumable replay-based paper observations. Candidate
 promotion remains deliberately separate.
 
-The source tree and plugin manifests are versioned `0.12.0`. The
+The source tree and plugin manifests are versioned `0.13.0`. The
 release badge above remains the authority for the latest published tag. Readiness is recorded in the
-[`v0.12.0` release audit](reports/RELEASE_AUDIT_0.12.0.md), the
-[`v0.12.0` post-release verification](reports/POST_RELEASE_AUDIT_0.12.0.md), the
+[`v0.13.0` release audit](reports/RELEASE_AUDIT_0.13.0.md), the
 [`v0.9.0` cross-agent audit](reports/CROSS_AGENT_ORCHESTRATION_AUDIT_0.9.0.md) and the
 [full repository stability audit](reports/FULL_REPOSITORY_STABILITY_AUDIT_2026-07-10.md). Versioned
 publication evidence for the installation fix is tracked in the
@@ -274,7 +278,7 @@ Schemas are registered by `(artifact_type, schema_version)`. V1 evidence remains
 compatibility, but cannot be treated as a passed v2 gate. Strategy specifications are immutable
 after their first run; material changes create a new version and run.
 
-The repository ships one latest-version template for each of its 41 registered artifact types.
+The repository ships one latest-version template for each of its 42 registered artifact types.
 Every template is validated in the public repository check through the production artifact
 validator. Starter values are deliberately `draft`, `diagnostic`, `blocked`, or otherwise
 non-promoting; they demonstrate a valid shape and must be replaced with measured evidence before
@@ -315,7 +319,8 @@ truth. Paid data and provider credentials must never enter the repository, artif
 cost snapshot, and transport evidence are durably written.
 For longer windows, `the-pass data plan` freezes deterministic non-overlapping chunks and
 `the-pass data build` resumes only verified chunk bundles. Returning an existing committed dataset
-revalidates its events, quality, manifest, aggregate receipt, and per-chunk fingerprints.
+revalidates every request, raw response, canonical event file, quality report, manifest, receipt,
+commit marker, aggregate receipt, and per-chunk bundle fingerprint.
 
 Read the [Adapter Contract](docs/adapter-contract.md) and
 [Canonical Data Foundation](docs/adapters/DATA_FOUNDATION.md) before adding a provider.
@@ -327,6 +332,12 @@ partial fills, depth, fees, slippage, missed fills, and portfolio conservation. 
 and roll are explicit accounting components but remain zero unless a strategy workflow supplies
 and reconciles those events; the engine does not invent them. Mid-price fills are diagnostic-only
 and cannot support promotion.
+
+Custom strategy code runs in `trusted_local` mode by default. That mode strips credentials and
+contains process failures but truthfully reports that network and host-filesystem access are not
+OS-enforced. Promotion-eligible runtime evidence requires `hardened` mode plus an audited external
+sandbox launcher and a matching launcher attestation. The Pass does not ship a privileged portable
+sandbox.
 
 Gross and net path metrics use separate equity curves. Annualization records the asset calendar,
 median observation interval, and periods per year instead of assuming every market has 252 data
@@ -362,7 +373,7 @@ See [Paper, Automation, and Reporting](docs/implementation/PAPER_AUTOMATION_REPO
 | --- | --- |
 | [`src/the_pass/`](src/the_pass/) | CLI, validation, data, adapters, engine, statistics, risk, paper, automation, and reporting |
 | [`schemas/`](schemas/) | Public JSON Schemas and compatibility registry |
-| [`templates/`](templates/) | Schema-valid, deliberately non-promoting starters for all 37 artifact types |
+| [`templates/`](templates/) | Schema-valid, deliberately non-promoting starters for all 42 artifact types |
 | [`research/`](research/) | Source registry and reviewed research evidence |
 | [`examples/`](examples/) | Synthetic packages, adapters, baselines, and outcome examples |
 | [`automations/`](automations/) | Scheduler-neutral job specifications |
@@ -419,6 +430,7 @@ Report vulnerabilities according to [SECURITY.md](SECURITY.md).
 - [Main research plan](docs/research/the-pass-plan.md)
 - [Usable strategy runtime plan](docs/implementation/USABLE_STRATEGY_RUNTIME_PLAN.md)
 - [Trading roadmap execution plan](docs/implementation/TRADING_ROADMAP_EXECUTION_PLAN.md)
+- [`v0.13.0` trust-boundary hardening plan](docs/implementation/TRUST_BOUNDARY_HARDENING_PLAN.md)
 - [Artifact lifecycle](docs/implementation/ARTIFACT_LIFECYCLE.md)
 - [Validation and safety](docs/implementation/VALIDATION_AND_SAFETY.md)
 - [Plugin command contract](docs/plugin/COMMANDS.md)
@@ -442,6 +454,8 @@ Report vulnerabilities according to [SECURITY.md](SECURITY.md).
 - [`v0.12.0` hardening release notes](docs/public/RELEASE_NOTES_v0.12.0.md)
 - [`v0.12.0` release audit](reports/RELEASE_AUDIT_0.12.0.md)
 - [`v0.12.0` post-release verification](reports/POST_RELEASE_AUDIT_0.12.0.md)
+- [`v0.13.0` trust-boundary release notes](docs/public/RELEASE_NOTES_v0.13.0.md)
+- [`v0.13.0` release audit](reports/RELEASE_AUDIT_0.13.0.md)
 - [Supervised workflow implementation audit](reports/SUPERVISED_WORKFLOW_AUDIT_2026-07-11.md)
 - [Repository hardening audit](reports/REPOSITORY_HARDENING_AUDIT_2026-07-10.md)
 - [CLI contract](docs/public/CLI_CONTRACT.md)

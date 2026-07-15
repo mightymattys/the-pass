@@ -11,6 +11,7 @@ import subprocess
 import tempfile
 import time
 from contextlib import contextmanager
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterator, Mapping, Sequence
@@ -20,22 +21,18 @@ import yaml
 from .agent_orchestration import route_workflow_stage
 from .attestation import (
     ATTESTATION_KEY_ENV,
-    AttestationError,
-    attestation_path,
-    create_reviewer_attestation,
-    review_task_path,
-    write_reviewer_attestation,
+    SIGNING_KEY_ENV,
 )
 from .gates import (
     DEFAULT_POLICY_PATH,
     GateEvaluationError,
     evaluate_gate,
+    gate_attestation_artifact,
     write_gate_decision,
 )
 from .ledger import (
     LedgerError,
     append_gate_decision,
-    build_run_entry,
     read_ledger_entries,
 )
 from .orchestration import (
@@ -71,6 +68,371 @@ REVIEW_GATE_TRANSITIONS = {
     "review_paper": "paper_gate",
     "review_risk": "risk_review",
 }
+
+
+@dataclass(frozen=True)
+class _FileState:
+    kind: str
+    sha256: str
+    mode: int
+
+
+WORKSPACE_COPY_EXCLUDED_NAMES = {
+    ".git",
+    ".mypy_cache",
+    ".pytest_cache",
+    ".ruff_cache",
+    ".venv",
+    "__pycache__",
+    "build",
+    "dist",
+    "venv",
+}
+
+
+def _git(root: Path, *args: str, check: bool = True) -> subprocess.CompletedProcess[bytes]:
+    result = subprocess.run(
+        ["git", *args], cwd=root, capture_output=True, check=False, shell=False
+    )
+    if check and result.returncode != 0:
+        message = result.stderr.decode("utf-8", errors="replace").strip()
+        raise WorkflowSupervisorError(f"git {' '.join(args)} failed: {message}")
+    return result
+
+
+def _tree_snapshot(root: Path, *, excluded: set[str]) -> dict[str, _FileState]:
+    snapshot: dict[str, _FileState] = {}
+    for path in root.rglob("*"):
+        relative = path.relative_to(root).as_posix()
+        if (
+            any(part in WORKSPACE_COPY_EXCLUDED_NAMES for part in Path(relative).parts)
+            or relative in excluded
+        ):
+            continue
+        if path.is_symlink():
+            target = os.readlink(path).encode("utf-8")
+            snapshot[relative] = _FileState(
+                "symlink", hashlib.sha256(target).hexdigest(), 0
+            )
+        elif path.is_file():
+            snapshot[relative] = _FileState(
+                "file", _sha256_file(path), path.stat().st_mode & 0o777
+            )
+    return snapshot
+
+
+def _copy_workspace(source: Path, destination: Path) -> None:
+    for path in source.rglob("*"):
+        relative = path.relative_to(source)
+        if any(part in WORKSPACE_COPY_EXCLUDED_NAMES for part in relative.parts):
+            continue
+        if path.is_symlink():
+            raise WorkflowSupervisorError(
+                f"auto workflow source cannot contain symlinks: {relative.as_posix()}"
+            )
+
+    def ignore(directory: str, names: list[str]) -> set[str]:
+        del directory
+        return {name for name in names if name in WORKSPACE_COPY_EXCLUDED_NAMES}
+
+    for child in tuple(destination.iterdir()):
+        if child.name == ".git":
+            continue
+        if child.is_dir() and not child.is_symlink():
+            shutil.rmtree(child)
+        else:
+            child.unlink()
+    for child in source.iterdir():
+        if child.name in WORKSPACE_COPY_EXCLUDED_NAMES:
+            continue
+        target = destination / child.name
+        if child.is_dir():
+            shutil.copytree(child, target, symlinks=True, ignore=ignore)
+        else:
+            shutil.copy2(child, target)
+    for path in destination.rglob("*"):
+        relative = path.relative_to(destination)
+        if any(part in WORKSPACE_COPY_EXCLUDED_NAMES for part in relative.parts):
+            continue
+        if path.is_symlink():
+            raise WorkflowSupervisorError(
+                f"auto workflow snapshot cannot contain symlinks: {relative.as_posix()}"
+            )
+
+
+def _remap_rooted_paths(value: Any, source: Path, destination: Path) -> Any:
+    if isinstance(value, dict):
+        return {
+            key: _remap_rooted_paths(item, source, destination)
+            for key, item in value.items()
+        }
+    if isinstance(value, list):
+        return [_remap_rooted_paths(item, source, destination) for item in value]
+    if not isinstance(value, str):
+        return value
+    candidate = Path(value)
+    if not candidate.is_absolute():
+        return value
+    try:
+        relative = candidate.resolve(strict=False).relative_to(source)
+    except ValueError:
+        return value
+    return str(destination / relative)
+
+
+def _state_workspace_paths(state: Mapping[str, Any]) -> list[Path]:
+    values: list[str] = []
+    if isinstance(state.get("package_path"), str):
+        values.append(str(state["package_path"]))
+    values.extend(
+        str(value) for value in state.get("evidence_paths", []) if isinstance(value, str)
+    )
+    return [Path(value).resolve(strict=False) for value in values]
+
+
+class _IsolatedWorkflowTransaction:
+    def __init__(
+        self,
+        *,
+        caller_root: Path,
+        worktree: Path,
+        temporary_root: Path,
+        proposal_path: Path,
+        isolated_before: dict[str, Any],
+        baseline: dict[str, _FileState],
+        protected_paths: set[str],
+    ) -> None:
+        self.caller_root = caller_root
+        self.worktree = worktree
+        self.temporary_root = temporary_root
+        self.proposal_path = proposal_path
+        self.isolated_before = isolated_before
+        self.baseline = baseline
+        self.protected_paths = protected_paths
+        self.changed_paths: list[str] = []
+        self.patch_sha256: str | None = None
+        self._backups: dict[str, tuple[bytes, int] | None] = {}
+        self._applied = False
+
+    @classmethod
+    def create(
+        cls,
+        *,
+        caller_root: Path,
+        state_path: Path,
+        report_path: Path,
+        state: Mapping[str, Any],
+    ) -> "_IsolatedWorkflowTransaction":
+        top = _git(caller_root, "rev-parse", "--show-toplevel").stdout
+        git_root = Path(top.decode("utf-8").strip()).resolve()
+        if git_root != caller_root:
+            raise WorkflowSupervisorError(
+                "auto workflow cwd must be the Git repository root"
+            )
+        for path in _state_workspace_paths(state):
+            try:
+                path.relative_to(caller_root)
+            except ValueError as exc:
+                raise WorkflowSupervisorError(
+                    "auto workflow state paths must stay inside the repository root"
+                ) from exc
+        temporary = Path(tempfile.mkdtemp(prefix="the-pass-workflow-worktree-"))
+        worktree = temporary / "workspace"
+        try:
+            _git(git_root, "worktree", "add", "--detach", str(worktree), "HEAD")
+            worktree = worktree.resolve()
+            caller_snapshot = _tree_snapshot(caller_root, excluded=set())
+            _copy_workspace(caller_root, worktree)
+            if _tree_snapshot(caller_root, excluded=set()) != caller_snapshot:
+                raise WorkflowSupervisorError(
+                    "caller workspace changed while creating the agent snapshot"
+                )
+            proposal = worktree / ".the-pass-workflow-proposal.yaml"
+            if proposal.exists():
+                raise WorkflowSupervisorError("reserved workflow proposal path already exists")
+            isolated_before = _remap_rooted_paths(dict(state), caller_root, worktree)
+            write_workflow_state_atomic(proposal, isolated_before)
+            excluded = {proposal.relative_to(worktree).as_posix()}
+            baseline = _tree_snapshot(worktree, excluded=excluded)
+            protected: set[str] = set()
+            for path in (
+                state_path,
+                report_path,
+                state_path.with_name(f"{state_path.name}.lock"),
+                Path(str(state["ledger_path"])),
+            ):
+                try:
+                    protected.add(path.resolve(strict=False).relative_to(caller_root).as_posix())
+                except ValueError:
+                    pass
+            return cls(
+                caller_root=caller_root,
+                worktree=worktree,
+                temporary_root=temporary,
+                proposal_path=proposal,
+                isolated_before=isolated_before,
+                baseline=baseline,
+                protected_paths=protected,
+            )
+        except Exception:
+            _git(git_root, "worktree", "remove", "--force", str(worktree), check=False)
+            _git(git_root, "worktree", "prune", check=False)
+            shutil.rmtree(temporary, ignore_errors=True)
+            raise
+
+    def remap_candidate(self, candidate: Mapping[str, Any]) -> dict[str, Any]:
+        return _remap_rooted_paths(dict(candidate), self.worktree, self.caller_root)
+
+    def prepare(self, isolated_candidate: Mapping[str, Any]) -> None:
+        excluded = {self.proposal_path.relative_to(self.worktree).as_posix()}
+        observed = _tree_snapshot(self.worktree, excluded=excluded)
+        changed = sorted(
+            path
+            for path in set(self.baseline) | set(observed)
+            if self.baseline.get(path) != observed.get(path)
+        )
+        evidence_scope: set[str] = set()
+        for value in isolated_candidate.get("evidence_paths", []):
+            if isinstance(value, str):
+                try:
+                    evidence_scope.add(
+                        Path(value).resolve(strict=False).relative_to(self.worktree).as_posix()
+                    )
+                except ValueError:
+                    pass
+        package_scope: str | None = None
+        package_value = isolated_candidate.get("package_path")
+        if isinstance(package_value, str):
+            try:
+                package_scope = (
+                    Path(package_value)
+                    .resolve(strict=False)
+                    .relative_to(self.worktree)
+                    .as_posix()
+                )
+            except ValueError:
+                package_scope = None
+        for relative in changed:
+            name = Path(relative).name
+            if relative in self.protected_paths:
+                raise WorkflowSupervisorError(
+                    f"auto workflow changed protected path: {relative}"
+                )
+            if name.startswith("gate_decision.") or name.startswith(
+                "reviewer_attestation."
+            ):
+                raise WorkflowSupervisorError(
+                    f"auto workflow changed parent-owned evidence: {relative}"
+                )
+            in_package = package_scope is not None and (
+                relative == package_scope or relative.startswith(package_scope + "/")
+            )
+            if relative not in evidence_scope and not in_package:
+                raise WorkflowSupervisorError(
+                    f"auto workflow changed path outside declared evidence scope: {relative}"
+                )
+            state = observed.get(relative)
+            if state is not None and state.kind != "file":
+                raise WorkflowSupervisorError(
+                    f"auto workflow produced unsupported filesystem object: {relative}"
+                )
+        self.changed_paths = changed
+        self.patch_sha256 = _fingerprint(
+            {
+                "changed_paths": changed,
+                "before": {
+                    path: vars(self.baseline.get(path)) if self.baseline.get(path) else None
+                    for path in changed
+                },
+                "after": {
+                    path: vars(observed.get(path)) if observed.get(path) else None
+                    for path in changed
+                },
+            }
+        )
+
+    def apply(self) -> None:
+        current = _tree_snapshot(self.caller_root, excluded=set())
+        for relative in self.changed_paths:
+            if current.get(relative) != self.baseline.get(relative):
+                raise WorkflowSupervisorError(
+                    f"caller workspace changed during agent execution: {relative}"
+                )
+        try:
+            for relative in self.changed_paths:
+                source = self.worktree / relative
+                target = self.caller_root / relative
+                if target.is_symlink():
+                    raise WorkflowSupervisorError(
+                        f"caller target is a symlink: {relative}"
+                    )
+                if target.is_file():
+                    self._backups[relative] = (
+                        target.read_bytes(),
+                        target.stat().st_mode & 0o777,
+                    )
+                else:
+                    self._backups[relative] = None
+                if source.is_file() and not source.is_symlink():
+                    target.parent.mkdir(parents=True, exist_ok=True)
+                    descriptor, name = tempfile.mkstemp(
+                        prefix=f".{target.name}.", suffix=".workflow", dir=str(target.parent)
+                    )
+                    try:
+                        with os.fdopen(descriptor, "wb") as handle:
+                            handle.write(source.read_bytes())
+                            handle.flush()
+                            os.fsync(handle.fileno())
+                        os.chmod(name, source.stat().st_mode & 0o777)
+                        os.replace(name, target)
+                    finally:
+                        try:
+                            os.unlink(name)
+                        except FileNotFoundError:
+                            pass
+                elif source.exists() or source.is_symlink():
+                    raise WorkflowSupervisorError(
+                        f"auto workflow output is not a regular file: {relative}"
+                    )
+                else:
+                    target.unlink(missing_ok=True)
+            self._applied = True
+        except Exception:
+            self.rollback()
+            raise
+
+    def rollback(self) -> None:
+        if not self._backups:
+            return
+        for relative, backup in reversed(tuple(self._backups.items())):
+            target = self.caller_root / relative
+            if backup is None:
+                target.unlink(missing_ok=True)
+                continue
+            payload, mode = backup
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(payload)
+            os.chmod(target, mode)
+        self._backups.clear()
+        self._applied = False
+
+    def commit(self) -> None:
+        self._backups.clear()
+        self._applied = False
+
+    def cleanup(self) -> None:
+        if self._applied:
+            self.rollback()
+        _git(
+            self.caller_root,
+            "worktree",
+            "remove",
+            "--force",
+            str(self.worktree),
+            check=False,
+        )
+        _git(self.caller_root, "worktree", "prune", check=False)
+        shutil.rmtree(self.temporary_root, ignore_errors=True)
 
 
 def _utc_now() -> str:
@@ -432,6 +794,35 @@ def _run_deterministic_stage(state_path: Path, state: Mapping[str, Any]) -> None
         )
         write_workflow_state_atomic(state_path, updated)
         return
+    if stage in REVIEW_GATE_TRANSITIONS:
+        gate = REVIEW_GATE_TRANSITIONS[stage]
+        package_value = state.get("package_path")
+        package_id = state.get("package_id")
+        reviewer = state.get("reviewer")
+        if not all(
+            isinstance(value, str) and value
+            for value in (package_value, package_id, reviewer)
+        ):
+            raise WorkflowSupervisorError(
+                f"deterministic review stage {stage} requires package and reviewer state"
+            )
+        public_evidence, blockers = gate_attestation_artifact(
+            Path(str(package_value)), gate, str(reviewer), str(package_id)
+        )
+        if blockers:
+            raise WorkflowSupervisorError(
+                f"reviewer attestation is not ready: {'; '.join(blockers)}"
+            )
+        updated = advance_workflow_state(
+            dict(state),
+            to_stage=gate,
+            status="in_progress",
+            next_action=f"evaluate {gate}",
+            reviewer=str(reviewer),
+            evidence_paths=[*state["evidence_paths"], *public_evidence],
+        )
+        write_workflow_state_atomic(state_path, updated)
+        return
     if stage not in {"research_gate", "paper_gate", "risk_review"}:
         raise WorkflowSupervisorError(
             f"deterministic auto driver cannot execute workflow stage {stage}"
@@ -575,9 +966,15 @@ def _supervise_workflow_locked(
     _write_json_atomic(report_path, report)
 
     active_proposal: Path | None = None
+    active_transaction: _IsolatedWorkflowTransaction | None = None
 
     def fail(message: str) -> None:
-        nonlocal active_proposal
+        nonlocal active_proposal, active_transaction
+        if active_transaction is not None:
+            active_transaction.rollback()
+            active_transaction.cleanup()
+            active_transaction = None
+            active_proposal = None
         if active_proposal is not None:
             try:
                 active_proposal.unlink()
@@ -609,8 +1006,6 @@ def _supervise_workflow_locked(
     for index in range(1, cycle_limit + 1):
         before = state
         before_fingerprint = _fingerprint(before)
-        active_proposal = _new_proposal_path(state_path)
-        write_workflow_state_atomic(active_proposal, before)
         try:
             route = route_workflow_stage(
                 before["stage"],
@@ -626,8 +1021,51 @@ def _supervise_workflow_locked(
                         author_provider=effective_author_provider,
                         available_providers=routed_providers,
                     )
+            if (
+                auto_driver
+                and before["stage"] in REVIEW_GATE_TRANSITIONS
+                and isinstance(before.get("package_path"), str)
+                and isinstance(before.get("package_id"), str)
+                and isinstance(before.get("reviewer"), str)
+            ):
+                _, attestation_blockers = gate_attestation_artifact(
+                    Path(str(before["package_path"])),
+                    REVIEW_GATE_TRANSITIONS[str(before["stage"])],
+                    str(before["reviewer"]),
+                    str(before["package_id"]),
+                )
+                if not attestation_blockers:
+                    route = {
+                        **route,
+                        "execution": "deterministic",
+                        "provider": None,
+                        "requested_model": None,
+                        "resolved_profile": None,
+                        "reasoning_effort": None,
+                        "role": "supervisor",
+                    }
         except (WorkflowError, ValueError) as exc:
             fail(str(exc))
+        validation_before = before
+        execution_cwd = cwd
+        workspace_mode = "trusted_direct"
+        if auto_driver and route["execution"] == "agent":
+            try:
+                active_transaction = _IsolatedWorkflowTransaction.create(
+                    caller_root=cwd,
+                    state_path=state_path,
+                    report_path=report_path,
+                    state=before,
+                )
+            except (OSError, subprocess.SubprocessError, WorkflowError) as exc:
+                fail(f"isolated workflow workspace could not be created: {exc}")
+            active_proposal = active_transaction.proposal_path
+            validation_before = active_transaction.isolated_before
+            execution_cwd = active_transaction.worktree
+            workspace_mode = "detached_worktree_transaction"
+        else:
+            active_proposal = _new_proposal_path(state_path)
+            write_workflow_state_atomic(active_proposal, before)
         child_environment = dict(base_environment)
         if auto_driver:
             allowed_names = {
@@ -661,6 +1099,7 @@ def _supervise_workflow_locked(
             }
         )
         child_environment.pop(ATTESTATION_KEY_ENV, None)
+        child_environment.pop(SIGNING_KEY_ENV, None)
         if auto_driver and route["execution"] == "deterministic":
             started = time.monotonic()
             try:
@@ -684,12 +1123,14 @@ def _supervise_workflow_locked(
         else:
             try:
                 effective_argv = (
-                    _auto_driver_argv(route, cwd) if auto_driver else driver_argv
+                    _auto_driver_argv(route, execution_cwd)
+                    if auto_driver
+                    else driver_argv
                 )
                 prompt = _auto_driver_prompt(before, route) if auto_driver else None
                 outcome = _run_driver(
                     effective_argv,
-                    cwd=cwd,
+                    cwd=execution_cwd,
                     environment=child_environment,
                     timeout_seconds=timeout_seconds,
                     max_output_bytes=max_output_bytes,
@@ -705,11 +1146,28 @@ def _supervise_workflow_locked(
             candidate = read_workflow_state(active_proposal)
         except WorkflowError as exc:
             fail(f"workflow driver wrote invalid state: {exc}")
-        after_fingerprint = _fingerprint(candidate)
-        if after_fingerprint == before_fingerprint:
+        pending_gate = REVIEW_GATE_TRANSITIONS.get(str(validation_before["stage"]))
+        if (
+            route["execution"] == "agent"
+            and pending_gate is not None
+            and candidate.get("stage") == pending_gate
+        ):
+            candidate = {
+                **candidate,
+                "stage": validation_before["stage"],
+                "status": "waiting",
+                "blockers": [
+                    f"{pending_gate} requires an independently signed Ed25519 reviewer attestation"
+                ],
+                "next_action": (
+                    f"run the-pass gate attest for {pending_gate}, then resume workflow execute"
+                ),
+            }
+        isolated_after_fingerprint = _fingerprint(candidate)
+        if isolated_after_fingerprint == _fingerprint(validation_before):
             fail("workflow driver exited without checkpoint progress")
         try:
-            validate_supervised_transition(before, candidate, policy=policy)
+            validate_supervised_transition(validation_before, candidate, policy=policy)
         except WorkflowError as exc:
             fail(str(exc))
         try:
@@ -718,55 +1176,46 @@ def _supervise_workflow_locked(
             fail(f"canonical workflow state became invalid during execution: {exc}")
         if _fingerprint(current) != before_fingerprint:
             fail("canonical workflow state changed during supervised execution")
-        created_attestation: Path | None = None
-        gate = REVIEW_GATE_TRANSITIONS.get(str(before["stage"]))
-        if gate is not None and candidate["stage"] == gate:
-            package_value = candidate.get("package_path")
-            reviewer = candidate.get("reviewer")
-            if not isinstance(package_value, str) or not isinstance(reviewer, str):
-                fail("review transition requires package_path and reviewer")
-            package = Path(package_value).resolve()
-            package_id = build_run_entry(package)["package_id"]
-            if candidate.get("package_id") != package_id:
-                fail("review transition package_id does not match current package")
-            reviewer_provider = str(route.get("provider") or "external")
-            author = str(effective_author_provider or "human")
+        if active_transaction is not None:
+            isolated_candidate = candidate
+            candidate = active_transaction.remap_candidate(isolated_candidate)
             try:
-                task_path = review_task_path(package, gate)
-                attestation = create_reviewer_attestation(
-                    gate=gate,
-                    package_id=package_id,
-                    reviewer=reviewer,
-                    principal_type="provider",
-                    provider=reviewer_provider,
-                    model=str(route.get("requested_model") or "external-driver"),
-                    run_id=str(candidate["run_id"]),
-                    author_provider=author,
-                    reviewer_provider=reviewer_provider,
-                    evidence={
-                        "state_before_sha256": before_fingerprint,
-                        "state_after_sha256": after_fingerprint,
-                        "stdout_sha256": outcome["stdout_sha256"],
-                        "stderr_sha256": outcome["stderr_sha256"],
-                        "task_sha256": _sha256_file(task_path),
-                    },
-                    key=base_environment.get(ATTESTATION_KEY_ENV),
-                )
-                created_attestation = attestation_path(package, gate)
-                write_reviewer_attestation(created_attestation, attestation)
-            except (AttestationError, OSError, ValueError) as exc:
-                fail(f"review attestation failed: {exc}")
+                active_transaction.prepare(isolated_candidate)
+                active_transaction.apply()
+                validate_supervised_transition(before, candidate, policy=policy)
+            except (OSError, WorkflowError) as exc:
+                fail(f"isolated workflow patch was rejected: {exc}")
+        after_fingerprint = _fingerprint(candidate)
         try:
             write_workflow_state_atomic(state_path, candidate)
         except Exception:
-            if created_attestation is not None:
-                created_attestation.unlink(missing_ok=True)
+            if active_transaction is not None:
+                active_transaction.rollback()
+                active_transaction.cleanup()
+                active_transaction = None
+                active_proposal = None
             raise
         state = candidate
-        try:
-            active_proposal.unlink()
-        except FileNotFoundError:
-            pass
+        transaction_evidence = {
+            "workspace_mode": workspace_mode,
+            "changed_paths": [],
+            "patch_sha256": None,
+        }
+        if active_transaction is not None:
+            transaction_evidence.update(
+                {
+                    "changed_paths": active_transaction.changed_paths,
+                    "patch_sha256": active_transaction.patch_sha256,
+                }
+            )
+            active_transaction.commit()
+            active_transaction.cleanup()
+            active_transaction = None
+        elif active_proposal is not None:
+            try:
+                active_proposal.unlink()
+            except FileNotFoundError:
+                pass
         active_proposal = None
         cycle = {
             "index": index,
@@ -778,6 +1227,7 @@ def _supervise_workflow_locked(
             "state_sha256_after": after_fingerprint,
             "route": route,
             "driver": outcome,
+            "workspace_transaction": transaction_evidence,
         }
         report["cycles"].append(cycle)
         if route["execution"] == "agent" and route["role"] == "implementer":

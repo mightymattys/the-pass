@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://the-pass.dev/schemas/reproduction_spec.v2.schema.json",
+  "title": "ReproductionSpec",
+  "type": "object",
+  "required": ["schema_version", "id", "created_at", "runner_id", "isolation", "inputs", "input_fingerprints", "expected_artifacts"],
+  "properties": {
+    "schema_version": { "const": 2 },
+    "id": { "type": "string", "minLength": 1 },
+    "created_at": { "type": "string", "format": "date-time" },
+    "runner_id": { "const": "the_pass.backtest.run.v1" },
+    "isolation": {
+      "type": "object",
+      "required": ["mode", "network_enforcement", "filesystem_enforcement", "resource_enforcement", "launcher_sha256"],
+      "properties": {
+        "mode": { "enum": ["trusted_local", "hardened"] },
+        "network_enforcement": { "enum": ["none", "denied"] },
+        "filesystem_enforcement": { "enum": ["none", "read_only_inputs_temp_output_only"] },
+        "resource_enforcement": { "enum": ["process_timeout_and_output_limit", "os_enforced"] },
+        "launcher_sha256": {
+          "oneOf": [
+            { "type": "null" },
+            { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "inputs": {
+      "type": "object",
+      "required": ["strategy_spec", "data_manifest", "quality_report", "descriptor", "execution", "events", "workspace"],
+      "additionalProperties": { "type": "string", "minLength": 1 }
+    },
+    "input_fingerprints": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["path", "sha256"],
+        "properties": {
+          "path": { "type": "string", "minLength": 1 },
+          "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "expected_artifacts": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "minLength": 1 }
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "isolation": { "properties": { "mode": { "const": "trusted_local" } } } } },
+      "then": {
+        "properties": {
+          "isolation": {
+            "properties": {
+              "network_enforcement": { "const": "none" },
+              "filesystem_enforcement": { "const": "none" },
+              "resource_enforcement": { "const": "process_timeout_and_output_limit" },
+              "launcher_sha256": { "type": "null" }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "isolation": { "properties": { "mode": { "const": "hardened" } } } } },
+      "then": {
+        "properties": {
+          "isolation": {
+            "properties": {
+              "network_enforcement": { "const": "denied" },
+              "filesystem_enforcement": { "const": "read_only_inputs_temp_output_only" },
+              "resource_enforcement": { "const": "os_enforced" },
+              "launcher_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "additionalProperties": false
+}

@@ -130,7 +130,73 @@ class StrategyRuntimeTests(unittest.TestCase):
         self.assertEqual(first["fills"][0]["event_time_ns"], 2)
         self.assertFalse(first["credentials_present"])
         self.assertFalse(first["network_or_order_modules_loaded"])
+        self.assertEqual(first["isolation"]["mode"], "trusted_local")
+        self.assertEqual(first["isolation"]["network_enforcement"], "none")
+        self.assertEqual(first["isolation"]["filesystem_enforcement"], "none")
+        self.assertFalse(first["runtime_promotion_eligible"])
         self.assertEqual(first["promotion_status"], "blocked")
+
+    def test_trusted_local_runtime_reports_host_access_truthfully(self) -> None:
+        marker = self.root / "strategy-side-effect.txt"
+        source = (
+            "from pathlib import Path\n"
+            f"Path({str(marker)!r}).write_text('written', encoding='utf-8')\n"
+            + VALID_STRATEGY
+        )
+        (self.root / "strategy.py").write_text(source, encoding="utf-8")
+        result = run_strategy(
+            canonical_bars(),
+            descriptor=self.descriptor,
+            execution=self.execution,
+            workspace_root=self.root,
+        )
+        self.assertEqual(marker.read_text(encoding="utf-8"), "written")
+        self.assertEqual(result["isolation"]["network_enforcement"], "none")
+        self.assertEqual(result["isolation"]["filesystem_enforcement"], "none")
+
+    def test_hardened_runtime_requires_and_verifies_launcher_attestation(self) -> None:
+        with self.assertRaisesRegex(StrategyRuntimeError, "sandbox launcher"):
+            run_strategy(
+                canonical_bars(),
+                descriptor=self.descriptor,
+                execution=self.execution,
+                workspace_root=self.root,
+                runtime_mode="hardened",
+            )
+
+        launcher = self.root / "fixture-sandbox-launcher"
+        launcher.write_text(
+            "#!/usr/bin/env python3\n"
+            "import json, subprocess, sys\n"
+            "from pathlib import Path\n"
+            "request = json.loads(Path(sys.argv[1]).read_text())\n"
+            "completed = subprocess.run(request['worker_argv'], cwd=request['working_directory'])\n"
+            "attestation = {\n"
+            "  'schema_version': 1,\n"
+            "  'launcher_sha256': request['launcher_sha256'],\n"
+            "  'request_fingerprint': request['request_fingerprint'],\n"
+            "  **request['requirements'],\n"
+            "}\n"
+            "Path(request['attestation_path']).write_text(json.dumps(attestation))\n"
+            "raise SystemExit(completed.returncode)\n",
+            encoding="utf-8",
+        )
+        launcher.chmod(0o700)
+        result = run_strategy(
+            canonical_bars(),
+            descriptor=self.descriptor,
+            execution=self.execution,
+            workspace_root=self.root,
+            runtime_mode="hardened",
+            sandbox_launcher=launcher,
+        )
+        self.assertEqual(result["isolation"]["mode"], "hardened")
+        self.assertEqual(result["isolation"]["network_enforcement"], "denied")
+        self.assertEqual(
+            result["isolation"]["filesystem_enforcement"],
+            "read_only_inputs_temp_output_only",
+        )
+        self.assertTrue(result["runtime_promotion_eligible"])
 
     def test_descriptor_rejects_traversal_symlink_escape_and_credentials(self) -> None:
         outside = self.root.parent / "outside-strategy.py"

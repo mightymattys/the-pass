@@ -12,7 +12,11 @@ from contextlib import redirect_stdout
 from the_pass.adapters.base import AdapterCapabilities, FetchRequest, manifest_for_events
 from the_pass.cli import main as cli_main
 from the_pass.data.contracts import CanonicalEvent, EventType, stable_fingerprint
-from the_pass.data.ingest import BundleExistsError, OfflineIngestService
+from the_pass.data.ingest import (
+    BundleExistsError,
+    OfflineIngestService,
+    validate_ingest_bundle,
+)
 from the_pass.validator import validate_artifact
 
 
@@ -110,6 +114,31 @@ def fixture_rows(close: str = "100") -> list[dict[str, Any]]:
 
 
 class OfflineIngestServiceTests(unittest.TestCase):
+    def test_bundle_rejects_schema_invalid_rehashed_quality_evidence(self) -> None:
+        adapter = FakeAdapter(fixture_rows())
+        service = OfflineIngestService(clock_ns=lambda: FIXED_RECEIVE_TIME_NS)
+        request = FetchRequest(kind="bars", instrument_id="TEST")
+        with tempfile.TemporaryDirectory() as tmp:
+            output = Path(tmp) / "bundle"
+            service.ingest(adapter, request, output)
+            quality_path = output / "quality-report.json"
+            quality = json.loads(quality_path.read_text(encoding="utf-8"))
+            quality.pop("summary")
+            quality_path.write_text(json.dumps(quality), encoding="utf-8")
+            receipt_path = output / "ingest-receipt.json"
+            receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+            receipt["quality_report_fingerprint"] = stable_fingerprint(quality)
+            receipt_core = {
+                key: value for key, value in receipt.items() if key != "receipt_fingerprint"
+            }
+            receipt["receipt_fingerprint"] = stable_fingerprint(receipt_core)
+            receipt_path.write_text(json.dumps(receipt), encoding="utf-8")
+            (output / "COMMITTED").write_text(
+                receipt["receipt_fingerprint"] + "\n", encoding="ascii"
+            )
+            with self.assertRaisesRegex(ValueError, "quality report does not validate"):
+                validate_ingest_bundle(output)
+
     def test_cli_futures_ingest_and_network_opt_in_boundary(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

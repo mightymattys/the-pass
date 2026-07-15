@@ -51,8 +51,10 @@ def load_reproduction_spec(package: Path) -> dict[str, Any]:
         details = "; ".join(f"{issue.path}: {issue.message}" for issue in validation.issues)
         raise ReproductionError(f"invalid reproduction spec: {details}")
     document = json.loads(path.read_text(encoding="utf-8"))
-    if document["runner_id"] != RUNNER_ID or document["network_allowed"] is not False:
-        raise ReproductionError("reproduction runner or network policy is not allowlisted")
+    if document["runner_id"] != RUNNER_ID:
+        raise ReproductionError("reproduction runner is not allowlisted")
+    if document["schema_version"] == 1 and document["network_allowed"] is not False:
+        raise ReproductionError("legacy reproduction network policy is not allowlisted")
     seen = set()
     for row in document["input_fingerprints"]:
         value = row["path"]
@@ -90,6 +92,7 @@ def reproduce_package(
     *,
     timeout_seconds: int = 120,
     environment: Mapping[str, str] | None = None,
+    sandbox_launcher: Path | None = None,
 ) -> dict[str, Any]:
     if isinstance(timeout_seconds, bool) or timeout_seconds <= 0 or timeout_seconds > 1800:
         raise ReproductionError("reproduction timeout_seconds must be in 1..1800")
@@ -99,6 +102,26 @@ def reproduce_package(
         details = "; ".join(f"{issue.path}: {issue.message}" for issue in validation.issues)
         raise ReproductionError(f"tracked package is invalid: {details}")
     spec = load_reproduction_spec(package)
+    isolation = (
+        {
+            "mode": "trusted_local",
+            "network_enforcement": "none",
+            "filesystem_enforcement": "none",
+            "resource_enforcement": "process_timeout_and_output_limit",
+            "launcher_sha256": None,
+        }
+        if spec["schema_version"] == 1
+        else dict(spec["isolation"])
+    )
+    runtime_mode = str(isolation["mode"])
+    if runtime_mode == "hardened":
+        if sandbox_launcher is None:
+            raise ReproductionError("hardened reproduction requires --sandbox-launcher")
+        launcher = sandbox_launcher.expanduser().resolve(strict=True)
+        if _digest(launcher) != isolation.get("launcher_sha256"):
+            raise ReproductionError("sandbox launcher fingerprint does not match reproduction spec")
+    elif sandbox_launcher is not None:
+        raise ReproductionError("sandbox launcher is valid only for hardened reproduction")
     inputs = spec["inputs"]
     source_workspace = _safe_path(package, inputs["workspace"], directory=True)
     clean_environment = {
@@ -135,9 +158,13 @@ def reproduce_package(
             str(output),
             "--timeout-seconds",
             str(min(timeout_seconds, 60)),
+            "--runtime-mode",
+            runtime_mode,
             "--format",
             "json",
         ]
+        if runtime_mode == "hardened":
+            argv.extend(["--sandbox-launcher", str(sandbox_launcher.resolve())])
         try:
             completed = subprocess.run(
                 argv,
@@ -172,7 +199,7 @@ def reproduce_package(
             "schema_version": 1,
             "runner_id": RUNNER_ID,
             "clean_temporary_directory": True,
-            "network_allowed": False,
+            "isolation": isolation,
             "exit_code": completed.returncode,
             "stdout_sha256": hashlib.sha256(completed.stdout).hexdigest(),
             "stderr_sha256": hashlib.sha256(completed.stderr).hexdigest(),

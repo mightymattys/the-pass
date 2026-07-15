@@ -1,5 +1,8 @@
 # The Pass v0.12.0
 
+> Historical release note. Version 0.13.0 replaces shared-secret reviewer attestations with
+> Ed25519 and public registry snapshots. Follow the current Usage Guide for signing commands.
+
 Version 0.12.0 hardens the path from market-data acquisition to independently reviewed evidence.
 
 ## Highlights
