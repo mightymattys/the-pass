@@ -2,7 +2,7 @@
 
 Audit date: 2026-07-15
 Scope: post-audit workflow, dataset, reproduction, and reviewer-authority hardening
-Result: locally verified; GitHub CI pending publication
+Result: locally verified; GitHub pull-request CI verified
 
 ## Implemented Controls
 
@@ -25,7 +25,7 @@ Result: locally verified; GitHub CI pending publication
 | `uv build --out-dir dist` | pass; wheel and source distribution built |
 | `scripts/validate_distribution.py` | pass; wheel contents and clean installed CLI |
 | no-network ingest -> backtest -> reproduce -> validate smoke | pass; rebuilt package valid, zero mismatches |
-| Python 3.9 and 3.12 GitHub CI | pending push |
+| Python 3.9 and 3.12 GitHub CI | pass in PR #21 ([run 29403976261](https://github.com/mightymattys/the-pass/actions/runs/29403976261)) |
 
 ## Residual Boundaries
 
