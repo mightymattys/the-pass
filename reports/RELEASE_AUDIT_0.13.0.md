@@ -47,6 +47,16 @@ Pull-request checks, merge commit, tag workflow, release assets, and downloaded-
 are appended to the versioned post-release audit. They cannot be claimed before GitHub completes
 those operations.
 
+## GitHub Pull Request Gate
+
+[PR #23](https://github.com/mightymattys/the-pass/pull/23) validated release commit `1e4af63` in
+[CI run 29408107493](https://github.com/mightymattys/the-pass/actions/runs/29408107493). Required
+checks `validate (3.9)` and `validate (3.12)` both passed. Branch protection also requires an
+external approving review, and no independent GitHub approval was recorded. The repository owner
+explicitly instructed this task to implement, verify, and deploy the release; as permitted by the
+documented release process, an administrative merge exception may be used only after the updated
+audit commit passes the same two required checks. The exception does not replace or bypass CI.
+
 ## Residual Boundaries
 
 - The repository cannot supply a portable OS sandbox. Operators must audit and configure a launcher

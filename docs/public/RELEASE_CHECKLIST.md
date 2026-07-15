@@ -54,6 +54,9 @@ only after pull-request CI, merge, tag workflow, and downloaded-asset verificati
       after both required CI contexts passed; no independent GitHub approval was recorded.
 - [x] The repository owner explicitly authorized completion of PR #13; it was administratively
       merged only after both required CI contexts and the full local release matrix passed.
+- [x] The repository owner explicitly authorized deployment of PR #23. Its release audit records
+      the missing external approval and permits an administrative merge only after both required
+      CI contexts pass on the final audit commit.
 - [x] The audited release commit is tagged `v0.10.0` and the release workflow publishes matching
       assets and checksums.
 - [ ] The audited `v0.13.0` commit is merged, tagged, published, and reverified from downloaded
@@ -65,6 +68,8 @@ Release evidence:
 - `https://github.com/mightymattys/the-pass/pull/13`
 - `https://github.com/mightymattys/the-pass/pull/14`
 - `https://github.com/mightymattys/the-pass/pull/15`
+- `https://github.com/mightymattys/the-pass/pull/23`
+- `https://github.com/mightymattys/the-pass/actions/runs/29408107493`
 - `https://github.com/mightymattys/the-pass/actions/runs/29206594772`
 - `https://github.com/mightymattys/the-pass/actions/runs/29206779773`
 - `https://github.com/mightymattys/the-pass/releases/tag/v0.10.0`
