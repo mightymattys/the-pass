@@ -2,6 +2,10 @@
 
 The Pass supports Python 3.9 and 3.12.
 
+Installation requires no exchange credentials, historical dataset, or previous backtest. A real
+strategy run eventually needs market history; see [Getting Started](GETTING_STARTED.md) for the
+public-data, user-archive, custom-code, and external-backtest paths.
+
 ## Install
 
 From a checked-out release:
@@ -60,8 +64,9 @@ not bypass independent gate evaluation. Cross-provider delegation is opt-in thro
 `the-pass agents inspect` followed by `the-pass agents dispatch --execute`; see
 [Cross-Runtime Orchestration](../plugin/CROSS_RUNTIME.md).
 
-The complete setup, smoke test, first guided run, direct CLI workflow, and common failure modes are
-documented in [USAGE_GUIDE.md](USAGE_GUIDE.md).
+The simplest setup, data explanation, first prompt, and common failure modes are documented in
+[GETTING_STARTED.md](GETTING_STARTED.md). Direct CLI workflows and advanced operation are in
+[USAGE_GUIDE.md](USAGE_GUIDE.md).
 
 Packaged schemas and policies are loaded from the installed wheel. A source checkout is not
 required. No command needs or loads venue credentials.

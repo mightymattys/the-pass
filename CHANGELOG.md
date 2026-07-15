@@ -5,6 +5,18 @@ and the Keep a Changelog structure.
 
 ## [Unreleased]
 
+### Added
+
+- Added a beginner-first guide that explains whether users need historical data, how supported
+  data acquisition and user archives differ, how to run the offline smoke, and how to interpret
+  terminal workflow states.
+
+### Changed
+
+- Reordered the README around a three-step install-and-run path and expanded the Usage Guide with
+  explicit entry paths for an idea, a market archive, trusted strategy code, or an external
+  backtest package.
+
 ## [0.11.0] - 2026-07-13
 
 ### Added

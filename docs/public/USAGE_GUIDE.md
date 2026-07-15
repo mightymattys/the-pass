@@ -4,6 +4,10 @@ This guide covers the supported way to install The Pass, run the Codex or Claude
 test a strategy, inspect evidence, delegate bounded agent work, and continue into paper
 observation. The public project never places real orders.
 
+For the shortest setup and first-run path, read [Getting Started](GETTING_STARTED.md). This guide
+is the detailed reference for users who need direct CLI control, custom strategies, external
+engines, paper observation, or cross-provider delegation.
+
 ## 1. Understand The Three Layers
 
 The Pass has three cooperating surfaces:
@@ -17,6 +21,24 @@ The Pass has three cooperating surfaces:
 Installing only the plugin is not enough for a complete run: the CLI must also be available to
 the agent, and strategy evidence must live in a writable project checkout. The recommended setup
 is a fork or clone of this repository plus a user-level CLI installation.
+
+### Do I Need Historical Data Already?
+
+You do **not** need previous backtest results, finished strategy code, or an existing dataset to
+start. You can begin with a plain-language idea. A real backtest eventually needs historical
+market data, and the workflow handles that requirement in one of four explicit ways:
+
+| Input | Supported path |
+| --- | --- |
+| No data yet | Attempt supported public read-only acquisition; otherwise stop with a concrete data blocker |
+| User market archive | Normalize it into canonical events and bind it to checksums, manifest, and quality evidence |
+| Trusted local strategy | Execute it twice against canonical events and package only deterministic results |
+| External backtest | Import a complete evidence package; never trust headline metrics without provenance and costs |
+
+Public bars are often sufficient for a cheap falsification screen. They are not automatically
+sufficient for an intraday promotion claim because they do not prove historical spread, depth,
+queue position, latency, or adverse selection. The Pass reports this limitation as `blocked`
+instead of manufacturing fill evidence.
 
 ## 2. Install The CLI
 
@@ -138,11 +160,23 @@ Expected result:
 Use `/the-pass:run` as the normal front door. A useful first prompt is:
 
 ```text
-/the-pass:run Research and test a BTCUSDT 15-minute time-series momentum idea to
-research_gate. Strategy owner: matty. Run owner: codex-implementer. Independent reviewer:
-claude-reviewer. Use public read-only data, conservative costs, a seeded random baseline,
-chronological holdout, and stop if fill-sensitive evidence is unavailable.
+/the-pass:run
+
+Start a NEW research run for a BTCUSDT 15-minute time-series momentum idea.
+Target: research_gate. Strategy owner: matty. Run owner: codex-implementer.
+Independent reviewer: claude-reviewer.
+
+Use public read-only data, conservative costs, a seeded-random baseline,
+chronological holdout, walk-forward validation, robustness tests, and an
+independent audit. Freeze the StrategySpec and search space before reading test
+results. If public bars are insufficient for fill-sensitive evidence, finish
+the diagnostic screen, stop blocked, and report the exact data required.
+Do not resume an older completed or killed run. Do not create a live order path.
 ```
+
+No existing backtest or dataset is implied by this prompt. The research stage first determines
+whether suitable public data can be acquired. Futures and paid-provider research remains blocked
+until the required licensed archive is supplied.
 
 The target must be one of:
 
@@ -156,6 +190,9 @@ The run creates durable state under `.the-pass/runs/<run-id>/state.yaml`. It adv
 that has sufficient evidence and stops honestly at `complete`, `waiting`, `blocked`, or `killed`.
 It may stop before the target when data, a license, an independent reviewer, supported execution
 evidence, or a paper window is missing. That stop is a valid testing result.
+
+Calling `/the-pass:run` without a new objective may resume an existing non-terminal run. When the
+previous strategy is terminal, use a new hypothesis and explicitly say `Start a NEW research run`.
 
 ### Supervise The Run To A Terminal Checkpoint
 
@@ -332,6 +369,8 @@ bypasses chronology, cost, reviewer, ledger, or gate checks.
 
 ## 10. Use Data Adapters Correctly
 
+The quick decision table is in [Getting Started: Where the Data Comes From](GETTING_STARTED.md#2-where-the-data-comes-from).
+
 - Binance Spot and Polymarket support public read-only market data.
 - Futures use the Databento-compatible interface and fixture replay. Promotion requires a
   user-supplied licensed archive.
@@ -412,7 +451,10 @@ limits, gate decisions, ledgers, or approval state.
 
 ## 15. Common Mistakes
 
+- Expecting `/the-pass:run` without an objective to invent a new strategy instead of resuming.
+- Assuming that no existing backtest means no historical market data will be needed later.
 - Installing the plugin but not the `the-pass` CLI.
+- Forgetting `/reload-plugins` or a new session after installing the Claude Code plugin.
 - Starting with `paper_gate` before an exact research-gated package exists.
 - Using the same identity for strategy owner, run owner, and reviewer.
 - Editing a recorded package instead of creating a successor.

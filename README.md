@@ -20,6 +20,92 @@ preserved even when the result is `kill`, `revise`, or `blocked`.
 > The Pass is not a trading bot, signal service, strategy library, or claim of profitability. The
 > public repository cannot place real orders, load trading credentials, or approve live trading.
 
+## Start Here
+
+**You do not need an existing backtest, strategy implementation, or historical test results.**
+You can start with one trading idea written in plain language. A backtest eventually needs market
+history, but The Pass can acquire supported public read-only data, validate it, and record exactly
+what was used. It never invents missing data and it never turns a limited dataset into a stronger
+claim than the evidence supports.
+
+| What you already have | What to give The Pass | What happens next |
+| --- | --- | --- |
+| Only an idea | Market, horizon, rough hypothesis, and target gate | Research, specification, public-data attempt, test, robustness, and review |
+| Your own historical market data | Archive path plus its venue, instruments, fields, and license constraints | Immutable ingest, normalization, quality checks, then testing |
+| Strategy code | Trusted local Python strategy plus execution assumptions | Deterministic double-run and a complete evidence package |
+| Results from another backtester | Exported trades, equity, metrics, costs, configuration, and data provenance | Package validation and the same independent review gates |
+
+The minimum useful input is:
+
+```text
+Test a new BTCUSDT 15-minute intraday strategy to research_gate. Use public
+read-only data, conservative costs, chronological holdout, robustness tests,
+and an independent reviewer. Stop honestly if the available data is not strong
+enough for a fill-sensitive conclusion.
+```
+
+The result can be `complete`, `killed`, `blocked`, or `waiting`. A killed or blocked strategy is a
+valid research outcome: the system completed the test and refused to overstate the evidence.
+
+> [!TIP]
+> New user? Follow [Getting Started](docs/public/GETTING_STARTED.md). It explains installation,
+> data choices, the first prompt, output states, and the exact commands without requiring prior
+> knowledge of the artifact model.
+
+## Install and Run
+
+The normal setup has two parts: the Python CLI performs deterministic work and validation; the
+Codex or Claude Code plugin provides the guided `/the-pass:*` commands.
+
+### 1. Install the CLI
+
+```bash
+uv tool install \
+  "the-pass[data,research,paper] @ https://github.com/mightymattys/the-pass/releases/download/v0.11.0/the_pass-0.11.0-py3-none-any.whl"
+uv tool update-shell
+the-pass --version
+```
+
+No exchange account, API key, or existing dataset is required for installation or the offline
+smoke test. The public package contains no live trading client.
+
+### 2. Install one plugin
+
+Codex:
+
+```bash
+codex plugin marketplace add mightymattys/the-pass --ref v0.11.0
+codex plugin add the-pass@the-pass-tools
+```
+
+Claude Code:
+
+```text
+/plugin marketplace add mightymattys/the-pass
+/plugin install the-pass@the-pass-tools
+/reload-plugins
+```
+
+### 3. Start a new strategy
+
+Open a new Codex task or Claude Code session and provide a new objective after the command:
+
+```text
+/the-pass:run Start a NEW research run for a BTCUSDT 15-minute intraday
+strategy. Target research_gate. Use public read-only data, conservative costs,
+a seeded-random baseline, chronological holdout, robustness tests, and an
+independent reviewer. Do not resume an older completed or killed run.
+```
+
+Use `/the-pass:status` to inspect the current run. Calling `/the-pass:run` without a new idea may
+resume an existing non-terminal run; explicitly say `Start a NEW research run` when testing a
+different hypothesis.
+
+For a no-network verification, clone the repository and run the five-minute smoke in
+[Getting Started](docs/public/GETTING_STARTED.md#5-verify-without-market-data). For custom Python
+strategies, external backtest engines, paper observation, and cross-provider delegation, continue
+with the [Usage Guide](docs/public/USAGE_GUIDE.md).
+
 ## Why The Pass Exists
 
 Most backtests fail for reasons that are not visible in the headline Sharpe ratio: data leakage,
@@ -90,84 +176,6 @@ See the [machine-readable roadmap](docs/implementation/roadmap-status.yaml),
 [slash-skill consolidation audit](reports/SLASH_SKILL_CONSOLIDATION_AUDIT_2026-07-10.md), and
 [full stability audit](reports/FULL_REPOSITORY_STABILITY_AUDIT_2026-07-10.md) for exact evidence
 paths and current verification results.
-
-## Quick Start
-
-The Pass supports Python 3.9 and 3.12. [`uv`](https://docs.astral.sh/uv/) is the reference
-development workflow.
-
-```bash
-git clone https://github.com/mightymattys/the-pass.git
-cd the-pass
-uv sync --locked --extra data --extra research
-uv run the-pass --version
-uv run python scripts/validate_public_repo.py
-uv run python -m unittest discover -s tests -v
-```
-
-The base package only needs PyYAML and JSON Schema. Optional extras add:
-
-| Extra | Adds |
-| --- | --- |
-| `data` | Arrow/Parquet, DuckDB, HTTP, and WebSocket support |
-| `research` | NumPy, pandas, and SciPy |
-| `paper` | No live client; kept intentionally dependency-light |
-| `dev` | Ruff |
-
-For wheel installation and clean-package verification, see
-[Installation](docs/public/INSTALLATION.md). Packaged schemas and policies work without a source
-checkout.
-
-For the complete workflow from CLI/plugin installation through a real research run, independent
-gate review, paper observation, external engines, and agent delegation, follow the
-[Usage Guide](docs/public/USAGE_GUIDE.md).
-
-Run the supported custom-strategy smoke entirely offline:
-
-```bash
-WORK="$(mktemp -d)"
-uv run the-pass data ingest \
-  --provider futures --archive-root tests/fixtures/futures \
-  --request examples/custom-strategy/fetch-request.json \
-  --output "$WORK/data" --format json
-
-uv run the-pass backtest run \
-  --descriptor examples/custom-strategy/descriptor.json \
-  --strategy-spec examples/custom-strategy/strategy-spec.json \
-  --events "$WORK/data/canonical-events.jsonl" \
-  --data-manifest "$WORK/data/data-manifest.json" \
-  --quality-report "$WORK/data/quality-report.json" \
-  --execution examples/custom-strategy/execution.json \
-  --workspace-root examples/custom-strategy \
-  --output "$WORK/package" --format json
-
-uv run the-pass validate-package "$WORK/package" --format json
-```
-
-The runtime executes two fresh subprocesses and packages only identical semantic results. The
-example verdict is still `blocked`: two fixture bars prove machinery, not a trading edge.
-The opt-in `scripts/smoke_public_adapters.py` additionally builds a temporary diagnostic Binance
-run package and Polymarket scanner package while retaining only metadata fingerprints.
-
-## First Evidence Check
-
-Validate the two public-safe packages, then write and verify an append-only ledger:
-
-```bash
-uv run the-pass validate-package examples/synthetic-breakout/package --format json
-uv run the-pass validate-package examples/synthetic-random-baseline/package --format json
-
-LEDGER="$(mktemp -d)/receipts.jsonl"
-uv run the-pass receipts --ledger "$LEDGER" --format json add \
-  examples/synthetic-breakout/package
-uv run the-pass receipts --ledger "$LEDGER" --format json add \
-  examples/synthetic-random-baseline/package
-uv run the-pass receipts --ledger "$LEDGER" --format json verify
-```
-
-The breakout fixture demonstrates a complete package shape. The seeded random fixture
-demonstrates that a valid experiment can and should be killed. Neither fixture is real trading
-evidence.
 
 ## CLI
 
@@ -468,6 +476,9 @@ Report vulnerabilities according to [SECURITY.md](SECURITY.md).
 
 ## Documentation
 
+- [Getting started](docs/public/GETTING_STARTED.md)
+- [Full usage guide](docs/public/USAGE_GUIDE.md)
+- [Installation and clean-package verification](docs/public/INSTALLATION.md)
 - [Main research plan](docs/research/the-pass-plan.md)
 - [Usable strategy runtime plan](docs/implementation/USABLE_STRATEGY_RUNTIME_PLAN.md)
 - [Trading roadmap execution plan](docs/implementation/TRADING_ROADMAP_EXECUTION_PLAN.md)
@@ -494,7 +505,6 @@ Report vulnerabilities according to [SECURITY.md](SECURITY.md).
 - [Supervised workflow implementation audit](reports/SUPERVISED_WORKFLOW_AUDIT_2026-07-11.md)
 - [Repository hardening audit](reports/REPOSITORY_HARDENING_AUDIT_2026-07-10.md)
 - [CLI contract](docs/public/CLI_CONTRACT.md)
-- [Usage guide](docs/public/USAGE_GUIDE.md)
 - [Release process](docs/public/RELEASE_PROCESS.md)
 - [`v0.8.0` release audit](reports/RELEASE_AUDIT_0.8.0.md)
 - [`v0.8.0` post-release verification](reports/POST_RELEASE_AUDIT_0.8.0.md)
