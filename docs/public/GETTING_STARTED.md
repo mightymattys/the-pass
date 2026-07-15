@@ -183,19 +183,9 @@ the-pass workflow status \
   --format json
 ```
 
-To let authenticated Codex and Claude CLIs continue one validated stage at a time:
-
-```bash
-the-pass workflow execute \
-  --state .the-pass/runs/<run-id>/state.yaml \
-  --author-provider codex \
-  --timeout-seconds 1800 \
-  --execute \
-  --format json \
-  --driver auto
-```
-
-This may incur provider cost. `--driver auto` must remain the final option.
+To let authenticated Codex and Claude CLIs continue one validated stage at a time, follow
+[Run Targets and Supervision](USAGE_GUIDE.md#3-run-targets-and-supervision). Supervised provider
+calls may incur cost.
 
 ## 8. Understand the Result
 

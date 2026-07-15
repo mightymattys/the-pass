@@ -22,161 +22,23 @@ Installing only the plugin is not enough for a complete run: the CLI must also b
 the agent, and strategy evidence must live in a writable project checkout. The recommended setup
 is a fork or clone of this repository plus a user-level CLI installation.
 
-### Do I Need Historical Data Already?
+Data requirements and the four supported starting points are defined once in
+[Getting Started: Where the Data Comes From](GETTING_STARTED.md#2-where-the-data-comes-from).
 
-You do **not** need previous backtest results, finished strategy code, or an existing dataset to
-start. You can begin with a plain-language idea. A real backtest eventually needs historical
-market data, and the workflow handles that requirement in one of four explicit ways:
+## 2. Prerequisites
 
-| Input | Supported path |
-| --- | --- |
-| No data yet | Attempt supported public read-only acquisition; otherwise stop with a concrete data blocker |
-| User market archive | Normalize it into canonical events and bind it to checksums, manifest, and quality evidence |
-| Trusted local strategy | Execute it twice against canonical events and package only deterministic results |
-| External backtest | Import a complete evidence package; never trust headline metrics without provenance and costs |
+Complete the installation and offline smoke in [Getting Started](GETTING_STARTED.md#4-install).
+Package-manager variants and clean-wheel details live in [Installation](INSTALLATION.md). This
+guide does not duplicate those commands.
 
-Public bars are often sufficient for a cheap falsification screen. They are not automatically
-sufficient for an intraday promotion claim because they do not prove historical spread, depth,
-queue position, latency, or adverse selection. The Pass reports this limitation as `blocked`
-instead of manufacturing fill evidence.
+For source development, run the repository checks documented in [Development](../../README.md#development)
+before changing runtime contracts.
 
-## 2. Install The CLI
+## 3. Run Targets and Supervision
 
-Install the released CLI and all non-live research extras with `uv`:
-
-```bash
-uv tool install \
-  "the-pass[data,research,paper] @ https://github.com/mightymattys/the-pass/releases/download/v0.11.0/the_pass-0.11.0-py3-none-any.whl"
-uv tool update-shell
-the-pass --version
-```
-
-Open a new shell if `the-pass` is not immediately on `PATH`. The expected version is `0.11.0`.
-The base package is sufficient for artifact and ledger validation; the command above also installs
-Parquet, DuckDB, HTTP/WebSocket, NumPy, pandas, and SciPy support. It does not install a live
-trading client.
-
-For repository development instead:
-
-```bash
-git clone https://github.com/mightymattys/the-pass.git
-cd the-pass
-git checkout v0.11.0
-uv sync --locked --extra data --extra research --extra dev
-uv run the-pass --version
-```
-
-## 3. Install A Plugin
-
-### Codex
-
-```bash
-codex plugin marketplace add mightymattys/the-pass --ref v0.11.0
-codex plugin add the-pass@the-pass-tools
-codex plugin list
-```
-
-Start a new Codex task after installation so the seven `/the-pass:*` skills are loaded.
-
-For local development against the current checkout, replace the first command with:
-
-```bash
-codex plugin marketplace add "$PWD"
-codex plugin add the-pass@the-pass-tools
-```
-
-### Claude Code
-
-Inside Claude Code:
-
-```text
-/plugin marketplace add mightymattys/the-pass
-/plugin install the-pass@the-pass-tools
-/reload-plugins
-```
-
-For local plugin development:
-
-```bash
-claude --plugin-dir /absolute/path/to/the-pass
-```
-
-Both runtimes expose `run`, `research`, `test`, `review`, `paper`, `plate`, and `status` under the
-`/the-pass:*` namespace. Claude also exposes the finite coordinator, researcher, implementer, and
-reviewer native agents.
-
-## 4. Verify The Installation
-
-Run these checks before the first strategy:
-
-```bash
-the-pass --version
-the-pass agents doctor --provider all --format json
-the-pass agents catalog-check --format json
-```
-
-`agents doctor` checks executable versions and the model-routing catalog. It does not contact a
-model or prove provider authentication. A missing Codex or Claude binary matters only when that
-provider is selected for cross-provider delegation.
-`agents catalog-check` verifies that the human-reviewed model allowlist has not exceeded its
-maximum age; stale policy exits `2` and model routing fails closed.
-
-In a source checkout, the complete offline repository check is:
-
-```bash
-uv lock --check
-uv run ruff check .
-uv run python scripts/validate_public_repo.py
-uv run python -m unittest discover -s tests -v
-```
-
-## 5. Run The Safe Five-Minute Smoke
-
-From a The Pass checkout:
-
-```bash
-WORK="$(mktemp -d)"
-LEDGER="$WORK/receipts.jsonl"
-
-the-pass validate-package examples/synthetic-breakout/package --format json
-the-pass receipts --ledger "$LEDGER" --format json add \
-  examples/synthetic-breakout/package
-the-pass receipts --ledger "$LEDGER" --format json verify
-
-the-pass backtest baseline --name seeded_random \
-  --output "$WORK/random-package" --format json
-the-pass validate-package "$WORK/random-package" --format json
-```
-
-Expected result:
-
-- the synthetic breakout package validates but does not prove a real edge;
-- the ledger appends and verifies one immutable run;
-- the seeded random baseline builds a valid package whose verdict is `kill`;
-- no network, credentials, paper broker, gate approval, or live operation is used.
-
-## 6. Start A Real Guided Run
-
-Use `/the-pass:run` as the normal front door. A useful first prompt is:
-
-```text
-/the-pass:run
-
-Start a NEW research run for a BTCUSDT 15-minute time-series momentum idea.
-Target: research_gate. Strategy owner: matty. Run owner: codex-implementer.
-Independent reviewer: claude-reviewer.
-
-Use public read-only data, conservative costs, a seeded-random baseline,
-chronological holdout, walk-forward validation, robustness tests, and an
-independent audit. Freeze the StrategySpec and search space before reading test
-results. If public bars are insufficient for fill-sensitive evidence, finish
-the diagnostic screen, stop blocked, and report the exact data required.
-Do not resume an older completed or killed run. Do not create a live order path.
-```
-
-No existing backtest or dataset is implied by this prompt. The research stage first determines
-whether suitable public data can be acquired. Futures and paid-provider research remains blocked
-until the required licensed archive is supplied.
+Use `/the-pass:run` as the normal front door. The canonical first prompt and its data semantics
+live in [Getting Started: Start Your First Real Strategy](GETTING_STARTED.md#6-start-your-first-real-strategy).
+This section documents what happens after that prompt creates durable state.
 
 The target must be one of:
 
@@ -239,7 +101,7 @@ The supervisor report is written beside the workflow state. Auto mode does not f
 or direct API-key environment variables to provider processes; it uses the CLIs' local authenticated
 configuration.
 
-## 7. Use Focused Skills When Needed
+## 4. Use Focused Skills When Needed
 
 | Command | Use it for |
 | --- | --- |
@@ -253,7 +115,7 @@ configuration.
 Use focused commands to resume or inspect a specific station. Do not manually chain them when
 `/the-pass:run` can own the workflow state.
 
-## 8. Use The CLI Directly
+## 5. Use The CLI Directly
 
 The CLI is appropriate for scripts, CI, external engines, and deterministic reruns.
 
@@ -303,7 +165,7 @@ A run receipt proves that a run happened. It never proves that a gate passed. A 
 the separate decision for the exact package ID, package path, reviewer, policy hash, and evidence
 fingerprints.
 
-## 9. Run Your Own Strategy
+## 6. Run Your Own Strategy
 
 The supported runtime accepts a trusted local Python file. The file exposes a factory such as
 `build_strategy(config)` and returns an object with a stable `strategy_id` plus
@@ -367,7 +229,7 @@ package containing at least:
 Validate the exported package and append it through the same CLI. External engine output never
 bypasses chronology, cost, reviewer, ledger, or gate checks.
 
-## 10. Use Data Adapters Correctly
+## 7. Use Data Adapters Correctly
 
 The quick decision table is in [Getting Started: Where the Data Comes From](GETTING_STARTED.md#2-where-the-data-comes-from).
 
@@ -398,7 +260,7 @@ Only explicitly full-text evidence with a locator is independently eligible to s
 claim. Abstracts, metadata, operator material, and unspecified reviews remain visible but cannot
 be silently upgraded.
 
-## 11. Delegate To The Other Provider
+## 8. Delegate To The Other Provider
 
 Cross-provider delegation is optional and explicit. Begin from `templates/agent_task.yaml`, then:
 
@@ -417,7 +279,7 @@ effort, capabilities, limits, paths, and sanitized invocation without making a p
 - A delegated agent cannot delegate again, retry itself, change a gate, write a ledger, approve
   live trading, commit, or push.
 
-## 12. Understand Results And Exit Codes
+## 9. Understand Results And Exit Codes
 
 | Exit | Meaning |
 | --- | --- |
@@ -429,7 +291,7 @@ effort, capabilities, limits, paths, and sanitized invocation without making a p
 Exit `2` means The Pass worked and declined progression. Automation must not treat it as a crash or
 rewrite the evidence to force exit `0`.
 
-## 13. Resume Without Rewriting History
+## 10. Resume Without Rewriting History
 
 - Use `/the-pass:status` or `the-pass workflow status` first.
 - Resolve the named blocker or wait condition.
@@ -439,7 +301,7 @@ rewrite the evidence to force exit `0`.
   or remediation evidence.
 - Every successor receives a new run ID and package ID and must replay prerequisite gates.
 
-## 14. Build Reports
+## 11. Build Reports
 
 ```bash
 the-pass report build --repo-root . --output-dir reports/generated/report --format json
@@ -449,7 +311,7 @@ the-pass dashboard build --repo-root . --output-dir reports/generated/dashboard 
 The output is static and read-only. It can summarize evidence but cannot modify StrategySpecs,
 limits, gate decisions, ledgers, or approval state.
 
-## 15. Common Mistakes
+## 12. Common Mistakes
 
 - Expecting `/the-pass:run` without an objective to invent a new strategy instead of resuming.
 - Assuming that no existing backtest means no historical market data will be needed later.

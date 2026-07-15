@@ -37,26 +37,12 @@ the-pass receipts add path/to/package --ledger receipts.jsonl
 the-pass receipts verify --ledger receipts.jsonl
 ```
 
-For a guided end-to-end research line, install either bundled plugin and use
-`/the-pass:run`. Both runtimes consume the same seven skills. A local Claude Code checkout can be
-loaded directly:
+Guided Codex and Claude Code plugin installation is maintained in
+[Getting Started: Install](GETTING_STARTED.md#4-install). For local Claude Code plugin development,
+load the checkout directly:
 
 ```bash
 claude --plugin-dir /path/to/the-pass
-```
-
-The published pinned Claude marketplace supports:
-
-```text
-/plugin marketplace add mightymattys/the-pass
-/plugin install the-pass@the-pass-tools
-```
-
-Codex installation uses the repository's Codex marketplace catalog:
-
-```bash
-codex plugin marketplace add mightymattys/the-pass --ref v0.11.0
-codex plugin add the-pass@the-pass-tools
 ```
 
 The Python `workflow` group exposes the same validated state primitives for automation; it does

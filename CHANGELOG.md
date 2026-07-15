@@ -15,7 +15,8 @@ and the Keep a Changelog structure.
 
 - Reordered the README around a three-step install-and-run path and expanded the Usage Guide with
   explicit entry paths for an idea, a market archive, trusted strategy code, or an external
-  backtest package.
+  backtest package. Public documentation now assigns beginner, installation, and advanced topics
+  to separate canonical guides instead of repeating complete setup and smoke sections.
 
 ## [0.11.0] - 2026-07-13
 

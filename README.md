@@ -221,16 +221,8 @@ The repository contains validated Codex and Claude Code plugin manifests backed 
 focused slash-command skills. The plugins are guided research surfaces; the Python CLI remains the
 machine interface and source of validation truth.
 
-Install the Codex plugin from the pinned marketplace:
-
-```bash
-codex plugin marketplace add mightymattys/the-pass --ref v0.11.0
-codex plugin add the-pass@the-pass-tools
-```
-
-For Claude Code, add `mightymattys/the-pass` as a marketplace and install
-`the-pass@the-pass-tools`. Install the Python CLI separately in both cases; see the
-[Usage Guide](docs/public/USAGE_GUIDE.md).
+Installation is defined once in [Install and Run](#install-and-run). The advanced runtime,
+delegation, and gate semantics are documented in the [Usage Guide](docs/public/USAGE_GUIDE.md).
 
 | Slash command | Purpose |
 | --- | --- |
@@ -244,11 +236,8 @@ For Claude Code, add `mightymattys/the-pass` as a marketplace and install
 
 `/the-pass:run` is the default front door. It creates resumable state under
 `.the-pass/runs/<run-id>/state.yaml`, invokes the focused skills in policy order, records
-immutable evidence, and stops at `complete`, `waiting`, `blocked`, or `killed`. For example:
-
-```text
-/the-pass:run Test this momentum idea to research_gate
-```
+immutable evidence, and stops at `complete`, `waiting`, `blocked`, or `killed`. Use the complete
+first-run prompt in [Getting Started](docs/public/GETTING_STARTED.md#6-start-your-first-real-strategy).
 
 The orchestrator never treats a receipt as approval, never retries a gate decision, and cannot
 target `live_gate`. Paper observation may correctly stop at `waiting` until its predeclared
@@ -262,68 +251,11 @@ successor package; editing counters, copying a package, or using a v1 row cannot
 
 ### Supervised End-to-End Execution
 
-Version `0.10.0` adds a mechanical liveness supervisor. It repeatedly executes exactly one stage,
-reloads durable state, rejects no-progress or illegal transitions, and stops only at `complete`,
-`waiting`, `blocked`, or `killed`. Inspect the next route without making a model call:
-
-```bash
-the-pass agents route --stage backtest --author-provider codex --format json
-the-pass workflow execute --state .the-pass/runs/<run-id>/state.yaml \
-  --author-provider codex --format json --driver auto
-```
-
-Add `--execute` before `--driver auto` to start paid/authenticated provider calls. The auto driver
-uses the versioned stage policy: Claude is preferred for research and adversarial statistical
-review, Codex for data, implementation, simulation, paper, and risk packaging, and an independent
-provider for gate review. It selects the cheapest profile satisfying the stage's workload and
-capability floor. Preflight and gate recording are deterministic and never ask a model to approve
-itself.
-
-The reviewed `0.11.0` catalog contains only GPT-5.6 Luna, Terra, and Sol for Codex, plus Claude
-Sonnet 5, Opus 4.8, and Fable 5. Policy validation rejects a Codex model below GPT-5.6, more than
-three provider models, and any model outside the current allowlist; there is no legacy fallback.
-
-The auto driver is an explicitly trusted local mode: selected provider CLIs receive workspace
-tools so they can produce evidence and run tests. The supervisor validates state and gate authority
-after every turn, but it is not an OS sandbox for an arbitrary local command. A custom trusted
-driver may replace `auto` after `--driver` when another orchestrator should own stage execution.
-`agents doctor` does not verify authentication or model entitlement. Authenticate both providers
-for the default route, or pass `--available-provider codex|claude`; provider failures are not
-automatically retried through a second model.
-
-`the-pass agents catalog-check` independently enforces the policy review age. A stale catalog
-returns exit `2` and blocks model routing until a human verifies provider primary documentation;
-the command never claims authentication or model entitlement.
-
-The complete behavioral contract is in [The Pass Commands](docs/plugin/COMMANDS.md) and
-[Skill Contracts](docs/implementation/SKILL_CONTRACTS.md). The consolidation rationale and
-verified implementation plan are in the
-[Slash Skill Consolidation Plan](docs/implementation/SLASH_SKILL_CONSOLIDATION_PLAN.md).
-
-Claude Code also exposes four bounded native agents: `coordinator`, `researcher`, `implementer`,
-and `reviewer`. Codex or Claude may delegate to the other provider through a provider-neutral,
-depth-one broker. Delegation is inspect-first and never runs implicitly:
-
-```bash
-the-pass agents doctor --format json
-the-pass agents route --stage review_research --author-provider codex --format json
-the-pass agents inspect templates/agent_task.yaml --format json
-the-pass agents dispatch templates/agent_task.yaml --output-dir reports/agents \
-  --execute --format json
-```
-
-`AgentTask` selects a structured workload and minimum profile. The broker resolves `economy`,
-`balanced`, or `deep` against the target provider's versioned capability catalog, applies role and
-write-mode floors, and shows the exact requested model and effort in `agents inspect` before any
-paid call. Arbitrary model IDs are not accepted from tasks.
-
-Read-only tasks cannot write. Implementation tasks run in a disposable Git worktree and return an
-unapplied patch for the caller to review. Agents cannot apply patches, write protected governance
-paths, decide gates, approve live trading, recursively delegate, or retry a failed model call.
-External provider calls are serialized; parallel work belongs inside bounded native subagents.
-User/project MCP servers, plugins, hooks, and connector settings are disabled for broker-managed
-provider processes. See
-[Cross-Runtime Orchestration](docs/plugin/CROSS_RUNTIME.md).
+The mechanical supervisor executes one validated stage at a time and can route bounded work
+between locally authenticated Codex and Claude CLIs. It rejects no-progress transitions and never
+lets an agent approve its own gate. Commands, model routing, authentication limits, worktree
+isolation, and delegation safety are maintained in [Run Targets and Supervision](docs/public/USAGE_GUIDE.md#3-run-targets-and-supervision)
+and [Cross-Runtime Orchestration](docs/plugin/CROSS_RUNTIME.md).
 
 ## Evidence Model
 

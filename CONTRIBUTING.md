@@ -29,3 +29,16 @@ Every meaningful change should preserve:
 - Gate-based promotion.
 - Public-safe examples.
 - Explicit data/provider licensing boundaries.
+
+## Documentation Ownership
+
+- `README.md` owns the one-screen explanation and shortest install-and-run path.
+- `docs/public/GETTING_STARTED.md` owns the complete beginner workflow, first prompt, data choices,
+  offline smoke, result states, and common setup failures.
+- `docs/public/INSTALLATION.md` owns package-manager and clean-install variants.
+- `docs/public/USAGE_GUIDE.md` owns advanced gate, supervisor, direct CLI, custom strategy, adapter,
+  paper, and delegation operations.
+
+When a command or explanation already has an owner, link to it instead of copying the full block
+into another guide. Keep only the minimal README duplication needed for a standalone repository
+front page.
