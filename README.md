@@ -61,7 +61,7 @@ Codex or Claude Code plugin provides the guided `/the-pass:*` commands.
 
 ```bash
 uv tool install \
-  "the-pass[data,research,paper] @ https://github.com/mightymattys/the-pass/releases/download/v0.11.0/the_pass-0.11.0-py3-none-any.whl"
+  "the-pass[data,research,paper] @ https://github.com/mightymattys/the-pass/releases/download/v0.12.0/the_pass-0.12.0-py3-none-any.whl"
 uv tool update-shell
 the-pass --version
 ```
@@ -74,7 +74,7 @@ smoke test. The public package contains no live trading client.
 Codex:
 
 ```bash
-codex plugin marketplace add mightymattys/the-pass --ref v0.11.0
+codex plugin marketplace add mightymattys/the-pass --ref v0.12.0
 codex plugin add the-pass@the-pass-tools
 ```
 
@@ -139,9 +139,9 @@ flowchart LR
 ```
 
 A valid run receipt proves that an experiment happened and that its artifacts are internally
-consistent. It does **not** prove that a gate passed. Promotion requires a separate
-`gate_decision` tied to the exact package, evidence fingerprints, reviewer, policy version, and
-policy hash.
+consistent. It does **not** prove that a gate passed. Promotion requires a signed
+`reviewer_attestation` plus a separate `gate_decision` tied to the exact package, evidence
+fingerprints, reviewer, policy version, and policy hash.
 
 ## Current Status
 
@@ -150,9 +150,9 @@ local strategy files, immutable adapter ingest bundles, deterministic double-run
 strategy-driven robustness sweeps, and resumable replay-based paper observations. Candidate
 promotion remains deliberately separate.
 
-The source tree and plugin manifests are versioned `0.11.0`. The
+The source tree and plugin manifests are versioned `0.12.0`. The
 release badge above remains the authority for the latest published tag. Readiness is recorded in the
-[`v0.11.0` release audit](reports/RELEASE_AUDIT_0.11.0.md), the
+[`v0.12.0` release audit](reports/RELEASE_AUDIT_0.12.0.md), the
 [`v0.9.0` cross-agent audit](reports/CROSS_AGENT_ORCHESTRATION_AUDIT_0.9.0.md) and the
 [full repository stability audit](reports/FULL_REPOSITORY_STABILITY_AUDIT_2026-07-10.md). Versioned
 publication evidence for the installation fix is tracked in the
@@ -189,10 +189,11 @@ uv run the-pass <group> --help
 | Group | Responsibility |
 | --- | --- |
 | `validate`, `validate-package` | Validate one artifact or a complete run package |
-| `data`, `features` | Ingest immutable adapter evidence and build quality/features |
+| `data`, `features` | Plan/resume immutable adapter datasets and build quality/features |
 | `screen`, `backtest` | Run bundled controls or a trusted local strategy twice |
+| `audit` | Rebuild a custom package in a clean temporary workspace |
 | `robustness`, `risk` | Execute preregistered sweeps and evaluate selection bias/risk |
-| `gate` | Evaluate artifact-backed candidate gates |
+| `gate` | Sign reviewer provenance and evaluate artifact-backed candidate gates |
 | `paper` | Run compatibility replay or resume a custom-strategy observation |
 | `automation`, `incident` | Execute evidence-reading job handlers and create incidents |
 | `report`, `dashboard` | Build static, read-only evidence bundles |
@@ -272,7 +273,7 @@ Schemas are registered by `(artifact_type, schema_version)`. V1 evidence remains
 compatibility, but cannot be treated as a passed v2 gate. Strategy specifications are immutable
 after their first run; material changes create a new version and run.
 
-The repository ships one latest-version template for each of its 37 registered artifact types.
+The repository ships one latest-version template for each of its 41 registered artifact types.
 Every template is validated in the public repository check through the production artifact
 validator. Starter values are deliberately `draft`, `diagnostic`, `blocked`, or otherwise
 non-promoting; they demonstrate a valid shape and must be replaced with measured evidence before
@@ -311,6 +312,9 @@ truth. Paid data and provider credentials must never enter the repository, artif
 `the-pass data ingest` requires explicit `--network` for Binance or Polymarket and emits a
 `COMMITTED` marker only after raw response, request, canonical events, quality, manifest, receipt,
 cost snapshot, and transport evidence are durably written.
+For longer windows, `the-pass data plan` freezes deterministic non-overlapping chunks and
+`the-pass data build` resumes only verified chunk bundles. Returning an existing committed dataset
+revalidates its events, quality, manifest, aggregate receipt, and per-chunk fingerprints.
 
 Read the [Adapter Contract](docs/adapter-contract.md) and
 [Canonical Data Foundation](docs/adapters/DATA_FOUNDATION.md) before adding a provider.
@@ -434,6 +438,8 @@ Report vulnerabilities according to [SECURITY.md](SECURITY.md).
 - [`v0.10.0` post-release verification](reports/POST_RELEASE_AUDIT_0.10.0.md)
 - [`v0.11.0` usable runtime release notes](docs/public/RELEASE_NOTES_v0.11.0.md)
 - [`v0.11.0` release audit](reports/RELEASE_AUDIT_0.11.0.md)
+- [`v0.12.0` hardening release notes](docs/public/RELEASE_NOTES_v0.12.0.md)
+- [`v0.12.0` release audit](reports/RELEASE_AUDIT_0.12.0.md)
 - [Supervised workflow implementation audit](reports/SUPERVISED_WORKFLOW_AUDIT_2026-07-11.md)
 - [Repository hardening audit](reports/REPOSITORY_HARDENING_AUDIT_2026-07-10.md)
 - [CLI contract](docs/public/CLI_CONTRACT.md)

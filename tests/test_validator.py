@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import io
+import hashlib
 import json
 import os
 import shutil
@@ -12,6 +13,11 @@ from pathlib import Path
 from unittest.mock import patch
 
 import the_pass.validator as validator_module
+from the_pass.attestation import (
+    ATTESTATION_KEY_ENV,
+    create_reviewer_attestation,
+    write_reviewer_attestation,
+)
 from the_pass.cli import main as cli_main
 from the_pass.ledger import (
     LEDGER_SCHEMA_V1,
@@ -40,6 +46,40 @@ ADAPTER_EXAMPLES = (
     ROOT / "examples" / "adapters" / "generic-prediction-market.yaml",
 )
 SCHEMA_DIR = ROOT / "schemas"
+ATTESTATION_TEST_KEY = "validator-review-attestation-key-32-bytes"
+
+
+def add_reviewer_attestation(package: Path, gate: str, reviewer: str) -> None:
+    package_id = build_run_entry(package)["package_id"]
+    empty_hash = hashlib.sha256(b"").hexdigest()
+    task_path = (
+        package / "findings.json"
+        if gate == "research_gate"
+        else package / f"audit_report.{gate}.json"
+    )
+    document = create_reviewer_attestation(
+        gate=gate,
+        package_id=package_id,
+        reviewer=reviewer,
+        principal_type="provider",
+        provider="claude",
+        model="claude-current",
+        run_id="test-review-run",
+        author_provider="codex",
+        reviewer_provider="claude",
+        evidence={
+            "state_before_sha256": hashlib.sha256(b"before").hexdigest(),
+            "state_after_sha256": hashlib.sha256(b"after").hexdigest(),
+            "stdout_sha256": empty_hash,
+            "stderr_sha256": empty_hash,
+            "task_sha256": hashlib.sha256(task_path.read_bytes()).hexdigest(),
+        },
+        key=ATTESTATION_TEST_KEY,
+        created_at="2026-07-15T00:00:00Z",
+    )
+    write_reviewer_attestation(
+        package / f"reviewer_attestation.{gate}.json", document
+    )
 
 
 def workflow_artifacts() -> dict[str, dict]:
@@ -659,6 +699,13 @@ def add_paper_gate_artifacts(
 
 
 class ValidatorTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.attestation_environment = patch.dict(
+            os.environ, {ATTESTATION_KEY_ENV: ATTESTATION_TEST_KEY}
+        )
+        self.attestation_environment.start()
+        self.addCleanup(self.attestation_environment.stop)
+
     def test_concurrent_receipt_appends_preserve_hash_chain(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -1528,6 +1575,9 @@ safety:
             package = tmp_path / "package"
             shutil.copytree(EXAMPLE_PACKAGE, package)
             prepare_paper_candidate(package)
+            add_reviewer_attestation(
+                package, "research_gate", "independent-auditor"
+            )
             evaluation = evaluate_gate(
                 package,
                 gate="research_gate",
@@ -1676,12 +1726,14 @@ safety:
                 build_run_entry(package, ledger_path=ledger)["package_id"], package_id
             )
 
-            append_ledger_entry(ledger, package)
             gates = (
                 ("research_gate", "independent-auditor"),
                 ("paper_gate", "independent-paper-reviewer"),
                 ("risk_review", "independent-risk-reviewer"),
             )
+            for gate, reviewer in gates:
+                add_reviewer_attestation(package, gate, reviewer)
+            append_ledger_entry(ledger, package)
             for gate, reviewer in gates:
                 evaluation = evaluate_gate(
                     package,
@@ -1849,6 +1901,9 @@ safety:
             state = tmp_path / "state.yaml"
             shutil.copytree(EXAMPLE_PACKAGE, package)
             prepare_paper_candidate(package)
+            add_reviewer_attestation(
+                package, "research_gate", "independent-auditor"
+            )
 
             with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
                 add_run_exit = cli_main(
@@ -2027,6 +2082,9 @@ safety:
             shutil.copytree(EXAMPLE_PACKAGE, package)
             prepare_paper_candidate(package)
             add_paper_gate_artifacts(package)
+            add_reviewer_attestation(
+                package, "paper_gate", "independent-paper-reviewer"
+            )
 
             with patch("the_pass.gates.prior_gate_passes", return_value=True):
                 evaluation = evaluate_gate(
@@ -2051,6 +2109,9 @@ safety:
             shutil.copytree(EXAMPLE_PACKAGE, package)
             prepare_paper_candidate(package)
             add_risk_review_artifacts(package)
+            add_reviewer_attestation(
+                package, "risk_review", "independent-risk-reviewer"
+            )
 
             with patch("the_pass.gates.prior_gate_passes", return_value=True):
                 evaluation = evaluate_gate(

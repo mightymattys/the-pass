@@ -5,11 +5,17 @@ and the Keep a Changelog structure.
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-07-15
+
 ### Added
 
 - Added a beginner-first guide that explains whether users need historical data, how supported
   data acquisition and user archives differ, how to run the offline smoke, and how to interpret
   terminal workflow states.
+- Added deterministic `data plan`/`data build`, clean custom-package `audit reproduce`, and signed
+  manual or supervisor-created reviewer attestations.
+- Added schemas and regression coverage for dataset plans/receipts, reproduction specifications,
+  reviewer provenance, state transaction failures, and tampered committed datasets.
 
 ### Changed
 
@@ -17,6 +23,17 @@ and the Keep a Changelog structure.
   explicit entry paths for an idea, a market archive, trusted strategy code, or an external
   backtest package. Public documentation now assigns beginner, installation, and advanced topics
   to separate canonical guides instead of repeating complete setup and smoke sections.
+- Workflow drivers now receive proposal state and only the supervisor can atomically commit a
+  validated transition. External dispatch serialization is scoped by workspace.
+- New research, paper, and risk gate passes require a matching HMAC-SHA256 reviewer attestation;
+  unattested historical evidence remains readable and receives a blocked result.
+
+### Fixed
+
+- Committed dataset resume now revalidates aggregate events, quality, manifest, receipt, and every
+  chunk instead of trusting only the final marker.
+- Clean reproduction rejects undeclared workspace files, symlinks, unsafe paths, changed inputs,
+  unknown runners, and semantic output mismatches.
 
 ## [0.11.0] - 2026-07-13
 
@@ -182,7 +199,8 @@ and the Keep a Changelog structure.
 
 - Initial public plugin, slash skills, artifact schemas, validators, and synthetic examples.
 
-[Unreleased]: https://github.com/mightymattys/the-pass/compare/v0.11.0...HEAD
+[Unreleased]: https://github.com/mightymattys/the-pass/compare/v0.12.0...HEAD
+[0.12.0]: https://github.com/mightymattys/the-pass/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/mightymattys/the-pass/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/mightymattys/the-pass/compare/v0.9.1...v0.10.0
 [0.9.1]: https://github.com/mightymattys/the-pass/compare/v0.9.0...v0.9.1

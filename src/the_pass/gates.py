@@ -13,6 +13,12 @@ from typing import Any
 
 import yaml
 
+from .attestation import (
+    AttestationError,
+    attestation_path,
+    review_task_path,
+    verify_reviewer_attestation,
+)
 from .ledger import (
     DEFAULT_LEDGER_PATH,
     artifact_identity_sha256,
@@ -222,6 +228,36 @@ def reviewer_identity_blockers(package_dir: Path, reviewer: str) -> list[str]:
     return blockers
 
 
+def gate_attestation_artifact(
+    package_dir: Path,
+    gate: str,
+    reviewer: str,
+    package_id: str,
+) -> tuple[Path | None, list[str]]:
+    path = attestation_path(package_dir, gate)
+    if not path.is_file():
+        return None, [f"missing reviewer_attestation.{gate} artifact"]
+    document, blockers = verify_reviewer_attestation(
+        path,
+        gate=gate,
+        package_id=package_id,
+        reviewer=reviewer,
+    )
+    try:
+        task_path = review_task_path(package_dir, gate)
+    except AttestationError as exc:
+        blockers.append(str(exc))
+    else:
+        task_hash = (
+            document.get("evidence", {}).get("task_sha256")
+            if isinstance(document, dict)
+            else None
+        )
+        if task_hash != hashlib.sha256(task_path.read_bytes()).hexdigest():
+            blockers.append("reviewer attestation task evidence fingerprint does not match")
+    return path, blockers
+
+
 def evaluate_gate(
     package_dir: Path,
     *,
@@ -263,6 +299,18 @@ def evaluate_gate(
     extra_evidence: list[dict[str, Any]] = []
     if gate != "live_gate":
         blockers.extend(reviewer_identity_blockers(package_dir, reviewer))
+        attestation_file, attestation_issues = gate_attestation_artifact(
+            package_dir, gate, reviewer, package_id
+        )
+        blockers.extend(attestation_issues)
+        if attestation_file is not None:
+            extra_evidence.append(
+                {
+                    "type": "reviewer_attestation",
+                    "path": attestation_file.name,
+                    "sha256": hashlib.sha256(attestation_file.read_bytes()).hexdigest(),
+                }
+            )
 
     if gate == "research_gate":
         _, findings, findings_issues = workflow_artifact(package_dir, "findings")
@@ -273,8 +321,9 @@ def evaluate_gate(
                 "reviewer must match the package's independent findings reviewer"
             )
         verdict_state = verdict.get("verdict")
-        if verdict_state == "paper_candidate" and not blockers:
-            result = "pass"
+        if verdict_state == "paper_candidate":
+            if not blockers:
+                result = "pass"
         elif verdict_state in {"kill", "revise", "blocked"}:
             result = str(verdict_state)
             blockers.extend(run_entry.get("open_blockers", []))

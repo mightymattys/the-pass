@@ -99,7 +99,10 @@ placed after `--driver` instead of `auto`; it receives documented `THE_PASS_WORK
 `THE_PASS_ROUTE_*` environment variables and must advance exactly one stage per invocation.
 The supervisor report is written beside the workflow state. Auto mode does not forward venue keys
 or direct API-key environment variables to provider processes; it uses the CLIs' local authenticated
-configuration.
+configuration. Promotion-capable review transitions also require
+`THE_PASS_REVIEW_ATTESTATION_KEY` in the parent supervisor environment. The supervisor signs the
+review provenance and removes that key from the child environment before invoking Codex, Claude,
+or a custom driver.
 
 ## 4. Use Focused Skills When Needed
 
@@ -147,9 +150,28 @@ the-pass receipts --ledger .the-pass/receipts.jsonl --format json add \
 the-pass receipts --ledger .the-pass/receipts.jsonl --format json verify
 ```
 
-Only an independent review should evaluate a gate:
+Only an independent review should evaluate a gate. `workflow execute --driver auto` creates the
+attestation automatically. For a manual or externally orchestrated review, keep a 32-byte-or-longer
+key in a local secret manager and attest the completed review evidence before evaluation:
 
 ```bash
+export THE_PASS_REVIEW_ATTESTATION_KEY="$(openssl rand -hex 32)"
+
+the-pass gate attest experiments/runs/<strategy>/<run>/package \
+  --gate research_gate \
+  --reviewer independent-reviewer \
+  --principal-type human \
+  --provider human \
+  --model manual-review \
+  --run-id review-001 \
+  --author-provider codex \
+  --reviewer-provider human \
+  --state-before .the-pass/runs/<run-id>/state-before.yaml \
+  --state-after .the-pass/runs/<run-id>/state-after.yaml \
+  --task-evidence experiments/runs/<strategy>/<run>/package/findings.json \
+  --output experiments/runs/<strategy>/<run>/package/reviewer_attestation.research_gate.json \
+  --format json
+
 the-pass gate evaluate experiments/runs/<strategy>/<run>/package \
   --gate research_gate \
   --reviewer independent-reviewer \
@@ -162,8 +184,9 @@ the-pass receipts --ledger .the-pass/receipts.jsonl --format json add-decision \
 ```
 
 A run receipt proves that a run happened. It never proves that a gate passed. A gate pass requires
-the separate decision for the exact package ID, package path, reviewer, policy hash, and evidence
-fingerprints.
+a valid reviewer attestation and the separate decision for the exact package ID, package path,
+reviewer, policy hash, and evidence fingerprints. An HMAC attestation proves integrity and control
+of the configured local key; it does not replace organizational identity management.
 
 ## 6. Run Your Own Strategy
 
@@ -196,11 +219,17 @@ the-pass backtest run \
   --execution examples/custom-strategy/execution.json \
   --workspace-root examples/custom-strategy \
   --output "$WORK/package" --format json
+
+the-pass audit reproduce "$WORK/package" \
+  --output "$WORK/reproduction-report.json" --format json
 ```
 
 The command runs two fresh workers. Any semantic difference blocks package creation. A completed
 diagnostic command still writes `verdict: blocked`; only a separate independent gate decision may
-promote the exact package.
+promote the exact package. `audit reproduce` verifies every bundled input, copies only declared
+strategy files into a clean temporary workspace, invokes the fixed internal runner without a shell,
+and compares the rebuilt artifacts. The strategy runtime contains failures and blocks direct
+network/order imports, but it is not an OS sandbox; only test trusted local strategy code.
 
 For preregistered parameter work, provide JSON arrays of variants and non-overlapping event-index
 splits to `the-pass robustness sweep`. Every cell is executed and failed variants remain in the
@@ -246,6 +275,35 @@ require explicit `--network`; futures requires `--archive-root`. A successful ou
 `request.json`, raw response, canonical JSONL, quality report, DataManifest, ingest receipt, and a
 `COMMITTED` marker. An existing output path is never overwritten. Backtests must consume only the
 canonical events whose fingerprint matches the supplied manifest.
+
+For a longer interval, create the immutable chunk plan first and let `data build` resume only
+verified committed chunks:
+
+```bash
+the-pass data plan \
+  --id btcusdt-15m-2025 \
+  --provider binance \
+  --kind klines \
+  --instrument BTCUSDT \
+  --start-ns <inclusive-start-ns> \
+  --end-ns <exclusive-end-ns> \
+  --chunk-ns <chunk-width-ns> \
+  --expected-interval-ns 900000000000 \
+  --created-at <fixed-rfc3339-time> \
+  --output dataset-plan.json \
+  --format json
+
+the-pass data build \
+  --plan dataset-plan.json \
+  --output data/btcusdt-15m-2025 \
+  --network \
+  --license-reviewed \
+  --format json
+```
+
+The final `COMMITTED` dataset is fully revalidated on every resume, including event, quality,
+manifest, aggregate receipt, and per-chunk fingerprints. Use `--require-cross-check` on the plan
+when missing independent reference data must block promotion.
 
 Audit source depth separately:
 

@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import os
 import tempfile
 from datetime import datetime, timezone
 from decimal import Decimal
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any, Iterable
 
 from the_pass.data.contracts import CanonicalEvent, canonical_value, stable_fingerprint
@@ -135,6 +136,7 @@ def write_run_package(
     quality_report_document: dict[str, Any] | None = None,
     command: str | None = None,
     runtime_evidence: dict[str, Any] | None = None,
+    reproduction_inputs: dict[str, Any] | None = None,
     created_at: str = "2026-07-10T00:00:00Z",
 ) -> Path:
     package = output_dir.resolve()
@@ -254,7 +256,7 @@ def write_run_package(
         "created_at": created_at,
         "owner": str(spec.get("owner", "strategy_implementer")),
         "strategy_spec": "strategy_spec.json",
-        "code_version": "the-pass-0.11.0-runtime" if generic else "the-pass-0.4.0-b2",
+        "code_version": "the-pass-0.12.0-runtime" if generic else "the-pass-0.4.0-b2",
         "data_manifest": "data_manifest.json",
         "command": command or f"the-pass backtest baseline --name {result.strategy_id}",
         "config_hash": stable_fingerprint(runtime_evidence or search_space),
@@ -337,6 +339,89 @@ def write_run_package(
         documents["runtime_evidence.json"] = runtime_evidence
     for name, document in documents.items():
         _json(package / name, document)
+    if reproduction_inputs is not None:
+        descriptor_document = reproduction_inputs.get("descriptor")
+        execution_document = reproduction_inputs.get("execution")
+        strategy_source = reproduction_inputs.get("strategy_source")
+        if not isinstance(descriptor_document, dict) or not isinstance(execution_document, dict):
+            raise ValueError("reproduction descriptor and execution inputs must be objects")
+        if not isinstance(strategy_source, Path) or not strategy_source.is_file():
+            raise ValueError("reproduction strategy_source must be an existing file")
+        strategy_file = descriptor_document.get("strategy_file")
+        if not isinstance(strategy_file, str) or not strategy_file:
+            raise ValueError("reproduction descriptor requires strategy_file")
+        relative_strategy = PurePosixPath(strategy_file)
+        if relative_strategy.is_absolute() or ".." in relative_strategy.parts:
+            raise ValueError("reproduction strategy_file must be a safe relative path")
+        reproduction_root = package / "reproduction"
+        _json(reproduction_root / "descriptor.json", descriptor_document)
+        _json(reproduction_root / "execution.json", execution_document)
+        _write(
+            reproduction_root / "canonical-events.jsonl",
+            "".join(
+                json.dumps(
+                    canonical_value(event.as_dict()),
+                    sort_keys=True,
+                    separators=(",", ":"),
+                )
+                + "\n"
+                for event in rows
+            ),
+        )
+        source_target = reproduction_root / "workspace" / Path(*relative_strategy.parts)
+        source_target.parent.mkdir(parents=True, exist_ok=True)
+        source_target.write_bytes(strategy_source.read_bytes())
+        input_paths = (
+            "strategy_spec.json",
+            "data_manifest.json",
+            "quality_report.json",
+            "reproduction/descriptor.json",
+            "reproduction/execution.json",
+            "reproduction/canonical-events.jsonl",
+            f"reproduction/workspace/{relative_strategy.as_posix()}",
+        )
+        fingerprints = [
+            {
+                "path": value,
+                "sha256": hashlib.sha256((package / value).read_bytes()).hexdigest(),
+            }
+            for value in input_paths
+        ]
+        expected_artifacts = [
+            "strategy_spec.json",
+            "data_manifest.json",
+            "quality_report.json",
+            "run_receipt.json",
+            "metrics_report.json",
+            "cost_waterfall.json",
+            "verdict_report.json",
+            "search_space.json",
+            "runner_result.json",
+            "screen_results.json",
+            "runtime_evidence.json",
+            "run_report.md",
+            "run_report.html",
+            "reproduction_spec.json",
+        ]
+        reproduction_spec = {
+            "schema_version": 1,
+            "id": f"{result.strategy_id}-reproduction",
+            "created_at": created_at,
+            "runner_id": "the_pass.backtest.run.v1",
+            "network_allowed": False,
+            "inputs": {
+                "strategy_spec": "strategy_spec.json",
+                "data_manifest": "data_manifest.json",
+                "quality_report": "quality_report.json",
+                "descriptor": "reproduction/descriptor.json",
+                "execution": "reproduction/execution.json",
+                "events": "reproduction/canonical-events.jsonl",
+                "workspace": "reproduction/workspace",
+            },
+            "input_fingerprints": fingerprints,
+            "expected_artifacts": expected_artifacts,
+        }
+        _json(package / "reproduction_spec.json", reproduction_spec)
     _write(package / "run_report.md", render_markdown(result.strategy_id, metrics, waterfall))
     _write(package / "run_report.html", render_html(result.strategy_id, metrics, waterfall))
     validation = validate_package(package)

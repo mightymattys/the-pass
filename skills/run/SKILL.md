@@ -52,8 +52,9 @@ window, a missing independent reviewer, a kill condition, or another hard blocke
   --execute` only when the other provider adds a distinct capability or independent perspective.
 - Delegation depth is one. A delegated task cannot invoke another agent, decide a gate, modify the
   workflow ledger, or count as the independent human reviewer.
-- Only one external provider dispatch may be active per local user. Use bounded native subagents
-  for parallel research/review; do not queue or retry a second external call.
+- Only one external provider dispatch may be active per workspace. Unrelated workspaces and
+  bounded native subagents may progress independently; do not recursively queue or retry the same
+  delegated chain.
 - Classify delegated work as routine, standard, complex, or critical and inspect the resolved
   `economy|balanced|deep` model profile before execution. Never inject a provider model ID into the
   task objective.
@@ -101,8 +102,8 @@ preflight -> research -> screen -> backtest -> robustness
 
 - Finalize and append every valid run, including blocked and killed runs.
 - Once appended, never edit scientific or operational evidence in that package. The only allowed
-  later file is a new append-only `gate_decision.*` governance attachment written by the gate
-  evaluator. Before adding robustness, review, paper, risk, or approval evidence, create a
+  later files are create-only `reviewer_attestation.*` and `gate_decision.*` governance
+  attachments. Before adding robustness, review, paper, risk, or approval evidence, create a
   successor with `the-pass workflow supersede` and a new run ID.
 - Place every artifact needed by `gate evaluate` in the exact successor package root before
   finalization. Working copies elsewhere are not gate evidence.
@@ -115,6 +116,9 @@ preflight -> research -> screen -> backtest -> robustness
 
 - Strategy owner, run owner, and reviewer must be present in state and artifacts.
 - The reviewer must differ from both owners and work from a read-only review scope.
+- A promotion-capable review must create a valid `reviewer_attestation` for the exact package and
+  gate. The supervisor owns the parent signing key, strips it from the reviewer process, and binds
+  provider/model/run and state/output fingerprints before committing the gate transition.
 - Use an independent subagent or reviewer process only when it has a distinct identity. Otherwise
   stop `blocked` and require `/the-pass:review` in an independent context.
 - The orchestrator may coordinate review but may not manufacture findings or self-approval.
@@ -155,6 +159,11 @@ At each package and gate boundary:
 the-pass validate-package <package>
 the-pass receipts add <package> --ledger <ledger>
 the-pass receipts verify --ledger <ledger>
+the-pass gate attest <package> --gate <gate> --reviewer <reviewer> \
+  --principal-type human --provider human --model manual-review --run-id <review-run-id> \
+  --author-provider <author-provider> --reviewer-provider human \
+  --state-before <before-state> --state-after <after-state> --task-evidence <review-artifact> \
+  --output <package>/reviewer_attestation.<gate>.json
 the-pass gate evaluate <package> --gate <gate> --reviewer <reviewer> \
   --ledger <ledger> --output <package>/gate_decision.<gate>.yaml
 the-pass receipts add-decision <package>/gate_decision.<gate>.yaml --ledger <ledger>

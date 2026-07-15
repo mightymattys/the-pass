@@ -72,7 +72,7 @@ Install the released CLI with non-live data and research dependencies:
 
 ```bash
 uv tool install \
-  "the-pass[data,research,paper] @ https://github.com/mightymattys/the-pass/releases/download/v0.11.0/the_pass-0.11.0-py3-none-any.whl"
+  "the-pass[data,research,paper] @ https://github.com/mightymattys/the-pass/releases/download/v0.12.0/the_pass-0.12.0-py3-none-any.whl"
 uv tool update-shell
 the-pass --version
 ```
@@ -82,7 +82,7 @@ Install one guided plugin.
 ### Codex
 
 ```bash
-codex plugin marketplace add mightymattys/the-pass --ref v0.11.0
+codex plugin marketplace add mightymattys/the-pass --ref v0.12.0
 codex plugin add the-pass@the-pass-tools
 codex plugin list
 ```
@@ -119,7 +119,7 @@ handling; it does not test a real edge.
 ```bash
 git clone https://github.com/mightymattys/the-pass.git
 cd the-pass
-git checkout v0.11.0
+git checkout v0.12.0
 uv sync --locked --extra data --extra research --extra dev
 
 WORK="$(mktemp -d)"
@@ -206,6 +206,8 @@ mean the testing framework crashed.
 Use the trusted local strategy contract demonstrated in
 [`examples/custom-strategy/`](../../examples/custom-strategy/README.md). The runtime executes two
 fresh bounded subprocesses and packages results only when both runs are semantically identical.
+The package includes a `reproduction_spec`; verify it independently with
+`the-pass audit reproduce <package> --output <report> --format json`.
 
 ### You already have backtest results
 

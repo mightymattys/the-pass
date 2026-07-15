@@ -26,14 +26,17 @@ evidence. It replaces `taste` and routes checks by the actual target gate.
 
 ## Editable Paths
 
-- New findings, audit report, verdict, and gate decision inside an unrecorded review package.
+- New findings and audit reports inside an unrecorded review package; create-only reviewer
+  attestation and gate decision governance attachments at their defined boundary.
 - `reports/reviews/` for read-only review summaries.
 - New append-only gate-decision entries after evaluation.
 
 ## Blocked Paths
 
 - Strategy implementation, thesis, source data, search space, cost inputs, credentials, and live code.
-- Any package already fingerprinted by a receipt. Create a successor before adding review artifacts.
+- Scientific or operational evidence in any package already fingerprinted by a receipt. Create a
+  successor before adding review findings; only the defined create-only attestation/decision
+  governance attachments may follow finalization.
 - Existing receipts or decisions. Reviewer and implementer roles must not be combined.
 
 ## Agent Delegation
@@ -52,6 +55,7 @@ evidence. It replaces `taste` and routes checks by the actual target gate.
 - Require reviewer, StrategySpec owner, and run owner.
 - Block if reviewer equals either owner or no independent read-only context exists.
 - Validate the package and ledger before interpreting results.
+- When `reproduction_spec.json` exists, require a passing clean reproduction before promotion.
 - Scope findings to artifact evidence and label severity, status, recommendation, and promotion
   impact. Refuted findings do not become remediation tickets.
 
@@ -86,6 +90,9 @@ evidence. It replaces `taste` and routes checks by the actual target gate.
 ### Decision and recording
 
 - Validate findings and audit artifacts before gate evaluation.
+- Create a signed reviewer attestation for the exact package and target gate. Automated supervision
+  handles this in the parent process; a manual review uses `the-pass gate attest` and a locally
+  protected `THE_PASS_REVIEW_ATTESTATION_KEY` of at least 32 bytes.
 - Evaluate the requested gate, not a hard-coded gate.
 - Append only the resulting artifact-backed decision; duplicate append is idempotent success.
 - Verify the ledger after append. Any append/verification failure returns `blocked`.
@@ -106,8 +113,14 @@ Review and gate decision:
 
 ```bash
 the-pass validate-package <package>
+the-pass audit reproduce <package> --output <reproduction-report> --format json
 the-pass validate <findings> --type findings
 the-pass validate <audit-report> --type audit_report
+the-pass gate attest <package> --gate <target-gate> --reviewer <reviewer> \
+  --principal-type human --provider human --model manual-review --run-id <review-run-id> \
+  --author-provider <author-provider> --reviewer-provider human \
+  --state-before <before-state> --state-after <after-state> --task-evidence <review-artifact> \
+  --output <package>/reviewer_attestation.<target-gate>.json
 the-pass gate evaluate <package> --gate <target-gate> --reviewer <reviewer> \
   --policy <policy> --ledger <ledger> --output <package>/gate_decision.<target-gate>.yaml
 the-pass receipts add-decision <package>/gate_decision.<target-gate>.yaml --ledger <ledger>
@@ -118,7 +131,7 @@ the-pass receipts verify --ledger <ledger>
 
 ## Outputs
 
-- Independent findings and audit report with exact evidence paths.
+- Independent findings, audit report, and signed reviewer attestation with exact evidence paths.
 - Gate-specific verdict: pass, blocked, revise, or kill.
 - Separately validated and recorded gate decision on pass or valid non-promotion outcome.
 - Exact remediation scope or next evidence requirement.

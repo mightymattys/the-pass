@@ -5,17 +5,17 @@
     "name": "The Pass contributors"
   },
   "description": "Auditable trading-strategy research workflows for Claude Code.",
-  "version": "0.11.0",
+  "version": "0.12.0",
   "plugins": [
     {
       "name": "the-pass",
       "source": {
         "source": "url",
         "url": "https://github.com/mightymattys/the-pass.git",
-        "ref": "v0.11.0"
+        "ref": "v0.12.0"
       },
       "description": "Research, test, independently review, and paper-observe trading strategies without live execution.",
-      "version": "0.11.0",
+      "version": "0.12.0",
       "author": {
         "name": "The Pass contributors"
       },

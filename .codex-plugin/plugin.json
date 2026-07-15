@@ -1,6 +1,6 @@
 {
   "name": "the-pass",
-  "version": "0.11.0",
+  "version": "0.12.0",
   "description": "A public research line for trading strategies with bounded native subagents and optional audited Codex/Claude delegation.",
   "author": {
     "name": "The Pass contributors"

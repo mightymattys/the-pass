@@ -1,5 +1,5 @@
 schema_version: 1
-interface_version: 0.11.0
+interface_version: 0.12.0
 public_skills:
   run: [complete, waiting, blocked, killed]
   research: [research_ready, rejected, blocked]
@@ -56,6 +56,16 @@ cli_contracts:
     accepted_exit_codes: [0, 1, 2]
     outputs: [quality_report]
     capability: canonical_events_exist
+  data_plan:
+    argv: [data, plan, --id, dataset-1, --provider, binance, --kind, klines, --instrument, BTCUSDT, --start-ns, "1", --end-ns, "2", --chunk-ns, "1", --created-at, "2026-07-15T00:00:00Z", --output, dataset-plan.json, --format, json]
+    accepted_exit_codes: [0, 1]
+    outputs: [dataset_plan]
+    capability: bounded_dataset_interval
+  data_build:
+    argv: [data, build, --plan, dataset-plan.json, --output, dataset, --network, --format, json]
+    accepted_exit_codes: [0, 1, 2, 3]
+    outputs: [canonical_events, quality_report, data_manifest, dataset_receipt]
+    capability: valid_dataset_plan_and_provider_access
   features_build:
     argv: [features, build, events.jsonl, --dataset-fingerprint, aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa, --code-version, abc123, --config, features.json, --created-at, "2026-07-10T00:00:00Z", --output-dir, features, --format, json]
     accepted_exit_codes: [0, 1]
@@ -71,6 +81,16 @@ cli_contracts:
     accepted_exit_codes: [0, 1]
     outputs: [run_package]
     capability: reference_baseline_supported
+  backtest_run:
+    argv: [backtest, run, --descriptor, descriptor.json, --strategy-spec, strategy-spec.json, --events, canonical-events.jsonl, --data-manifest, data-manifest.json, --quality-report, quality-report.json, --execution, execution.json, --workspace-root, ., --output, package, --format, json]
+    accepted_exit_codes: [0, 1]
+    outputs: [run_package, reproduction_spec]
+    capability: trusted_local_strategy_and_canonical_data
+  audit_reproduce:
+    argv: [audit, reproduce, package, --output, reproduction-report.json, --format, json]
+    accepted_exit_codes: [0, 1, 2]
+    outputs: [reproduction_report]
+    capability: package_with_reproduction_spec
   robustness_evaluate:
     argv: [robustness, evaluate, --matrix, matrix.json, --selected-index, "0", --output, robustness.json, --format, json]
     accepted_exit_codes: [0, 1]
@@ -90,7 +110,12 @@ cli_contracts:
     argv: [gate, evaluate, package, --gate, research_gate, --reviewer, independent-reviewer, --ledger, ledger.jsonl, --output, package/gate_decision.research_gate.yaml, --format, json]
     accepted_exit_codes: [0, 1, 2, 3]
     outputs: [gate_decision]
-    capability: exact_package_and_independent_reviewer
+    capability: exact_package_and_signed_independent_reviewer
+  gate_attest:
+    argv: [gate, attest, package, --gate, research_gate, --reviewer, independent-reviewer, --principal-type, human, --provider, human, --model, manual-review, --run-id, review-1, --author-provider, codex, --reviewer-provider, human, --state-before, state-before.yaml, --state-after, state-after.yaml, --task-evidence, findings.json, --output, package/reviewer_attestation.research_gate.json, --format, json]
+    accepted_exit_codes: [0, 1]
+    outputs: [reviewer_attestation]
+    capability: attestation_key_and_completed_independent_review
   receipts_add:
     argv: [receipts, add, package, --ledger, ledger.jsonl]
     accepted_exit_codes: [0, 1]
@@ -181,12 +206,12 @@ stages:
   screen:
     role: implementer
     skill: test
-    cli_contracts: [data_quality, features_build, screen_run, agents_inspect, agents_dispatch]
+    cli_contracts: [data_plan, data_build, data_quality, features_build, screen_run, agents_inspect, agents_dispatch]
     transitions: [backtest, remediation]
   backtest:
     role: implementer
     skill: test
-    cli_contracts: [backtest_baseline, validate_package, receipts_add, receipts_verify, agents_inspect, agents_dispatch]
+    cli_contracts: [backtest_baseline, backtest_run, validate_package, receipts_add, receipts_verify, agents_inspect, agents_dispatch]
     transitions: [robustness, remediation]
   robustness:
     role: stats_auditor
@@ -197,7 +222,7 @@ stages:
     role: independent_reviewer
     reviewer_required: true
     skill: review
-    cli_contracts: [validate_package, agents_inspect, agents_dispatch]
+    cli_contracts: [validate_package, audit_reproduce, gate_attest, agents_inspect, agents_dispatch]
     transitions: [research_gate, remediation]
   research_gate:
     role: independent_reviewer
@@ -219,7 +244,7 @@ stages:
     role: independent_reviewer
     reviewer_required: true
     skill: review
-    cli_contracts: [validate_artifact, agents_inspect, agents_dispatch]
+    cli_contracts: [validate_artifact, gate_attest, agents_inspect, agents_dispatch]
     transitions: [paper_gate, remediation]
   paper_gate:
     role: independent_reviewer
@@ -241,7 +266,7 @@ stages:
     role: independent_reviewer
     reviewer_required: true
     skill: review
-    cli_contracts: [validate_artifact, agents_inspect, agents_dispatch]
+    cli_contracts: [validate_artifact, gate_attest, agents_inspect, agents_dispatch]
     transitions: [risk_review, remediation]
   risk_review:
     role: independent_reviewer

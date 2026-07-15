@@ -77,6 +77,8 @@ immutable backtest package.
   external engine behind the same package contracts.
 - Produce StrategySpec copy, source notes, data and feature manifests, quality report, search
   space, run receipt, metrics, cost waterfall, verdict, and static reports.
+- For a trusted local strategy, bundle the declared strategy source and replay inputs, then require
+  `the-pass audit reproduce` to pass before independent review.
 - Check portfolio conservation and gross-to-net reconciliation after simulation.
 - Finalize before ledger append. Every valid blocked or killed run is still recorded.
 
@@ -91,11 +93,19 @@ Use the implemented CLI when its capability predicate fits:
 
 ```bash
 the-pass data quality <events> --dataset-id <id> --created-at <rfc3339> --output <quality>
+the-pass data plan --id <dataset-id> --provider <provider> --kind <event-kind> \
+  --instrument <instrument> --start-ns <start> --end-ns <end> --chunk-ns <width> \
+  --created-at <rfc3339> --output <dataset-plan>
+the-pass data build --plan <dataset-plan> --output <dataset-dir>
 the-pass features build <events> --dataset-fingerprint <sha256> --code-version <version> \
   --config <config-json> --created-at <rfc3339> --output-dir <features-dir>
 the-pass screen run --closes <closes-json> --variants <variants-json> \
   --family <family> --fee-bps <bps> --output <screen-results>
 the-pass backtest baseline --name <baseline> --output <new-package>
+the-pass backtest run --descriptor <descriptor> --strategy-spec <strategy-spec> \
+  --events <events> --data-manifest <manifest> --quality-report <quality> \
+  --execution <execution> --workspace-root <workspace> --output <new-package>
+the-pass audit reproduce <new-package> --output <reproduction-report>
 ```
 
 Finalize and record:

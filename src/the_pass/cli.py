@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import sys
@@ -14,6 +15,14 @@ import yaml
 
 from . import __version__
 from .automation import run_automation_spec
+from .audit import ReproductionError, reproduce_package
+from .attestation import (
+    ATTESTABLE_GATES,
+    AttestationError,
+    create_reviewer_attestation,
+    review_task_path,
+    write_reviewer_attestation,
+)
 from .agent_orchestration import (
     AgentOrchestrationError,
     AgentSafetyError,
@@ -25,6 +34,7 @@ from .agent_orchestration import (
 )
 from .data.contracts import CanonicalEvent
 from .adapters.base import FetchRequest
+from .data.dataset import build_dataset, build_dataset_plan, validate_dataset_plan
 from .data.features import build_bar_features
 from .data.ingest import ingest_bundle
 from .data.quality import QualityPolicy, build_quality_report
@@ -165,6 +175,34 @@ def load_fetch_request(path: Path) -> FetchRequest:
     return FetchRequest(**document)
 
 
+def build_read_only_adapter(
+    provider: str,
+    *,
+    archive_root: Path | None,
+    licensed_archive: bool,
+    license_reviewed: bool,
+    resolution_reviewed: bool,
+):
+    if provider == "binance":
+        from .adapters.binance_spot import BinanceSpotAdapter
+
+        return BinanceSpotAdapter(license_reviewed=license_reviewed)
+    if provider == "polymarket":
+        from .adapters.polymarket import PolymarketAdapter
+
+        return PolymarketAdapter(
+            license_reviewed=license_reviewed,
+            resolution_reviewed=resolution_reviewed,
+        )
+    from .adapters.databento_futures import DatabentoCompatibleFuturesAdapter
+
+    if archive_root is None:
+        raise ValueError("futures ingest requires --archive-root")
+    return DatabentoCompatibleFuturesAdapter(
+        archive_root, licensed_archive=licensed_archive
+    )
+
+
 def print_envelope(
     *,
     output_format: str,
@@ -296,6 +334,35 @@ def build_parser() -> argparse.ArgumentParser:
     data_ingest.add_argument("--license-reviewed", action="store_true")
     data_ingest.add_argument("--resolution-reviewed", action="store_true")
     data_ingest.add_argument("--format", choices=("text", "json"), default="text")
+    data_plan = data_subparsers.add_parser(
+        "plan", help="Create deterministic non-overlapping ingest chunks."
+    )
+    data_plan.add_argument("--id", required=True)
+    data_plan.add_argument("--provider", choices=("binance", "polymarket", "futures"), required=True)
+    data_plan.add_argument("--kind", required=True)
+    data_plan.add_argument("--instrument", required=True)
+    data_plan.add_argument("--start-ns", type=int, required=True)
+    data_plan.add_argument("--end-ns", type=int, required=True)
+    data_plan.add_argument("--chunk-ns", type=int, required=True)
+    data_plan.add_argument("--created-at", required=True)
+    data_plan.add_argument("--limit", type=int)
+    data_plan.add_argument("--expected-interval-ns", type=int)
+    data_plan.add_argument("--parameters", type=Path)
+    data_plan.add_argument("--require-cross-check", action="store_true")
+    data_plan.add_argument("--output", type=Path, required=True)
+    data_plan.add_argument("--format", choices=("text", "json"), default="text")
+    data_build = data_subparsers.add_parser(
+        "build", help="Fetch or resume every planned chunk and publish one dataset."
+    )
+    data_build.add_argument("--plan", type=Path, required=True)
+    data_build.add_argument("--output", type=Path, required=True)
+    data_build.add_argument("--cross-check-dir", type=Path)
+    data_build.add_argument("--archive-root", type=Path)
+    data_build.add_argument("--network", action="store_true")
+    data_build.add_argument("--licensed-archive", action="store_true")
+    data_build.add_argument("--license-reviewed", action="store_true")
+    data_build.add_argument("--resolution-reviewed", action="store_true")
+    data_build.add_argument("--format", choices=("text", "json"), default="text")
 
     features_parser = subparsers.add_parser(
         "features", help="Build deterministic reference features."
@@ -373,6 +440,18 @@ def build_parser() -> argparse.ArgumentParser:
     backtest_run.add_argument("--timeout-seconds", type=float, default=60.0)
     backtest_run.add_argument("--output-limit-bytes", type=int, default=5_000_000)
     backtest_run.add_argument("--format", choices=("text", "json"), default="text")
+
+    audit_parser = subparsers.add_parser(
+        "audit", help="Reproduce and independently inspect run packages."
+    )
+    audit_subparsers = audit_parser.add_subparsers(dest="audit_command", required=True)
+    audit_reproduce = audit_subparsers.add_parser(
+        "reproduce", help="Rebuild a custom run in a clean temporary workspace."
+    )
+    audit_reproduce.add_argument("package", type=Path)
+    audit_reproduce.add_argument("--output", type=Path, required=True)
+    audit_reproduce.add_argument("--timeout-seconds", type=int, default=120)
+    audit_reproduce.add_argument("--format", choices=("text", "json"), default="text")
 
     robustness_parser = subparsers.add_parser(
         "robustness", help="Evaluate multiple testing and selection bias."
@@ -722,6 +801,29 @@ def build_parser() -> argparse.ArgumentParser:
     gate_evaluate.add_argument(
         "--format", choices=("text", "json"), default="text", help="Output format."
     )
+    gate_attest = gate_subparsers.add_parser(
+        "attest", help="Sign reviewer provenance for a non-live promotion gate."
+    )
+    gate_attest.add_argument("package", type=Path)
+    gate_attest.add_argument("--gate", choices=ATTESTABLE_GATES, required=True)
+    gate_attest.add_argument("--reviewer", required=True)
+    gate_attest.add_argument(
+        "--principal-type", choices=("provider", "human"), required=True
+    )
+    gate_attest.add_argument("--provider", required=True)
+    gate_attest.add_argument("--model", required=True)
+    gate_attest.add_argument("--run-id", required=True)
+    gate_attest.add_argument("--author-provider", required=True)
+    gate_attest.add_argument("--reviewer-provider", required=True)
+    gate_attest.add_argument("--state-before", type=Path, required=True)
+    gate_attest.add_argument("--state-after", type=Path, required=True)
+    gate_attest.add_argument("--task-evidence", type=Path, required=True)
+    gate_attest.add_argument("--stdout-evidence", type=Path)
+    gate_attest.add_argument("--stderr-evidence", type=Path)
+    gate_attest.add_argument("--output", type=Path, required=True)
+    gate_attest.add_argument(
+        "--format", choices=("text", "json"), default="text", help="Output format."
+    )
 
     receipts_parser = subparsers.add_parser(
         "receipts", help="Summarize or update the append-only receipt ledger."
@@ -806,27 +908,13 @@ def main(argv: list[str] | None = None) -> int:
                 return 3
             try:
                 request = load_fetch_request(args.request)
-                if args.provider == "binance":
-                    from .adapters.binance_spot import BinanceSpotAdapter
-
-                    adapter = BinanceSpotAdapter(license_reviewed=args.license_reviewed)
-                elif args.provider == "polymarket":
-                    from .adapters.polymarket import PolymarketAdapter
-
-                    adapter = PolymarketAdapter(
-                        license_reviewed=args.license_reviewed,
-                        resolution_reviewed=args.resolution_reviewed,
-                    )
-                else:
-                    from .adapters.databento_futures import (
-                        DatabentoCompatibleFuturesAdapter,
-                    )
-
-                    if args.archive_root is None:
-                        raise ValueError("futures ingest requires --archive-root")
-                    adapter = DatabentoCompatibleFuturesAdapter(
-                        args.archive_root, licensed_archive=args.licensed_archive
-                    )
+                adapter = build_read_only_adapter(
+                    args.provider,
+                    archive_root=args.archive_root,
+                    licensed_archive=args.licensed_archive,
+                    license_reviewed=args.license_reviewed,
+                    resolution_reviewed=args.resolution_reviewed,
+                )
                 result = ingest_bundle(adapter, request, args.output)
                 blocked = result.quality_report["promotion_impact"] == "blocked"
                 print_envelope(
@@ -861,6 +949,123 @@ def main(argv: list[str] | None = None) -> int:
                     ok=False,
                     status="error",
                     issues=[{"path": str(args.request), "message": str(exc)}],
+                )
+                return 1
+        if args.data_command == "plan":
+            try:
+                parameters = (
+                    json.loads(args.parameters.read_text(encoding="utf-8"))
+                    if args.parameters is not None
+                    else {}
+                )
+                if not isinstance(parameters, dict):
+                    raise ValueError("dataset plan parameters must be a JSON object")
+                plan = build_dataset_plan(
+                    plan_id=args.id,
+                    provider=args.provider,
+                    kind=args.kind,
+                    instrument_id=args.instrument,
+                    start_ns=args.start_ns,
+                    end_ns=args.end_ns,
+                    chunk_ns=args.chunk_ns,
+                    created_at=args.created_at,
+                    limit=args.limit,
+                    parameters=parameters,
+                    expected_interval_ns=args.expected_interval_ns,
+                    cross_check_required=args.require_cross_check,
+                )
+                write_json_atomic(args.output, plan)
+                print_envelope(
+                    output_format=args.format,
+                    ok=True,
+                    status="complete",
+                    artifact_paths=[args.output.resolve()],
+                    details={
+                        "plan_fingerprint": plan["plan_fingerprint"],
+                        "chunks": len(plan["requests"]),
+                    },
+                )
+                return 0
+            except (json.JSONDecodeError, OSError, TypeError, ValueError) as exc:
+                print_envelope(
+                    output_format=args.format,
+                    ok=False,
+                    status="error",
+                    issues=[{"path": str(args.output), "message": str(exc)}],
+                )
+                return 1
+        if args.data_command == "build":
+            try:
+                plan_document = json.loads(args.plan.read_text(encoding="utf-8"))
+                if not isinstance(plan_document, dict):
+                    raise ValueError("dataset plan must be a JSON object")
+                plan = validate_dataset_plan(plan_document)
+                provider = str(plan["provider"])
+                if provider in {"binance", "polymarket"} and not args.network:
+                    print_envelope(
+                        output_format=args.format,
+                        ok=False,
+                        status="forbidden",
+                        issues=[
+                            {
+                                "path": str(args.plan),
+                                "message": "public provider dataset build requires explicit --network",
+                            }
+                        ],
+                    )
+                    return 3
+                references = {}
+                if args.cross_check_dir is not None:
+                    for descriptor in plan["requests"]:
+                        path = args.cross_check_dir / f"{descriptor['chunk_id']}.json"
+                        if path.is_file():
+                            references[descriptor["chunk_id"]] = json.loads(
+                                path.read_text(encoding="utf-8")
+                            )
+                adapter = build_read_only_adapter(
+                    provider,
+                    archive_root=args.archive_root,
+                    licensed_archive=args.licensed_archive,
+                    license_reviewed=args.license_reviewed,
+                    resolution_reviewed=args.resolution_reviewed,
+                )
+                result = build_dataset(
+                    adapter,
+                    plan,
+                    args.output,
+                    cross_check_references=references,
+                )
+                blocked = result.promotion_impact == "blocked"
+                print_envelope(
+                    output_format=args.format,
+                    ok=not blocked,
+                    status="blocked" if blocked else "complete",
+                    artifact_paths=[
+                        result.events_path,
+                        result.quality_path,
+                        result.manifest_path,
+                        result.receipt_path,
+                        result.committed_path,
+                    ],
+                    issues=(
+                        [{"path": str(result.receipt_path), "message": "dataset evidence blocks promotion"}]
+                        if blocked
+                        else []
+                    ),
+                    details={
+                        "dataset_fingerprint": result.dataset_fingerprint,
+                        "event_count": result.event_count,
+                        "fetched_chunks": result.fetched_chunks,
+                        "resumed_chunks": result.resumed_chunks,
+                    },
+                )
+                return 2 if blocked else 0
+            except (json.JSONDecodeError, OSError, RuntimeError, TypeError, ValueError) as exc:
+                print_envelope(
+                    output_format=args.format,
+                    ok=False,
+                    status="error",
+                    issues=[{"path": str(args.plan), "message": str(exc)}],
                 )
                 return 1
         try:
@@ -1054,6 +1259,14 @@ def main(argv: list[str] | None = None) -> int:
                 runtime_evidence = {
                     key: value for key, value in worker_result.items() if key in evidence_fields
                 }
+                workspace_root = args.workspace_root.resolve()
+                strategy_source = (
+                    workspace_root / str(descriptor["strategy_file"])
+                ).resolve()
+                try:
+                    strategy_source.relative_to(workspace_root)
+                except ValueError as exc:
+                    raise ValueError("strategy source escapes workspace root") from exc
                 package = write_run_package(
                     args.output,
                     result=result,
@@ -1068,6 +1281,11 @@ def main(argv: list[str] | None = None) -> int:
                     quality_report_document=quality_report,
                     command="the-pass backtest run --descriptor <descriptor> --events <canonical-events>",
                     runtime_evidence=runtime_evidence,
+                    reproduction_inputs={
+                        "descriptor": descriptor,
+                        "execution": execution,
+                        "strategy_source": strategy_source,
+                    },
                     created_at=str(data_manifest["created_at"]),
                 )
             print_envelope(
@@ -1083,6 +1301,40 @@ def main(argv: list[str] | None = None) -> int:
                 ok=False,
                 status="error",
                 issues=[{"path": str(args.output), "message": str(exc)}],
+            )
+            return 1
+
+    if args.command == "audit":
+        try:
+            report = reproduce_package(
+                args.package,
+                timeout_seconds=args.timeout_seconds,
+            )
+            write_json_atomic(args.output, report)
+            passed = report["status"] == "pass"
+            print_envelope(
+                output_format=args.format,
+                ok=passed,
+                status=report["status"],
+                artifact_paths=[args.output.resolve()],
+                issues=(
+                    []
+                    if passed
+                    else [
+                        {
+                            "path": str(args.package),
+                            "message": "clean reproduction did not match the tracked package",
+                        }
+                    ]
+                ),
+            )
+            return 0 if passed else 2
+        except (OSError, ReproductionError, RuntimeError, TypeError, ValueError) as exc:
+            print_envelope(
+                output_format=args.format,
+                ok=False,
+                status="error",
+                issues=[{"path": str(args.package), "message": str(exc)}],
             )
             return 1
 
@@ -1686,8 +1938,62 @@ def main(argv: list[str] | None = None) -> int:
             output_path = args.output.resolve()
             if output_path.parent != package_dir:
                 raise GateEvaluationError(
-                    "gate decision output must be stored in the package directory"
+                    "gate output must be stored in the package directory"
                 )
+            if args.gate_command == "attest":
+                if output_path.name != f"reviewer_attestation.{args.gate}.json":
+                    raise AttestationError(
+                        f"attestation output must be named reviewer_attestation.{args.gate}.json"
+                    )
+                expected_task = review_task_path(package_dir, args.gate)
+                if args.task_evidence.resolve() != expected_task:
+                    raise AttestationError(
+                        "task evidence must be the exact gate findings or audit report"
+                    )
+                empty_hash = hashlib.sha256(b"").hexdigest()
+                evidence = {
+                    "state_before_sha256": hashlib.sha256(
+                        args.state_before.read_bytes()
+                    ).hexdigest(),
+                    "state_after_sha256": hashlib.sha256(
+                        args.state_after.read_bytes()
+                    ).hexdigest(),
+                    "task_sha256": hashlib.sha256(
+                        args.task_evidence.read_bytes()
+                    ).hexdigest(),
+                    "stdout_sha256": hashlib.sha256(
+                        args.stdout_evidence.read_bytes()
+                    ).hexdigest()
+                    if args.stdout_evidence
+                    else empty_hash,
+                    "stderr_sha256": hashlib.sha256(
+                        args.stderr_evidence.read_bytes()
+                    ).hexdigest()
+                    if args.stderr_evidence
+                    else empty_hash,
+                }
+                package_id = build_run_entry(package_dir)["package_id"]
+                attestation = create_reviewer_attestation(
+                    gate=args.gate,
+                    package_id=package_id,
+                    reviewer=args.reviewer,
+                    principal_type=args.principal_type,
+                    provider=args.provider,
+                    model=args.model,
+                    run_id=args.run_id,
+                    author_provider=args.author_provider,
+                    reviewer_provider=args.reviewer_provider,
+                    evidence=evidence,
+                )
+                write_reviewer_attestation(output_path, attestation)
+                print_envelope(
+                    output_format=args.format,
+                    ok=True,
+                    status="complete",
+                    artifact_paths=[output_path],
+                    details={"attestation": attestation},
+                )
+                return 0
             if output_path.stem != f"gate_decision.{args.gate}":
                 raise GateEvaluationError(
                     f"gate decision output must be named gate_decision.{args.gate}.json|yaml|yml"
@@ -1722,7 +2028,7 @@ def main(argv: list[str] | None = None) -> int:
                 for blocker in evaluation.decision["blockers"]:
                     print(f"- {blocker}")
             return evaluation.exit_code
-        except GateEvaluationError as exc:
+        except (AttestationError, GateEvaluationError, OSError) as exc:
             if args.format == "json":
                 print(
                     json.dumps(

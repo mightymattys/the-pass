@@ -28,6 +28,18 @@ Slash-workflow artifacts:
 - `approval_pack.schema.json`
 - `receipt_summary.schema.json`
 
+Current hardening artifacts:
+
+- `dataset_plan.v1.schema.json`
+- `dataset_receipt.v1.schema.json`
+- `reproduction_spec.v1.schema.json`
+- `reviewer_attestation.v1.schema.json`
+
+`dataset_plan` freezes resumable acquisition chunks; `dataset_receipt` binds the committed
+aggregate and every chunk receipt. `reproduction_spec` permits only the fixed internal clean
+runner and declared fingerprinted inputs. `reviewer_attestation` binds independent review
+provenance to one exact non-live gate package without changing the run package identity.
+
 The implemented `the-pass validate` and `the-pass validate-package` commands accept YAML or
 JSON input, parse it into structured data, and validate against these schemas plus semantic
 cross-artifact checks before a gate can pass.

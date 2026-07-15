@@ -1,21 +1,29 @@
 from __future__ import annotations
 
 import json
+import shutil
 import sys
 import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+from the_pass.attestation import (
+    ATTESTATION_KEY_ENV,
+    verify_reviewer_attestation,
+)
 from the_pass.gates import GateEvaluation
+from the_pass.ledger import append_ledger_entry, build_run_entry
 from the_pass.orchestration import new_workflow_state, write_workflow_state_atomic
 from the_pass.orchestration import advance_workflow_state, read_workflow_state
 from the_pass.workflow_supervisor import (
     WorkflowSupervisorError,
+    _exclusive_workflow_lock,
     _run_deterministic_stage,
     inspect_workflow_execution,
     supervise_workflow,
 )
+from tests.test_validator import EXAMPLE_PACKAGE, prepare_paper_candidate
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -99,12 +107,36 @@ class WorkflowSupervisorTests(unittest.TestCase):
     def test_timeout_fails_closed(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
+            state = self.make_state(root)
+            before = state.read_bytes()
             with self.assertRaisesRegex(WorkflowSupervisorError, "timed out"):
-                self.run_driver(root, "sleep", timeout_seconds=1)
+                supervise_workflow(
+                    state,
+                    driver_argv=[sys.executable, str(DRIVER), "sleep"],
+                    cwd=ROOT,
+                    report_path=root / "supervisor.json",
+                    timeout_seconds=1,
+                )
             self.assertEqual(
                 json.loads((root / "supervisor.json").read_text())["status"],
                 "failed",
             )
+            self.assertEqual(state.read_bytes(), before)
+
+    def test_malformed_proposal_preserves_canonical_state(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            state = self.make_state(root)
+            before = state.read_bytes()
+            with self.assertRaisesRegex(WorkflowSupervisorError, "invalid state"):
+                supervise_workflow(
+                    state,
+                    driver_argv=[sys.executable, str(DRIVER), "malformed"],
+                    cwd=ROOT,
+                    report_path=root / "supervisor.json",
+                    timeout_seconds=5,
+                )
+            self.assertEqual(state.read_bytes(), before)
 
     def test_output_flood_is_terminated_and_recorded(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -124,6 +156,35 @@ class WorkflowSupervisorTests(unittest.TestCase):
             with self.subTest(mode=mode), tempfile.TemporaryDirectory() as tmp:
                 with self.assertRaisesRegex(WorkflowSupervisorError, message):
                     self.run_driver(Path(tmp), mode)
+
+    def test_rejected_transition_preserves_canonical_state(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            state_path = self.make_state(root)
+            before = state_path.read_bytes()
+            with self.assertRaisesRegex(
+                WorkflowSupervisorError, "exactly one transition"
+            ):
+                supervise_workflow(
+                    state_path,
+                    driver_argv=[sys.executable, str(DRIVER), "jump"],
+                    cwd=ROOT,
+                    report_path=root / "supervisor.json",
+                    max_cycles=1,
+                    timeout_seconds=5,
+                )
+            self.assertEqual(state_path.read_bytes(), before)
+            self.assertFalse(list(root.glob(".*.proposal-*.yaml")))
+
+    def test_same_workflow_state_cannot_be_supervised_concurrently(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            state_path = self.make_state(Path(tmp))
+            with _exclusive_workflow_lock(state_path):
+                with self.assertRaisesRegex(
+                    WorkflowSupervisorError, "another supervisor"
+                ):
+                    with _exclusive_workflow_lock(state_path):
+                        pass
 
     def test_cycle_budget_exhaustion_does_not_claim_completion(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -202,7 +263,9 @@ class WorkflowSupervisorTests(unittest.TestCase):
 
             def blocked_driver(*_args, **kwargs):
                 self.assertNotIn("POLYMARKET_PRIVATE_KEY", kwargs["environment"])
-                current = read_workflow_state(state_path)
+                proposal_path = Path(kwargs["environment"]["THE_PASS_WORKFLOW_STATE"])
+                self.assertNotEqual(proposal_path, state_path)
+                current = read_workflow_state(proposal_path)
                 blocked = advance_workflow_state(
                     current,
                     to_stage=None,
@@ -210,7 +273,7 @@ class WorkflowSupervisorTests(unittest.TestCase):
                     next_action="authenticate selected provider",
                     blockers=["fixture provider is unavailable"],
                 )
-                write_workflow_state_atomic(state_path, blocked)
+                write_workflow_state_atomic(proposal_path, blocked)
                 return {
                     "exit_code": 2,
                     "duration_ms": 1,
@@ -237,6 +300,82 @@ class WorkflowSupervisorTests(unittest.TestCase):
                     },
                 )
             self.assertEqual((report["status"], exit_code), ("blocked", 2))
+
+    def test_review_transition_creates_attestation_without_leaking_key(self) -> None:
+        key = "supervisor-review-attestation-key-32-bytes"
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            package = root / "package"
+            ledger = root / "ledger.jsonl"
+            shutil.copytree(EXAMPLE_PACKAGE, package)
+            prepare_paper_candidate(package)
+            package_id = build_run_entry(package, ledger_path=ledger)["package_id"]
+            append_ledger_entry(ledger, package)
+            state_path = self.make_state(root)
+            state = read_workflow_state(state_path)
+            state.update(
+                {
+                    "stage": "review_research",
+                    "reviewer": "independent-auditor",
+                    "transitions_used": 5,
+                    "package_path": str(package),
+                    "package_id": package_id,
+                    "evidence_paths": [str(package / "findings.json")],
+                    "next_action": "perform independent review",
+                }
+            )
+            write_workflow_state_atomic(state_path, state)
+
+            def review_driver(*_args, **kwargs):
+                self.assertNotIn(ATTESTATION_KEY_ENV, kwargs["environment"])
+                proposal = Path(kwargs["environment"]["THE_PASS_WORKFLOW_STATE"])
+                current = read_workflow_state(proposal)
+                reviewed = advance_workflow_state(
+                    current,
+                    to_stage="research_gate",
+                    status="in_progress",
+                    next_action="evaluate research gate",
+                    reviewer="independent-auditor",
+                    evidence_paths=[package / "findings.json"],
+                )
+                write_workflow_state_atomic(proposal, reviewed)
+                return {
+                    "exit_code": 0,
+                    "duration_ms": 1,
+                    "timed_out": False,
+                    "output_exceeded": False,
+                    "stdout_sha256": "a" * 64,
+                    "stderr_sha256": "b" * 64,
+                }
+
+            with patch(
+                "the_pass.workflow_supervisor._run_driver", side_effect=review_driver
+            ):
+                report, exit_code = supervise_workflow(
+                    state_path,
+                    driver_argv=["trusted-review-driver"],
+                    cwd=ROOT,
+                    report_path=root / "supervisor.json",
+                    author_provider="codex",
+                    available_providers=("claude",),
+                    max_cycles=1,
+                    environment={ATTESTATION_KEY_ENV: key},
+                )
+
+            attestation_path = (
+                package / "reviewer_attestation.research_gate.json"
+            )
+            _, blockers = verify_reviewer_attestation(
+                attestation_path,
+                gate="research_gate",
+                package_id=package_id,
+                reviewer="independent-auditor",
+                key=key,
+            )
+            self.assertEqual(exit_code, 1)
+            self.assertEqual(report["cycles"][0]["stage_after"], "research_gate")
+            self.assertEqual(blockers, [])
+            self.assertNotIn(key, (root / "supervisor.json").read_text())
 
     def test_report_cannot_overwrite_workflow_state(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

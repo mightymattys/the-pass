@@ -575,8 +575,8 @@ def _runtime_depth(environment: Mapping[str, str] | None = None) -> int:
 
 
 @contextmanager
-def _exclusive_dispatch_lock() -> Iterator[None]:
-    """Serialize external providers so a delegated process cannot recurse in parallel."""
+def _exclusive_dispatch_lock(scope: str | Path | None = None) -> Iterator[None]:
+    """Serialize one workspace while runtime depth prevents recursive delegation."""
 
     if os.name == "posix":
         import pwd
@@ -597,7 +597,9 @@ def _exclusive_dispatch_lock() -> Iterator[None]:
             raise AgentSafetyError("agent dispatch lock directory has an unexpected owner")
     if hasattr(os, "chmod"):
         os.chmod(lock_dir, 0o700)
-    path = lock_dir / "external-dispatch.lock"
+    scope_value = "global" if scope is None else str(Path(scope).expanduser().resolve())
+    scope_id = hashlib.sha256(scope_value.encode("utf-8")).hexdigest()[:24]
+    path = lock_dir / f"external-dispatch-{scope_id}.lock"
     flags = os.O_RDWR | os.O_CREAT
     if hasattr(os, "O_NOFOLLOW"):
         flags |= os.O_NOFOLLOW
@@ -1580,7 +1582,7 @@ def dispatch_agent_task(
         raise AgentSafetyError(
             f"agent output directory is inside a protected path: {relative_output}"
         )
-    with _exclusive_dispatch_lock():
+    with _exclusive_dispatch_lock(context.workspace_root):
         return _dispatch_agent_task_locked(
             context,
             output_dir=resolved_output,

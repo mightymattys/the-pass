@@ -1,0 +1,17 @@
+schema_version: 1
+id: example-blocked-reproduction
+created_at: "2026-07-15T00:00:00Z"
+runner_id: the_pass.backtest.run.v1
+network_allowed: false
+inputs:
+  strategy_spec: strategy_spec.json
+  data_manifest: data_manifest.json
+  quality_report: quality_report.json
+  descriptor: reproduction/descriptor.json
+  execution: reproduction/execution.json
+  events: reproduction/canonical-events.jsonl
+  workspace: reproduction/workspace
+input_fingerprints:
+  - path: reproduction/workspace/strategy.py
+    sha256: "0000000000000000000000000000000000000000000000000000000000000000"
+expected_artifacts: [verdict_report.json]

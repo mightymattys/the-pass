@@ -19,7 +19,7 @@ As a user-level tool from the published wheel:
 
 ```bash
 uv tool install \
-  "the-pass[data,research,paper] @ https://github.com/mightymattys/the-pass/releases/download/v0.11.0/the_pass-0.11.0-py3-none-any.whl"
+  "the-pass[data,research,paper] @ https://github.com/mightymattys/the-pass/releases/download/v0.12.0/the_pass-0.12.0-py3-none-any.whl"
 uv tool update-shell
 the-pass --version
 ```

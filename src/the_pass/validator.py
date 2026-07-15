@@ -64,6 +64,12 @@ ARTIFACT_SCHEMAS["live_risk_contract"] = {2: "live_risk_contract.v2.schema.json"
 ARTIFACT_SCHEMAS["agent_task"] = {1: "agent_task.schema.json"}
 ARTIFACT_SCHEMAS["agent_result"] = {1: "agent_result.schema.json"}
 ARTIFACT_SCHEMAS["agent_run"] = {1: "agent_run.schema.json"}
+ARTIFACT_SCHEMAS["dataset_plan"] = {1: "dataset_plan.v1.schema.json"}
+ARTIFACT_SCHEMAS["dataset_receipt"] = {1: "dataset_receipt.v1.schema.json"}
+ARTIFACT_SCHEMAS["reproduction_spec"] = {1: "reproduction_spec.v1.schema.json"}
+ARTIFACT_SCHEMAS["reviewer_attestation"] = {
+    1: "reviewer_attestation.v1.schema.json"
+}
 ARTIFACT_TYPES = {
     artifact_type: versions[max(versions)]
     for artifact_type, versions in ARTIFACT_SCHEMAS.items()
@@ -94,6 +100,7 @@ PACKAGE_EVIDENCE_ARTIFACTS = (
     "incident_report",
     "config_diff",
     "approval_pack",
+    "reproduction_spec",
 )
 ARTIFACT_EXTENSIONS = (".json", ".yaml", ".yml")
 

@@ -11,6 +11,7 @@ from contextlib import redirect_stdout
 
 from the_pass.cli import main as cli_main
 from the_pass.adapters.base import manifest_for_events
+from the_pass.audit import ReproductionError, reproduce_package
 from the_pass.data.contracts import CanonicalEvent, EventType, stable_fingerprint
 from the_pass.data.quality import QualityPolicy, build_quality_report
 from the_pass.engine.baselines import generate_synthetic_bars
@@ -288,6 +289,51 @@ class StrategyRuntimeTests(unittest.TestCase):
         runtime = json.loads((output / "runtime_evidence.json").read_text(encoding="utf-8"))
         self.assertTrue(runtime["determinism_verified"])
         self.assertEqual(runtime["promotion_status"], "blocked")
+        reproduction = reproduce_package(output, timeout_seconds=30)
+        self.assertEqual(reproduction["status"], "pass", reproduction)
+        extra = output / "reproduction" / "workspace" / "undeclared.py"
+        extra.write_text("raise RuntimeError('must never load')\n", encoding="utf-8")
+        with self.assertRaisesRegex(ReproductionError, "exactly match"):
+            reproduce_package(output, timeout_seconds=30)
+        extra.unlink()
+        reproduction_spec_path = output / "reproduction_spec.json"
+        reproduction_spec = json.loads(
+            reproduction_spec_path.read_text(encoding="utf-8")
+        )
+        unsafe_spec = {**reproduction_spec, "expected_artifacts": ["../escape.json"]}
+        reproduction_spec_path.write_text(json.dumps(unsafe_spec), encoding="utf-8")
+        with self.assertRaisesRegex(ReproductionError, "unsafe"):
+            reproduce_package(output, timeout_seconds=30)
+        unknown_runner = {**reproduction_spec, "runner_id": "unknown.runner"}
+        reproduction_spec_path.write_text(json.dumps(unknown_runner), encoding="utf-8")
+        with self.assertRaisesRegex(ReproductionError, "tracked package is invalid"):
+            reproduce_package(output, timeout_seconds=30)
+        reproduction_spec_path.write_text(
+            json.dumps(reproduction_spec), encoding="utf-8"
+        )
+        markdown_path = output / "run_report.md"
+        original_markdown = markdown_path.read_text(encoding="utf-8")
+        markdown_path.write_text(original_markdown + "\nchanged\n", encoding="utf-8")
+        mismatch_report = reproduce_package(output, timeout_seconds=30)
+        self.assertEqual(mismatch_report["status"], "blocked")
+        with redirect_stdout(io.StringIO()):
+            mismatch_reproduce_exit = cli_main(
+                [
+                    "audit",
+                    "reproduce",
+                    str(output),
+                    "--output",
+                    str(self.root / "reproduction-mismatch.json"),
+                    "--format",
+                    "json",
+                ]
+            )
+        self.assertEqual(mismatch_reproduce_exit, 2)
+        markdown_path.write_text(original_markdown, encoding="utf-8")
+        reproduction_execution = output / "reproduction" / "execution.json"
+        reproduction_execution.write_text("{}\n", encoding="utf-8")
+        with self.assertRaisesRegex(ReproductionError, "fingerprint changed"):
+            reproduce_package(output, timeout_seconds=30)
 
         mismatched_quality = build_quality_report(
             dataset_id,

@@ -1,6 +1,6 @@
 # Completion Audit
 
-Audit date: 2026-07-13.
+Audit date: 2026-07-15.
 
 This file maps the build plan to the evidence that proves the current public framework is
 complete. It does not claim that any trading strategy has edge.
@@ -29,7 +29,9 @@ do not make the repository incomplete. The current implementation result is reco
 distribution evidence is recorded in the
 [`v0.10.0` post-release audit](../../reports/POST_RELEASE_AUDIT_0.10.0.md).
 The supported user-strategy runtime and its current verification matrix are recorded in the
-[`v0.11.0` release audit](../../reports/RELEASE_AUDIT_0.11.0.md).
+[`v0.11.0` release audit](../../reports/RELEASE_AUDIT_0.11.0.md). Transactional workflow state,
+resumable datasets, clean generic reproduction, and signed reviewer provenance are recorded in the
+[`v0.12.0` release audit](../../reports/RELEASE_AUDIT_0.12.0.md).
 
 Trading roadmap gate evidence is tracked separately:
 
@@ -60,6 +62,8 @@ Trading roadmap gate evidence is tracked separately:
 - [`v0.10.0` supervised workflow release audit](../../reports/RELEASE_AUDIT_0.10.0.md)
 - [`v0.10.0` post-release verification](../../reports/POST_RELEASE_AUDIT_0.10.0.md)
 - [`v0.11.0` usable strategy runtime release audit](../../reports/RELEASE_AUDIT_0.11.0.md)
+- [`v0.12.0` post-audit hardening plan](POST_AUDIT_HARDENING_PLAN.md)
+- [`v0.12.0` release audit](../../reports/RELEASE_AUDIT_0.12.0.md)
 - [Repository hardening audit](../../reports/REPOSITORY_HARDENING_AUDIT_2026-07-10.md)
 - [Supervised workflow and model-routing plan](SUPERVISED_WORKFLOW_EXECUTION_PLAN.md)
 - [Supervised workflow implementation audit](../../reports/SUPERVISED_WORKFLOW_AUDIT_2026-07-11.md)
@@ -85,7 +89,7 @@ Codex plugin developers should also run the bundled `plugin-creator/scripts/vali
 validator against the repo root from their local Codex install.
 
 Historical cross-version matrices remain in their versioned release audits. The current local
-source matrix includes 215 tests, clean wheel installation, both plugin validations, the public
+source matrix includes 231 tests, clean wheel installation, both plugin validations, the public
 repository validator, and an explicit read-only public diagnostic pipeline. GitHub Python 3.9 and
 3.12 results are release gates and are recorded in the versioned release audit after publication.
 

@@ -37,10 +37,12 @@ declined promotion.
 ## Command Groups
 
 - `validate`, `validate-package`: artifact and package validation.
-- `data`, `features`: immutable adapter ingest, canonical quality, and deterministic features.
+- `data`, `features`: immutable adapter ingest, resumable dataset plans/builds, canonical quality,
+  and deterministic features.
 - `screen`, `backtest`: preregistered diagnostics and double-run strategy simulation.
 - `robustness`, `risk`: strategy-driven matrices, statistics, and independent risk evidence.
-- `gate`: artifact-backed candidate gate evaluation.
+- `audit`: clean custom-package reproduction through a fixed internal runner.
+- `gate`: signed reviewer provenance and artifact-backed candidate gate evaluation.
 - `paper`: compatibility replay and resumable custom-strategy observation.
 - `automation`, `incident`: evidence-reading scheduler-neutral jobs and incidents.
 - `report`, `dashboard`: static read-only evidence bundles.
@@ -95,7 +97,10 @@ The additive execution commands are:
 
 ```text
 the-pass data ingest --provider futures|binance|polymarket
+the-pass data plan --provider futures|binance|polymarket ...
+the-pass data build --plan <dataset-plan> --output <dataset>
 the-pass backtest run --descriptor <json> --strategy-spec <artifact> ...
+the-pass audit reproduce <package> --output <report>
 the-pass robustness sweep --descriptor <json> --variants <json> --splits <json> ...
 the-pass paper observe --descriptor <json> --batch-id <id> ...
 ```
@@ -107,6 +112,22 @@ and execution config. The quality report must bind the exact event fingerprint a
 executes two fresh credential-free workers and packages only identical
 results. Exit `0` means the diagnostic operation completed, not that its blocked verdict passed a
 gate.
+
+`data plan` freezes a contiguous, non-overlapping chunk set. `data build` serializes builders for
+one output, resumes only valid committed chunks, rejects conflicting duplicate events, and fully
+revalidates an existing committed aggregate before returning it. `audit reproduce` accepts only a
+validated `reproduction_spec`, a fixed runner ID, declared fingerprinted workspace files, and safe
+relative paths. It executes without a shell and returns `2` when rebuilt evidence differs.
+
+## Gate Attestation Authority
+
+New `research_gate`, `paper_gate`, and `risk_review` passes require
+`reviewer_attestation.<gate>.json`. `the-pass gate attest` signs the exact package, gate, reviewer,
+provider/model/run provenance, author/reviewer separation, and review evidence hashes using
+HMAC-SHA256. The key is read from `THE_PASS_REVIEW_ATTESTATION_KEY`, must contain at least 32 bytes,
+and is never serialized. Automated review requires a reviewer provider different from the author
+provider. Missing, mismatched, or unverifiable attestations produce a valid blocked gate result;
+`live_gate` remains forbidden. Historical ledger rows remain readable.
 
 `robustness sweep` create-only writes `<output-stem>.registration.json` with all variants and
 non-overlapping splits before its first worker call. Every cell is retained, including failures.
@@ -140,7 +161,7 @@ model access. A stale catalog exits `2` and model-based routes are forbidden unt
 Delegation is depth one. A delegated task cannot dispatch another agent, retry itself, approve a
 gate, alter governance or live-safety files, or apply its own patch. Read-only tasks return
 structured findings; implementation tasks run in a disposable worktree and return an unapplied
-patch. External provider calls are serialized per local user, while bounded native subagents may
-parallelize work inside one call. Provider user settings, MCP servers, connectors, unrelated
+patch. External provider calls are serialized per workspace, while unrelated workspaces and
+bounded native subagents may progress independently. Provider user settings, MCP servers, connectors, unrelated
 plugins, and hooks are excluded. The caller remains responsible for reviewing, applying, testing,
 and recording any change.

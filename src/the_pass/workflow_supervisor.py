@@ -10,20 +10,34 @@ import shutil
 import subprocess
 import tempfile
 import time
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Mapping, Sequence
+from typing import Any, Iterator, Mapping, Sequence
 
 import yaml
 
 from .agent_orchestration import route_workflow_stage
+from .attestation import (
+    ATTESTATION_KEY_ENV,
+    AttestationError,
+    attestation_path,
+    create_reviewer_attestation,
+    review_task_path,
+    write_reviewer_attestation,
+)
 from .gates import (
     DEFAULT_POLICY_PATH,
     GateEvaluationError,
     evaluate_gate,
     write_gate_decision,
 )
-from .ledger import LedgerError, append_gate_decision, read_ledger_entries
+from .ledger import (
+    LedgerError,
+    append_gate_decision,
+    build_run_entry,
+    read_ledger_entries,
+)
 from .orchestration import (
     WorkflowError,
     advance_workflow_state,
@@ -52,6 +66,11 @@ IMMUTABLE_STATE_FIELDS = (
     "ledger_path",
 )
 STOP_STATUSES = {"complete", "waiting", "blocked", "killed"}
+REVIEW_GATE_TRANSITIONS = {
+    "review_research": "research_gate",
+    "review_paper": "paper_gate",
+    "review_risk": "risk_review",
+}
 
 
 def _utc_now() -> str:
@@ -82,6 +101,73 @@ def _write_json_atomic(path: Path, document: Mapping[str, Any]) -> None:
         except FileNotFoundError:
             pass
         raise
+
+
+@contextmanager
+def _exclusive_workflow_lock(state_path: Path) -> Iterator[None]:
+    """Serialize supervisors for one canonical workflow state without stale lock cleanup."""
+
+    state_path = state_path.resolve()
+    lock_path = state_path.with_name(f"{state_path.name}.lock")
+    flags = os.O_RDWR | os.O_CREAT
+    if hasattr(os, "O_NOFOLLOW"):
+        flags |= os.O_NOFOLLOW
+    descriptor = os.open(lock_path, flags, 0o600)
+    acquired = False
+    try:
+        metadata = os.fstat(descriptor)
+        if not lock_path.is_file() or lock_path.is_symlink():
+            raise WorkflowSupervisorError("workflow lock must be a regular file")
+        if hasattr(os, "getuid") and metadata.st_uid != os.getuid():
+            raise WorkflowSupervisorError("workflow lock has an unexpected owner")
+        if hasattr(os, "fchmod"):
+            os.fchmod(descriptor, 0o600)
+        if os.name == "nt":
+            import msvcrt
+
+            if metadata.st_size == 0:
+                os.write(descriptor, b"0")
+            os.lseek(descriptor, 0, os.SEEK_SET)
+            try:
+                msvcrt.locking(descriptor, msvcrt.LK_NBLCK, 1)
+            except OSError as exc:
+                raise WorkflowSupervisorError(
+                    "another supervisor is active for this workflow state"
+                ) from exc
+        else:
+            import fcntl
+
+            try:
+                fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except BlockingIOError as exc:
+                raise WorkflowSupervisorError(
+                    "another supervisor is active for this workflow state"
+                ) from exc
+        acquired = True
+        yield
+    finally:
+        if acquired:
+            if os.name == "nt":
+                import msvcrt
+
+                os.lseek(descriptor, 0, os.SEEK_SET)
+                msvcrt.locking(descriptor, msvcrt.LK_UNLCK, 1)
+            else:
+                import fcntl
+
+                fcntl.flock(descriptor, fcntl.LOCK_UN)
+        os.close(descriptor)
+
+
+def _new_proposal_path(state_path: Path) -> Path:
+    descriptor, name = tempfile.mkstemp(
+        prefix=f".{state_path.name}.proposal-",
+        suffix=".yaml",
+        dir=str(state_path.parent),
+    )
+    os.close(descriptor)
+    os.unlink(name)
+    return Path(name)
 
 
 def validate_supervised_transition(
@@ -428,7 +514,7 @@ def inspect_workflow_execution(
     }
 
 
-def supervise_workflow(
+def _supervise_workflow_locked(
     state_path: Path,
     *,
     driver_argv: Sequence[str],
@@ -488,7 +574,16 @@ def supervise_workflow(
     }
     _write_json_atomic(report_path, report)
 
+    active_proposal: Path | None = None
+
     def fail(message: str) -> None:
+        nonlocal active_proposal
+        if active_proposal is not None:
+            try:
+                active_proposal.unlink()
+            except FileNotFoundError:
+                pass
+            active_proposal = None
         report["status"] = "failed"
         report["final_workflow_status"] = state["status"]
         report["issues"] = [message]
@@ -514,6 +609,8 @@ def supervise_workflow(
     for index in range(1, cycle_limit + 1):
         before = state
         before_fingerprint = _fingerprint(before)
+        active_proposal = _new_proposal_path(state_path)
+        write_workflow_state_atomic(active_proposal, before)
         try:
             route = route_workflow_stage(
                 before["stage"],
@@ -550,7 +647,7 @@ def supervise_workflow(
             }
         child_environment.update(
             {
-                "THE_PASS_WORKFLOW_STATE": str(state_path.resolve()),
+                "THE_PASS_WORKFLOW_STATE": str(active_proposal.resolve()),
                 "THE_PASS_WORKFLOW_STAGE": str(before["stage"]),
                 "THE_PASS_WORKFLOW_STATUS": str(before["status"]),
                 "THE_PASS_WORKFLOW_TARGET_GATE": str(before["target_gate"]),
@@ -563,10 +660,11 @@ def supervise_workflow(
                 "THE_PASS_SUPERVISOR_CYCLE": str(index),
             }
         )
+        child_environment.pop(ATTESTATION_KEY_ENV, None)
         if auto_driver and route["execution"] == "deterministic":
             started = time.monotonic()
             try:
-                _run_deterministic_stage(state_path, before)
+                _run_deterministic_stage(active_proposal, before)
             except (
                 GateEvaluationError,
                 LedgerError,
@@ -604,16 +702,72 @@ def supervise_workflow(
         if outcome["output_exceeded"]:
             fail("workflow driver output exceeded max_output_bytes")
         try:
-            state = read_workflow_state(state_path)
+            candidate = read_workflow_state(active_proposal)
         except WorkflowError as exc:
             fail(f"workflow driver wrote invalid state: {exc}")
-        after_fingerprint = _fingerprint(state)
+        after_fingerprint = _fingerprint(candidate)
         if after_fingerprint == before_fingerprint:
             fail("workflow driver exited without checkpoint progress")
         try:
-            validate_supervised_transition(before, state, policy=policy)
+            validate_supervised_transition(before, candidate, policy=policy)
         except WorkflowError as exc:
             fail(str(exc))
+        try:
+            current = read_workflow_state(state_path)
+        except WorkflowError as exc:
+            fail(f"canonical workflow state became invalid during execution: {exc}")
+        if _fingerprint(current) != before_fingerprint:
+            fail("canonical workflow state changed during supervised execution")
+        created_attestation: Path | None = None
+        gate = REVIEW_GATE_TRANSITIONS.get(str(before["stage"]))
+        if gate is not None and candidate["stage"] == gate:
+            package_value = candidate.get("package_path")
+            reviewer = candidate.get("reviewer")
+            if not isinstance(package_value, str) or not isinstance(reviewer, str):
+                fail("review transition requires package_path and reviewer")
+            package = Path(package_value).resolve()
+            package_id = build_run_entry(package)["package_id"]
+            if candidate.get("package_id") != package_id:
+                fail("review transition package_id does not match current package")
+            reviewer_provider = str(route.get("provider") or "external")
+            author = str(effective_author_provider or "human")
+            try:
+                task_path = review_task_path(package, gate)
+                attestation = create_reviewer_attestation(
+                    gate=gate,
+                    package_id=package_id,
+                    reviewer=reviewer,
+                    principal_type="provider",
+                    provider=reviewer_provider,
+                    model=str(route.get("requested_model") or "external-driver"),
+                    run_id=str(candidate["run_id"]),
+                    author_provider=author,
+                    reviewer_provider=reviewer_provider,
+                    evidence={
+                        "state_before_sha256": before_fingerprint,
+                        "state_after_sha256": after_fingerprint,
+                        "stdout_sha256": outcome["stdout_sha256"],
+                        "stderr_sha256": outcome["stderr_sha256"],
+                        "task_sha256": _sha256_file(task_path),
+                    },
+                    key=base_environment.get(ATTESTATION_KEY_ENV),
+                )
+                created_attestation = attestation_path(package, gate)
+                write_reviewer_attestation(created_attestation, attestation)
+            except (AttestationError, OSError, ValueError) as exc:
+                fail(f"review attestation failed: {exc}")
+        try:
+            write_workflow_state_atomic(state_path, candidate)
+        except Exception:
+            if created_attestation is not None:
+                created_attestation.unlink(missing_ok=True)
+            raise
+        state = candidate
+        try:
+            active_proposal.unlink()
+        except FileNotFoundError:
+            pass
+        active_proposal = None
         cycle = {
             "index": index,
             "stage_before": before["stage"],
@@ -649,3 +803,33 @@ def supervise_workflow(
     report["updated_at"] = _utc_now()
     _write_json_atomic(report_path, report)
     return report, 1
+
+
+def supervise_workflow(
+    state_path: Path,
+    *,
+    driver_argv: Sequence[str],
+    cwd: Path,
+    report_path: Path,
+    author_provider: str | None = None,
+    available_providers: Sequence[str] = ("codex", "claude"),
+    max_cycles: int | None = None,
+    timeout_seconds: int = 1800,
+    max_output_bytes: int = 4_194_304,
+    environment: Mapping[str, str] | None = None,
+) -> tuple[dict[str, Any], int]:
+    """Run one transactional supervisor for a canonical workflow state."""
+
+    with _exclusive_workflow_lock(state_path):
+        return _supervise_workflow_locked(
+            state_path,
+            driver_argv=driver_argv,
+            cwd=cwd,
+            report_path=report_path,
+            author_provider=author_provider,
+            available_providers=available_providers,
+            max_cycles=max_cycles,
+            timeout_seconds=timeout_seconds,
+            max_output_bytes=max_output_bytes,
+            environment=environment,
+        )

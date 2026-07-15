@@ -21,7 +21,11 @@ state = read_workflow_state(state_path)
 if mode == "no-progress":
     raise SystemExit(0)
 if mode == "sleep":
+    state_path.write_text("stage:", encoding="utf-8")
     time.sleep(10)
+    raise SystemExit(0)
+if mode == "malformed":
+    state_path.write_text("{", encoding="utf-8")
     raise SystemExit(0)
 if mode == "output-flood":
     sys.stdout.write("x" * 100_000)

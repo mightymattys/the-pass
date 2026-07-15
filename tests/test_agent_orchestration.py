@@ -656,7 +656,7 @@ class AgentOrchestrationTests(unittest.TestCase):
             root = Path(tmp)
             (root / "README.md").write_text("fixture\n", encoding="utf-8")
             task_path = self.write_task(root, self.task_document())
-            with _exclusive_dispatch_lock():
+            with _exclusive_dispatch_lock(root):
                 with self.assertRaisesRegex(AgentSafetyError, "dispatch is active"):
                     dispatch_agent_task(
                         task_path,
@@ -672,6 +672,12 @@ class AgentOrchestrationTests(unittest.TestCase):
             )
             self.assertEqual(exit_code, 0)
             self.assertEqual(run["status"], "complete")
+
+    def test_external_dispatch_locks_are_scoped_by_workspace(self) -> None:
+        with tempfile.TemporaryDirectory() as first, tempfile.TemporaryDirectory() as second:
+            with _exclusive_dispatch_lock(Path(first)):
+                with _exclusive_dispatch_lock(Path(second)):
+                    pass
 
     @unittest.skipIf(os.name == "nt", "POSIX process-group cleanup")
     def test_successful_provider_cannot_leave_background_children(self) -> None:
