@@ -15,13 +15,25 @@ The default `trusted_local` mode strips credential environment variables, blocks
 network/order imports, and enforces a process timeout/output limit. It explicitly records
 `network_enforcement: none` and `filesystem_enforcement: none`; this is failure containment for
 trusted code, not an OS sandbox. The optional `hardened` mode requires an operator-supplied
-executable sandbox launcher. That launcher must enforce the declared OS boundary and write an exact
-attestation tied to its own hash and the request fingerprint. No launcher is bundled, and missing or
-mismatched evidence fails closed.
+executable sandbox launcher plus a trust policy allowlisting its exact hash and requirements. The
+launcher must enforce the declared OS boundary and write an exact attestation tied to its own hash
+and request fingerprint. Before each worker, an active probe attempts forbidden reads/writes,
+loopback access, and execution without OS CPU/file-size limits. No launcher is bundled, and missing,
+mismatched, or failed evidence blocks promotion.
 
 The generic package copies and cross-validates the supplied StrategySpec, DataManifest, and
 QualityReport. It never replaces them with synthetic claims. A generic run always starts with a
 `blocked` verdict and still requires robustness, risk, and independent review.
+
+`robustness_report.v2` is authoritative promotion evidence. It stores the registered variants,
+source-package binding, event/descriptor/execution fingerprints, complete fold matrix, failed cells,
+purge/embargo policy, null baseline, mandatory stresses, and parameter stability. Validation
+recomputes PBO, PSR, DSR, and Reality Check/SPA. Summary values in `metrics_report` must exactly
+match this report.
+
+After independent findings, `the-pass candidate assemble` creates the successor package and derives
+the metrics/verdict references. Agents and users should never hand-edit a recorded run into
+`paper_candidate`.
 
 ## Fill Evidence
 

@@ -1,5 +1,5 @@
 schema_version: 1
-interface_version: 0.13.0
+interface_version: 0.14.0
 public_skills:
   run: [complete, waiting, blocked, killed]
   research: [research_ready, rejected, blocked]
@@ -96,6 +96,11 @@ cli_contracts:
     accepted_exit_codes: [0, 1]
     outputs: [robustness_report]
     capability: variant_return_matrix_exists
+  candidate_assemble:
+    argv: [candidate, assemble, source-package, candidate-package, --ledger, ledger.jsonl, --run-id, candidate-v1, --created-at, "2026-07-16T00:00:00Z", --robustness-report, robustness_report.json, --findings, findings.json, --trusted-reviewers, trusted-reviewers, --format, json]
+    accepted_exit_codes: [0, 1]
+    outputs: [candidate_package]
+    capability: recorded_source_and_promotion_eligible_robustness_and_independent_findings
   risk_build:
     argv: [risk, build, --returns, returns.json, --scenarios, scenarios.json, --package-id, pkg_aaaaaaaaaaaaaaaaaaaaaaaa, --asset-class, crypto_intraday, --capacity, "1000", --output-dir, risk, --format, json]
     accepted_exit_codes: [0, 1, 2]
@@ -107,7 +112,7 @@ cli_contracts:
     outputs: [paper_result]
     capability: supported_strategy_and_exact_research_gate
   gate_evaluate:
-    argv: [gate, evaluate, package, --gate, research_gate, --reviewer, independent-reviewer, --ledger, ledger.jsonl, --output, package/gate_decision.research_gate.yaml, --format, json]
+    argv: [gate, evaluate, package, --gate, research_gate, --reviewer, independent-reviewer, --ledger, ledger.jsonl, --trusted-reviewers, trusted-reviewers, --output, package/gate_decision.research_gate.yaml, --format, json]
     accepted_exit_codes: [0, 1, 2, 3]
     outputs: [gate_decision]
     capability: exact_package_and_signed_independent_reviewer
@@ -117,7 +122,7 @@ cli_contracts:
     outputs: [reviewer_attestation]
     capability: ed25519_signing_key_registry_and_completed_independent_review
   receipts_add:
-    argv: [receipts, add, package, --ledger, ledger.jsonl]
+    argv: [receipts, add, package, --ledger, ledger.jsonl, --trusted-reviewers, trusted-reviewers]
     accepted_exit_codes: [0, 1]
     outputs: [ledger_entry]
     capability: finalized_valid_package

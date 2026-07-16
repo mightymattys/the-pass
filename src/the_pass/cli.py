@@ -15,6 +15,7 @@ import yaml
 
 from . import __version__
 from .automation import run_automation_spec
+from .candidate import CandidateAssemblyError, assemble_research_candidate
 from .audit import ReproductionError, reproduce_package
 from .attestation import (
     ATTESTABLE_GATES,
@@ -450,6 +451,7 @@ def build_parser() -> argparse.ArgumentParser:
         default="trusted_local",
     )
     backtest_run.add_argument("--sandbox-launcher", type=Path)
+    backtest_run.add_argument("--sandbox-policy", type=Path)
     backtest_run.add_argument("--format", choices=("text", "json"), default="text")
 
     audit_parser = subparsers.add_parser(
@@ -463,6 +465,7 @@ def build_parser() -> argparse.ArgumentParser:
     audit_reproduce.add_argument("--output", type=Path, required=True)
     audit_reproduce.add_argument("--timeout-seconds", type=int, default=120)
     audit_reproduce.add_argument("--sandbox-launcher", type=Path)
+    audit_reproduce.add_argument("--sandbox-policy", type=Path)
     audit_reproduce.add_argument("--format", choices=("text", "json"), default="text")
 
     robustness_parser = subparsers.add_parser(
@@ -493,12 +496,55 @@ def build_parser() -> argparse.ArgumentParser:
     robustness_sweep.add_argument("--events", type=Path, required=True)
     robustness_sweep.add_argument("--execution", type=Path, required=True)
     robustness_sweep.add_argument("--variants", type=Path, required=True)
-    robustness_sweep.add_argument("--splits", type=Path, required=True)
+    robustness_sweep.add_argument("--splits", type=Path)
+    robustness_sweep.add_argument("--source-package", type=Path)
+    robustness_sweep.add_argument("--created-at")
+    robustness_sweep.add_argument("--train-size", type=int)
+    robustness_sweep.add_argument("--test-size", type=int)
+    robustness_sweep.add_argument("--purge", type=int, default=0)
+    robustness_sweep.add_argument("--embargo", type=int, default=0)
+    robustness_sweep.add_argument("--null-variant-index", type=int)
+    robustness_sweep.add_argument("--stress-results", type=Path)
     robustness_sweep.add_argument("--selected-index", type=int, required=True)
     robustness_sweep.add_argument("--workspace-root", type=Path, default=Path.cwd())
     robustness_sweep.add_argument("--timeout-seconds", type=float, default=60.0)
+    robustness_sweep.add_argument(
+        "--runtime-mode",
+        choices=("trusted_local", "hardened"),
+        default="trusted_local",
+    )
+    robustness_sweep.add_argument("--sandbox-launcher", type=Path)
+    robustness_sweep.add_argument("--sandbox-policy", type=Path)
     robustness_sweep.add_argument("--output", type=Path, required=True)
     robustness_sweep.add_argument("--format", choices=("text", "json"), default="text")
+
+    candidate_parser = subparsers.add_parser(
+        "candidate", help="Assemble immutable promotion candidates from measured evidence."
+    )
+    candidate_subparsers = candidate_parser.add_subparsers(
+        dest="candidate_command", required=True
+    )
+    candidate_assemble = candidate_subparsers.add_parser(
+        "assemble",
+        help="Create a validated research candidate successor without manual package edits.",
+    )
+    candidate_assemble.add_argument("source", type=Path)
+    candidate_assemble.add_argument("target", type=Path)
+    candidate_assemble.add_argument("--ledger", type=Path, required=True)
+    candidate_assemble.add_argument("--run-id", required=True)
+    candidate_assemble.add_argument("--created-at", required=True)
+    candidate_assemble.add_argument(
+        "--robustness-report", type=Path, required=True
+    )
+    candidate_assemble.add_argument("--findings", type=Path, required=True)
+    candidate_assemble.add_argument(
+        "--trusted-reviewers",
+        type=Path,
+        help="Operator-controlled reviewer registry used to verify an existing ledger.",
+    )
+    candidate_assemble.add_argument(
+        "--format", choices=("text", "json"), default="text"
+    )
 
     risk_parser = subparsers.add_parser(
         "risk", help="Build versioned strategy-independent risk evidence."
@@ -776,6 +822,11 @@ def build_parser() -> argparse.ArgumentParser:
     workflow_supersede.add_argument("--run-id", required=True)
     workflow_supersede.add_argument("--created-at", required=True)
     workflow_supersede.add_argument(
+        "--trusted-reviewers",
+        type=Path,
+        help="Operator-controlled reviewer registry used to verify an existing ledger.",
+    )
+    workflow_supersede.add_argument(
         "--format", choices=("text", "json"), default="text"
     )
 
@@ -821,6 +872,11 @@ def build_parser() -> argparse.ArgumentParser:
         type=Path,
         default=DEFAULT_LEDGER_PATH,
         help="Receipt ledger for prior gates.",
+    )
+    gate_evaluate.add_argument(
+        "--trusted-reviewers",
+        type=Path,
+        help="Operator-controlled reviewer registry outside the evaluated package.",
     )
     gate_evaluate.add_argument(
         "--output", type=Path, required=True, help="Decision file inside the package."
@@ -872,6 +928,11 @@ def build_parser() -> argparse.ArgumentParser:
     receipts_add.add_argument(
         "--ledger", dest="sub_ledger", type=Path, help="Ledger JSONL path."
     )
+    receipts_add.add_argument(
+        "--trusted-reviewers",
+        type=Path,
+        help="Operator-controlled reviewer registry used to verify existing gate decisions.",
+    )
 
     receipts_add_decision = receipts_subparsers.add_parser(
         "add-decision", help="Validate and append an artifact-backed gate decision."
@@ -882,12 +943,22 @@ def build_parser() -> argparse.ArgumentParser:
     receipts_add_decision.add_argument(
         "--ledger", dest="sub_ledger", type=Path, help="Ledger JSONL path."
     )
+    receipts_add_decision.add_argument(
+        "--trusted-reviewers",
+        type=Path,
+        help="Operator-controlled reviewer registry used to replay the decision.",
+    )
 
     receipts_verify = receipts_subparsers.add_parser(
         "verify", help="Verify the ledger hash chain."
     )
     receipts_verify.add_argument(
         "--ledger", dest="sub_ledger", type=Path, help="Ledger JSONL path."
+    )
+    receipts_verify.add_argument(
+        "--trusted-reviewers",
+        type=Path,
+        help="Operator-controlled reviewer registry used to replay gate decisions.",
     )
 
     return parser
@@ -1265,6 +1336,7 @@ def main(argv: list[str] | None = None) -> int:
                     output_limit_bytes=args.output_limit_bytes,
                     runtime_mode=args.runtime_mode,
                     sandbox_launcher=args.sandbox_launcher,
+                    sandbox_policy=args.sandbox_policy,
                 )
                 result = runner_result_from_document(worker_result)
                 evidence_fields = {
@@ -1343,6 +1415,7 @@ def main(argv: list[str] | None = None) -> int:
                 args.package,
                 timeout_seconds=args.timeout_seconds,
                 sandbox_launcher=args.sandbox_launcher,
+                sandbox_policy=args.sandbox_policy,
             )
             write_json_atomic(args.output, report)
             passed = report["status"] == "pass"
@@ -1378,14 +1451,30 @@ def main(argv: list[str] | None = None) -> int:
                 descriptor = load_document(args.descriptor)
                 execution = load_document(args.execution)
                 variants = json.loads(args.variants.read_text(encoding="utf-8"))
-                splits = json.loads(args.splits.read_text(encoding="utf-8"))
+                splits = (
+                    json.loads(args.splits.read_text(encoding="utf-8"))
+                    if args.splits is not None
+                    else None
+                )
+                stress_results = (
+                    json.loads(args.stress_results.read_text(encoding="utf-8"))
+                    if args.stress_results is not None
+                    else []
+                )
                 if (
                     not isinstance(descriptor, dict)
                     or not isinstance(execution, dict)
                     or not isinstance(variants, list)
                     or not all(isinstance(row, dict) for row in variants)
-                    or not isinstance(splits, list)
-                    or not all(isinstance(row, dict) for row in splits)
+                    or (
+                        splits is not None
+                        and (
+                            not isinstance(splits, list)
+                            or not all(isinstance(row, dict) for row in splits)
+                        )
+                    )
+                    or not isinstance(stress_results, list)
+                    or not all(isinstance(row, dict) for row in stress_results)
                 ):
                     raise ValueError("robustness sweep inputs have invalid structure")
                 registration_path = args.output.with_name(
@@ -1401,8 +1490,32 @@ def main(argv: list[str] | None = None) -> int:
                     registration_path=registration_path,
                     workspace_root=args.workspace_root,
                     timeout_seconds=args.timeout_seconds,
+                    source_package_id=(
+                        build_run_entry(args.source_package)["package_id"]
+                        if args.source_package is not None
+                        else None
+                    ),
+                    created_at=args.created_at,
+                    train_size=args.train_size,
+                    test_size=args.test_size,
+                    purge=args.purge,
+                    embargo=args.embargo,
+                    null_variant_index=args.null_variant_index,
+                    stress_results=stress_results,
+                    runtime_mode=args.runtime_mode,
+                    sandbox_launcher=args.sandbox_launcher,
+                    sandbox_policy=args.sandbox_policy,
                 )
                 write_json_atomic(args.output, document)
+                validation = validate_artifact(
+                    args.output, artifact_type="robustness_report"
+                )
+                if not validation.ok:
+                    details = "; ".join(
+                        f"{issue.path}: {issue.message}"
+                        for issue in validation.issues
+                    )
+                    raise ValueError(f"generated robustness report is invalid: {details}")
                 blocked = document["status"] == "blocked"
                 print_envelope(
                     output_format=args.format,
@@ -1513,6 +1626,36 @@ def main(argv: list[str] | None = None) -> int:
                 ok=False,
                 status="error",
                 issues=[{"path": str(args.returns), "message": str(exc)}],
+            )
+            return 1
+
+    if args.command == "candidate":
+        try:
+            target, package_id = assemble_research_candidate(
+                args.source,
+                args.target,
+                ledger_path=args.ledger,
+                run_id=args.run_id,
+                created_at=args.created_at,
+                robustness_report_path=args.robustness_report,
+                findings_path=args.findings,
+                trusted_registry_path=args.trusted_reviewers,
+            )
+            print_envelope(
+                output_format=args.format,
+                ok=True,
+                status="complete",
+                artifact_paths=[target],
+                receipt_id=package_id,
+                details={"package_id": package_id},
+            )
+            return 0
+        except (CandidateAssemblyError, LedgerError, OSError, ValueError) as exc:
+            print_envelope(
+                output_format=args.format,
+                ok=False,
+                status="error",
+                issues=[{"path": str(args.target), "message": str(exc)}],
             )
             return 1
 
@@ -1929,6 +2072,7 @@ def main(argv: list[str] | None = None) -> int:
                 ledger_path=args.ledger,
                 run_id=args.run_id,
                 created_at=args.created_at,
+                trusted_registry_path=args.trusted_reviewers,
             )
             print_envelope(
                 output_format=args.format,
@@ -2083,6 +2227,7 @@ def main(argv: list[str] | None = None) -> int:
                 reviewer=args.reviewer,
                 policy_path=args.policy,
                 ledger_path=args.ledger,
+                trusted_registry_path=args.trusted_reviewers,
             )
             write_gate_decision(output_path, evaluation.decision)
             if args.format == "json":
@@ -2130,7 +2275,11 @@ def main(argv: list[str] | None = None) -> int:
         ledger_path = getattr(args, "sub_ledger", None) or args.ledger
         try:
             if args.receipts_command == "add":
-                append_result = append_ledger_entry(ledger_path, args.package)
+                append_result = append_ledger_entry(
+                    ledger_path,
+                    args.package,
+                    trusted_registry_path=args.trusted_reviewers,
+                )
                 if args.format == "json":
                     print_envelope(
                         output_format=args.format,
@@ -2150,7 +2299,11 @@ def main(argv: list[str] | None = None) -> int:
                 return 0
 
             if args.receipts_command == "add-decision":
-                append_result = append_gate_decision(ledger_path, args.decision)
+                append_result = append_gate_decision(
+                    ledger_path,
+                    args.decision,
+                    trusted_registry_path=args.trusted_reviewers,
+                )
                 if args.format == "json":
                     print_envelope(
                         output_format=args.format,
@@ -2170,7 +2323,10 @@ def main(argv: list[str] | None = None) -> int:
                 return 0
 
             if args.receipts_command == "verify":
-                issues = verify_ledger_file(ledger_path)
+                issues = verify_ledger_file(
+                    ledger_path,
+                    trusted_registry_path=args.trusted_reviewers,
+                )
                 if args.format == "json":
                     print_envelope(
                         output_format=args.format,

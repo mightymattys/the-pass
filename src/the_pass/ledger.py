@@ -254,7 +254,9 @@ def verify_ledger_artifacts(
     return issues
 
 
-def verify_ledger_file(ledger_path: Path) -> list[ValidationIssue]:
+def verify_ledger_file(
+    ledger_path: Path, *, trusted_registry_path: Path | None = None
+) -> list[ValidationIssue]:
     ledger_path = ledger_path.resolve()
     if not ledger_path.exists():
         return [ValidationIssue(str(ledger_path), "ledger file does not exist")]
@@ -265,11 +267,16 @@ def verify_ledger_file(ledger_path: Path) -> list[ValidationIssue]:
     ]
     if structural_issues:
         return structural_issues
-    return verify_ledger_semantics(entries, ledger_path)
+    return verify_ledger_semantics(
+        entries, ledger_path, trusted_registry_path=trusted_registry_path
+    )
 
 
 def verify_ledger_semantics(
-    entries: list[dict[str, Any]], ledger_path: Path
+    entries: list[dict[str, Any]],
+    ledger_path: Path,
+    *,
+    trusted_registry_path: Path | None = None,
 ) -> list[ValidationIssue]:
     """Rebuild v2 runs and replay gate decisions in trusted ledger order."""
 
@@ -383,6 +390,7 @@ def verify_ledger_semantics(
                 policy_path=DEFAULT_POLICY_PATH,
                 ledger_path=ledger_path,
                 trusted_entries=trusted_entries,
+                trusted_registry_path=trusted_registry_path,
             ).decision
         except GateEvaluationError as exc:
             issues.append(
@@ -671,6 +679,7 @@ def append_ledger_entry(
     package_dir: Path,
     *,
     recorded_at: str | None = None,
+    trusted_registry_path: Path | None = None,
     _locked_handle: BinaryIO | None = None,
 ) -> LedgerAppendResult:
     ledger_path = ledger_path.resolve()
@@ -680,10 +689,17 @@ def append_ledger_entry(
                 ledger_path,
                 package_dir,
                 recorded_at=recorded_at,
+                trusted_registry_path=trusted_registry_path,
                 _locked_handle=handle,
             )
     entries = read_ledger_entries(ledger_path)
-    issues = verify_ledger_file(ledger_path) if ledger_path.exists() else []
+    issues = (
+        verify_ledger_file(
+            ledger_path, trusted_registry_path=trusted_registry_path
+        )
+        if ledger_path.exists()
+        else []
+    )
     if issues:
         details = "; ".join(f"{issue.path}: {issue.message}" for issue in issues)
         raise LedgerError(f"refusing to append to invalid ledger: {details}")
@@ -762,6 +778,7 @@ def append_gate_decision(
     decision_path: Path,
     *,
     _locked_handle: BinaryIO | None = None,
+    trusted_registry_path: Path | None = None,
 ) -> LedgerAppendResult:
     ledger_path = ledger_path.resolve()
     decision_path = decision_path.resolve()
@@ -771,9 +788,16 @@ def append_gate_decision(
                 ledger_path,
                 decision_path,
                 _locked_handle=handle,
+                trusted_registry_path=trusted_registry_path,
             )
     entries = read_ledger_entries(ledger_path)
-    issues = verify_ledger_file(ledger_path) if ledger_path.exists() else []
+    issues = (
+        verify_ledger_file(
+            ledger_path, trusted_registry_path=trusted_registry_path
+        )
+        if ledger_path.exists()
+        else []
+    )
     if issues:
         details = "; ".join(f"{issue.path}: {issue.message}" for issue in issues)
         raise LedgerError(f"refusing to append to invalid ledger: {details}")
@@ -843,6 +867,7 @@ def append_gate_decision(
             reviewer=str(decision["reviewer"]),
             policy_path=DEFAULT_POLICY_PATH,
             ledger_path=ledger_path,
+            trusted_registry_path=trusted_registry_path,
         ).decision
     except GateEvaluationError as exc:
         raise LedgerError(f"gate decision cannot be reproduced: {exc}") from exc

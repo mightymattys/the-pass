@@ -61,7 +61,7 @@ Codex or Claude Code plugin provides the guided `/the-pass:*` commands.
 
 ```bash
 uv tool install \
-  "the-pass[data,research,paper] @ https://github.com/mightymattys/the-pass/releases/download/v0.13.0/the_pass-0.13.0-py3-none-any.whl"
+  "the-pass[data,research,paper] @ https://github.com/mightymattys/the-pass/releases/download/v0.14.0/the_pass-0.14.0-py3-none-any.whl"
 uv tool update-shell
 the-pass --version
 ```
@@ -74,7 +74,7 @@ smoke test. The public package contains no live trading client.
 Codex:
 
 ```bash
-codex plugin marketplace add mightymattys/the-pass --ref v0.13.0
+codex plugin marketplace add mightymattys/the-pass --ref v0.14.0
 codex plugin add the-pass@the-pass-tools
 ```
 
@@ -155,8 +155,9 @@ local strategy files, immutable adapter ingest bundles, deterministic double-run
 strategy-driven robustness sweeps, and resumable replay-based paper observations. Candidate
 promotion remains deliberately separate.
 
-The source tree and plugin manifests are versioned `0.13.0`. The
+The source tree and plugin manifests are versioned `0.14.0`. The
 release badge above remains the authority for the latest published tag. Readiness is recorded in the
+[`v0.14.0` release audit](reports/RELEASE_AUDIT_0.14.0.md), the
 [`v0.13.0` release audit](reports/RELEASE_AUDIT_0.13.0.md), the
 [`v0.13.0` post-release verification](reports/POST_RELEASE_AUDIT_0.13.0.md), the
 [`v0.9.0` cross-agent audit](reports/CROSS_AGENT_ORCHESTRATION_AUDIT_0.9.0.md) and the
@@ -199,6 +200,7 @@ uv run the-pass <group> --help
 | `screen`, `backtest` | Run bundled controls or a trusted local strategy twice |
 | `audit` | Rebuild a custom package in a clean temporary workspace |
 | `robustness`, `risk` | Execute preregistered sweeps and evaluate selection bias/risk |
+| `candidate` | Assemble a validated successor from measured robustness and independent findings |
 | `gate` | Sign reviewer provenance and evaluate artifact-backed candidate gates |
 | `paper` | Run compatibility replay or resume a custom-strategy observation |
 | `automation`, `incident` | Execute evidence-reading job handlers and create incidents |
@@ -279,7 +281,7 @@ Schemas are registered by `(artifact_type, schema_version)`. V1 evidence remains
 compatibility, but cannot be treated as a passed v2 gate. Strategy specifications are immutable
 after their first run; material changes create a new version and run.
 
-The repository ships one latest-version template for each of its 42 registered artifact types.
+The repository ships one latest-version template for each of its 43 registered artifact types.
 Every template is validated in the public repository check through the production artifact
 validator. Starter values are deliberately `draft`, `diagnostic`, `blocked`, or otherwise
 non-promoting; they demonstrate a valid shape and must be replaced with measured evidence before
@@ -289,6 +291,9 @@ Authoritative v2 lookups bind both the deterministic package ID and the resolved
 A run must be recorded before its gate decision, package IDs cannot be reused across paths, and
 paper/risk progression uses `the-pass workflow supersede --ledger <ledger>` to prove exact
 predecessor lineage. Every successor receives fresh prerequisite gate decisions.
+Once the ledger contains a passed gate, every later `receipts add`, `workflow supersede`, or
+`candidate assemble` operation must receive the same external trust store through
+`--trusted-reviewers` or `THE_PASS_TRUSTED_REVIEWER_REGISTRY`.
 
 Canonical candidate gates are:
 
@@ -299,6 +304,43 @@ Canonical candidate gates are:
 
 Gate policy is versioned under [`config/`](config/) and its exact hash is recorded in each
 decision.
+
+The supported research-promotion path is derived rather than hand-edited:
+
+```bash
+# 1. Record the completed diagnostic run.
+the-pass receipts add <run-package> --ledger <ledger>
+
+# 2. Produce registered walk-forward evidence with an allowlisted hardened launcher.
+the-pass robustness sweep \
+  --source-package <run-package> \
+  --descriptor <descriptor.json> --events <events.jsonl> \
+  --execution <execution.json> --variants <variants.json> \
+  --train-size <rows> --test-size <rows> --purge <rows> --embargo <rows> \
+  --null-variant-index <index> --stress-results <stress-results.json> \
+  --selected-index <index> --runtime-mode hardened \
+  --sandbox-launcher <launcher> --sandbox-policy <launcher-policy.json> \
+  --output <robustness_report.json>
+
+# 3. After independent findings, assemble a new immutable candidate package.
+the-pass candidate assemble <run-package> <candidate-package> \
+  --ledger <ledger> --run-id <new-run-id> --created-at <RFC3339> \
+  --robustness-report <robustness_report.json> --findings <findings.json>
+
+# 4. Record and evaluate it against an operator-controlled reviewer registry.
+the-pass receipts add <candidate-package> --ledger <ledger>
+the-pass gate evaluate <candidate-package> --gate research_gate \
+  --reviewer <reviewer> --ledger <ledger> \
+  --trusted-reviewers <trusted-registry-file-or-directory> \
+  --output <candidate-package>/gate_decision.research_gate.yaml
+```
+
+`gate keygen` creates a key and a registry document, but does not authorize that registry.
+Authorization exists only when the operator places the registry outside the evaluated package and
+passes it through `--trusted-reviewers` or `THE_PASS_TRUSTED_REVIEWER_REGISTRY`. Ledger replay
+requires the same trust store. The candidate run receipt also contains a recomputed assembly
+manifest binding the source package, robustness report, independent findings, and all derived
+metrics/verdict fields.
 
 ## Data and Adapter Boundaries
 
@@ -336,9 +378,10 @@ and cannot support promotion.
 
 Custom strategy code runs in `trusted_local` mode by default. That mode strips credentials and
 contains process failures but truthfully reports that network and host-filesystem access are not
-OS-enforced. Promotion-eligible runtime evidence requires `hardened` mode plus an audited external
-sandbox launcher and a matching launcher attestation. The Pass does not ship a privileged portable
-sandbox.
+OS-enforced. Promotion-eligible runtime evidence requires `hardened` mode, an audited external
+sandbox launcher, an operator-controlled launcher allowlist policy, matching attestations, and a
+passing active probe for forbidden filesystem access, loopback network access, and OS resource
+limits. The Pass does not ship a privileged portable sandbox.
 
 Gross and net path metrics use separate equity curves. Annualization records the asset calendar,
 median observation interval, and periods per year instead of assuming every market has 252 data
@@ -347,8 +390,10 @@ paper observations fail closed.
 
 The robustness layer includes walk-forward evaluation, purged splits and embargoes, PBO,
 PSR/DSR, deterministic bootstrap, Reality Check/SPA support, parameter sensitivity, regime
-splits, and execution stress. Risk limits are strategy-independent; a strategy cannot rewrite
-its own policy.
+splits, and execution stress. A promotion candidate must include `robustness_report.v2`; validation
+recomputes its statistics from the registered matrix and derives baseline, stress, stability, and
+runtime eligibility instead of trusting copied summaries. Risk limits are strategy-independent;
+a strategy cannot rewrite its own policy.
 
 See [Backtest Harness](docs/implementation/BACKTEST_HARNESS.md) and
 [Robustness, Risk, and Audit](docs/implementation/ROBUSTNESS_RISK_AUDIT.md).
@@ -374,7 +419,7 @@ See [Paper, Automation, and Reporting](docs/implementation/PAPER_AUTOMATION_REPO
 | --- | --- |
 | [`src/the_pass/`](src/the_pass/) | CLI, validation, data, adapters, engine, statistics, risk, paper, automation, and reporting |
 | [`schemas/`](schemas/) | Public JSON Schemas and compatibility registry |
-| [`templates/`](templates/) | Schema-valid, deliberately non-promoting starters for all 42 artifact types |
+| [`templates/`](templates/) | Schema-valid, deliberately non-promoting starters for all 43 artifact types |
 | [`research/`](research/) | Source registry and reviewed research evidence |
 | [`examples/`](examples/) | Synthetic packages, adapters, baselines, and outcome examples |
 | [`automations/`](automations/) | Scheduler-neutral job specifications |
@@ -431,6 +476,7 @@ Report vulnerabilities according to [SECURITY.md](SECURITY.md).
 - [Main research plan](docs/research/the-pass-plan.md)
 - [Usable strategy runtime plan](docs/implementation/USABLE_STRATEGY_RUNTIME_PLAN.md)
 - [Trading roadmap execution plan](docs/implementation/TRADING_ROADMAP_EXECUTION_PLAN.md)
+- [`v0.14.0` evidence and trust hardening](docs/implementation/EVIDENCE_TRUST_HARDENING_V0.14.md)
 - [`v0.13.0` trust-boundary hardening plan](docs/implementation/TRUST_BOUNDARY_HARDENING_PLAN.md)
 - [Artifact lifecycle](docs/implementation/ARTIFACT_LIFECYCLE.md)
 - [Validation and safety](docs/implementation/VALIDATION_AND_SAFETY.md)
@@ -458,6 +504,8 @@ Report vulnerabilities according to [SECURITY.md](SECURITY.md).
 - [`v0.13.0` trust-boundary release notes](docs/public/RELEASE_NOTES_v0.13.0.md)
 - [`v0.13.0` release audit](reports/RELEASE_AUDIT_0.13.0.md)
 - [`v0.13.0` post-release verification](reports/POST_RELEASE_AUDIT_0.13.0.md)
+- [`v0.14.0` release notes](docs/public/RELEASE_NOTES_v0.14.0.md)
+- [`v0.14.0` release audit](reports/RELEASE_AUDIT_0.14.0.md)
 - [Supervised workflow implementation audit](reports/SUPERVISED_WORKFLOW_AUDIT_2026-07-11.md)
 - [Repository hardening audit](reports/REPOSITORY_HARDENING_AUDIT_2026-07-10.md)
 - [CLI contract](docs/public/CLI_CONTRACT.md)

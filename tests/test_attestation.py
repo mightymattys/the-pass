@@ -25,6 +25,7 @@ from the_pass.attestation import (
 from the_pass.cli import main as cli_main
 from the_pass.gates import evaluate_gate, write_gate_decision
 from the_pass.ledger import (
+    LedgerError,
     append_gate_decision,
     append_ledger_entry,
     build_run_entry,
@@ -198,6 +199,8 @@ class ReviewerAttestationTests(unittest.TestCase):
             write_registry_snapshot(
                 registry_snapshot_path(package, "research_gate"), public_registry
             )
+            trusted_registry = Path(tmp) / "trusted-reviewers.json"
+            write_registry_snapshot(trusted_registry, public_registry)
             package_id = build_run_entry(package)["package_id"]
             wrong_evidence = create_reviewer_attestation(
                 gate="research_gate",
@@ -220,6 +223,7 @@ class ReviewerAttestationTests(unittest.TestCase):
                 package,
                 gate="research_gate",
                 reviewer="independent-auditor",
+                trusted_registry_path=trusted_registry,
             )
             self.assertIn(
                 "reviewer attestation task evidence fingerprint does not match",
@@ -247,11 +251,22 @@ class ReviewerAttestationTests(unittest.TestCase):
                 created_at="2026-07-15T00:00:00Z",
             )
             write_reviewer_attestation(path, document)
+            self_issued = evaluate_gate(
+                package,
+                gate="research_gate",
+                reviewer="independent-auditor",
+            )
+            self.assertEqual(self_issued.exit_code, 2)
+            self.assertIn(
+                "gate pass requires an external trusted reviewer registry",
+                self_issued.decision["blockers"],
+            )
             with patch.dict(os.environ, {}, clear=True):
                 passed = evaluate_gate(
                     package,
                     gate="research_gate",
                     reviewer="independent-auditor",
+                    trusted_registry_path=trusted_registry,
                 )
             self.assertEqual(passed.exit_code, 0, passed.decision["blockers"])
             evidence_types = {item["type"] for item in passed.decision["evidence"]}
@@ -263,9 +278,26 @@ class ReviewerAttestationTests(unittest.TestCase):
             decision_path = package / "gate_decision.research_gate.json"
             append_ledger_entry(ledger, package)
             write_gate_decision(decision_path, passed.decision)
-            append_gate_decision(ledger, decision_path)
+            append_gate_decision(
+                ledger,
+                decision_path,
+                trusted_registry_path=trusted_registry,
+            )
             with patch.dict(os.environ, {}, clear=True):
-                self.assertEqual(verify_ledger_file(ledger), [])
+                with self.assertRaises(LedgerError):
+                    append_ledger_entry(ledger, package)
+                duplicate = append_ledger_entry(
+                    ledger,
+                    package,
+                    trusted_registry_path=trusted_registry,
+                )
+                self.assertFalse(duplicate.appended)
+                self.assertEqual(
+                    verify_ledger_file(
+                        ledger, trusted_registry_path=trusted_registry
+                    ),
+                    [],
+                )
 
     def test_keygen_and_attest_cli_do_not_expose_private_key(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -361,6 +393,7 @@ class ReviewerAttestationTests(unittest.TestCase):
                     package,
                     gate="research_gate",
                     reviewer="independent-auditor",
+                    trusted_registry_path=registry_path,
                 )
             self.assertEqual(evaluation.exit_code, 0, evaluation.decision["blockers"])
 

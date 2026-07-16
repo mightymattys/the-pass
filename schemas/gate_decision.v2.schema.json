@@ -14,6 +14,7 @@
     "package_id",
     "package_path",
     "reviewer",
+    "reviewer_trust",
     "evidence",
     "blockers",
     "summary",
@@ -30,6 +31,27 @@
     "package_id": { "type": "string", "pattern": "^pkg_[A-Fa-f0-9]{24}$" },
     "package_path": { "type": "string", "minLength": 1 },
     "reviewer": { "type": "string", "minLength": 1 },
+    "reviewer_trust": {
+      "type": "object",
+      "required": ["registry_id", "registry_fingerprint", "key_id", "trusted"],
+      "properties": {
+        "registry_id": { "type": ["string", "null"] },
+        "registry_fingerprint": {
+          "oneOf": [
+            { "type": "null" },
+            { "type": "string", "pattern": "^[A-Fa-f0-9]{64}$" }
+          ]
+        },
+        "key_id": {
+          "oneOf": [
+            { "type": "null" },
+            { "type": "string", "pattern": "^key_[a-f0-9]{16}$" }
+          ]
+        },
+        "trusted": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
     "evidence": {
       "type": "array",
       "minItems": 1,
@@ -61,7 +83,14 @@
   "allOf": [
     {
       "if": { "properties": { "gate_result": { "const": "pass" } } },
-      "then": { "properties": { "blockers": { "maxItems": 0 } } }
+      "then": {
+        "properties": {
+          "blockers": { "maxItems": 0 },
+          "reviewer_trust": {
+            "properties": { "trusted": { "const": true } }
+          }
+        }
+      }
     },
     {
       "if": { "properties": { "gate_id": { "const": "live_gate" } } },

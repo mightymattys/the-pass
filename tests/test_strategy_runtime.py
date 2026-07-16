@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import io
+import hashlib
 import json
 import tempfile
 import unittest
@@ -24,6 +25,7 @@ from the_pass.strategy_runtime import (
     parse_execution_config,
     parse_strategy_descriptor,
     run_strategy,
+    run_strategy_verified,
 )
 
 
@@ -182,13 +184,107 @@ class StrategyRuntimeTests(unittest.TestCase):
             encoding="utf-8",
         )
         launcher.chmod(0o700)
-        result = run_strategy(
+        with self.assertRaisesRegex(StrategyRuntimeError, "trust policy"):
+            run_strategy(
+                canonical_bars(),
+                descriptor=self.descriptor,
+                execution=self.execution,
+                workspace_root=self.root,
+                runtime_mode="hardened",
+                sandbox_launcher=launcher,
+            )
+        policy = self.root / "sandbox-policy.json"
+        policy.write_text(
+            json.dumps(
+                {
+                    "schema_version": 1,
+                    "policy_id": "fixture-policy",
+                    "launchers": [
+                        {
+                            "sha256": hashlib.sha256(
+                                launcher.read_bytes()
+                            ).hexdigest(),
+                            "requirements": {
+                                "network_enforcement": "denied",
+                                "filesystem_enforcement": "read_only_inputs_temp_output_only",
+                                "resource_enforcement": "os_enforced",
+                            },
+                        }
+                    ],
+                }
+            ),
+            encoding="utf-8",
+        )
+        with self.assertRaisesRegex(StrategyRuntimeError, "active filesystem"):
+            run_strategy(
+                canonical_bars(),
+                descriptor=self.descriptor,
+                execution=self.execution,
+                workspace_root=self.root,
+                runtime_mode="hardened",
+                sandbox_launcher=launcher,
+                sandbox_policy=policy,
+            )
+
+        trusted_launcher = self.root / "trusted-fixture-sandbox-launcher"
+        trusted_launcher.write_text(
+            "#!/usr/bin/env python3\n"
+            "import json, subprocess, sys\n"
+            "from pathlib import Path\n"
+            "request = json.loads(Path(sys.argv[1]).read_text())\n"
+            "argv = request['worker_argv']\n"
+            "if 'the_pass.strategy_runtime.sandbox_probe' in argv:\n"
+            "  Path(argv[3]).write_text(json.dumps({\n"
+            "    'schema_version': 1,\n"
+            "    'forbidden_read_succeeded': False,\n"
+            "    'forbidden_write_succeeded': False,\n"
+            "    'network_connect_succeeded': False,\n"
+            "    'resource_limits_enforced': True,\n"
+            "  }))\n"
+            "  returncode = 0\n"
+            "else:\n"
+            "  returncode = subprocess.run(argv, cwd=request['working_directory']).returncode\n"
+            "attestation = {\n"
+            "  'schema_version': 1,\n"
+            "  'launcher_sha256': request['launcher_sha256'],\n"
+            "  'request_fingerprint': request['request_fingerprint'],\n"
+            "  **request['requirements'],\n"
+            "}\n"
+            "Path(request['attestation_path']).write_text(json.dumps(attestation))\n"
+            "raise SystemExit(returncode)\n",
+            encoding="utf-8",
+        )
+        trusted_launcher.chmod(0o700)
+        trusted_policy = self.root / "trusted-sandbox-policy.json"
+        trusted_policy.write_text(
+            json.dumps(
+                {
+                    "schema_version": 1,
+                    "policy_id": "trusted-fixture-policy",
+                    "launchers": [
+                        {
+                            "sha256": hashlib.sha256(
+                                trusted_launcher.read_bytes()
+                            ).hexdigest(),
+                            "requirements": {
+                                "network_enforcement": "denied",
+                                "filesystem_enforcement": "read_only_inputs_temp_output_only",
+                                "resource_enforcement": "os_enforced",
+                            },
+                        }
+                    ],
+                }
+            ),
+            encoding="utf-8",
+        )
+        result = run_strategy_verified(
             canonical_bars(),
             descriptor=self.descriptor,
             execution=self.execution,
             workspace_root=self.root,
             runtime_mode="hardened",
-            sandbox_launcher=launcher,
+            sandbox_launcher=trusted_launcher,
+            sandbox_policy=trusted_policy,
         )
         self.assertEqual(result["isolation"]["mode"], "hardened")
         self.assertEqual(result["isolation"]["network_enforcement"], "denied")
@@ -474,7 +570,7 @@ class StrategyRuntimeTests(unittest.TestCase):
         registration_document = json.loads(registration.read_text(encoding="utf-8"))
         self.assertEqual(
             registration_document["registration_fingerprint"],
-            report["registration_fingerprint"],
+            report["registration"]["registration_fingerprint"],
         )
         with patch(
             "the_pass.robustness.workflow.run_strategy_verified"

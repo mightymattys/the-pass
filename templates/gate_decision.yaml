@@ -8,6 +8,11 @@ policy_hash: "0000000000000000000000000000000000000000000000000000000000000000"
 package_id: pkg_000000000000000000000000
 package_path: .
 reviewer: example-independent-reviewer
+reviewer_trust:
+  registry_id: null
+  registry_fingerprint: null
+  key_id: null
+  trusted: false
 evidence:
   - type: run_receipt
     path: artifacts/example/run_receipt.yaml

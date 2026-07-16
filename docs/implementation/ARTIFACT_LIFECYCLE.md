@@ -79,12 +79,16 @@ The canonical successor command is:
 
 ```bash
 the-pass workflow supersede <recorded-package> <successor-package> \
-  --ledger <ledger> --run-id <new-run-id> --created-at <RFC3339>
+  --ledger <ledger> --run-id <new-run-id> --created-at <RFC3339> \
+  [--trusted-reviewers <registry>]
 ```
 
 The command verifies the shared ledger before copying. The successor must then be completed,
 validated, recorded as a new run, and independently evaluated. Copying bytes by hand does not
 create authoritative lineage.
+If that ledger contains passed decisions, the same operator-controlled registry must be supplied
+to `workflow supersede`, `candidate assemble`, and `receipts add`; otherwise semantic replay fails
+closed before mutation.
 
 ## Immutability Rules
 

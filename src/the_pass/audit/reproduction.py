@@ -12,6 +12,8 @@ import tempfile
 from pathlib import Path, PurePosixPath
 from typing import Any, Mapping
 
+from the_pass.data.contracts import stable_fingerprint
+from the_pass.strategy_runtime.config import load_json_object
 from the_pass.validator import validate_artifact, validate_package
 
 
@@ -93,6 +95,7 @@ def reproduce_package(
     timeout_seconds: int = 120,
     environment: Mapping[str, str] | None = None,
     sandbox_launcher: Path | None = None,
+    sandbox_policy: Path | None = None,
 ) -> dict[str, Any]:
     if isinstance(timeout_seconds, bool) or timeout_seconds <= 0 or timeout_seconds > 1800:
         raise ReproductionError("reproduction timeout_seconds must be in 1..1800")
@@ -115,13 +118,22 @@ def reproduce_package(
     )
     runtime_mode = str(isolation["mode"])
     if runtime_mode == "hardened":
-        if sandbox_launcher is None:
-            raise ReproductionError("hardened reproduction requires --sandbox-launcher")
+        if sandbox_launcher is None or sandbox_policy is None:
+            raise ReproductionError(
+                "hardened reproduction requires --sandbox-launcher and --sandbox-policy"
+            )
         launcher = sandbox_launcher.expanduser().resolve(strict=True)
         if _digest(launcher) != isolation.get("launcher_sha256"):
             raise ReproductionError("sandbox launcher fingerprint does not match reproduction spec")
-    elif sandbox_launcher is not None:
-        raise ReproductionError("sandbox launcher is valid only for hardened reproduction")
+        policy = load_json_object(sandbox_policy, label="sandbox trust policy")
+        if stable_fingerprint(policy) != isolation.get("policy_fingerprint"):
+            raise ReproductionError(
+                "sandbox trust policy fingerprint does not match reproduction spec"
+            )
+    elif sandbox_launcher is not None or sandbox_policy is not None:
+        raise ReproductionError(
+            "sandbox launcher and policy are valid only for hardened reproduction"
+        )
     inputs = spec["inputs"]
     source_workspace = _safe_path(package, inputs["workspace"], directory=True)
     clean_environment = {
@@ -165,6 +177,7 @@ def reproduce_package(
         ]
         if runtime_mode == "hardened":
             argv.extend(["--sandbox-launcher", str(sandbox_launcher.resolve())])
+            argv.extend(["--sandbox-policy", str(sandbox_policy.resolve())])
         try:
             completed = subprocess.run(
                 argv,

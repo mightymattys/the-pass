@@ -11,13 +11,26 @@
     "runner_id": { "const": "the_pass.backtest.run.v1" },
     "isolation": {
       "type": "object",
-      "required": ["mode", "network_enforcement", "filesystem_enforcement", "resource_enforcement", "launcher_sha256"],
+      "required": ["mode", "network_enforcement", "filesystem_enforcement", "resource_enforcement", "launcher_sha256", "policy_id", "policy_fingerprint", "probe_fingerprint"],
       "properties": {
         "mode": { "enum": ["trusted_local", "hardened"] },
         "network_enforcement": { "enum": ["none", "denied"] },
         "filesystem_enforcement": { "enum": ["none", "read_only_inputs_temp_output_only"] },
         "resource_enforcement": { "enum": ["process_timeout_and_output_limit", "os_enforced"] },
         "launcher_sha256": {
+          "oneOf": [
+            { "type": "null" },
+            { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+          ]
+        },
+        "policy_id": { "type": ["string", "null"] },
+        "policy_fingerprint": {
+          "oneOf": [
+            { "type": "null" },
+            { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+          ]
+        },
+        "probe_fingerprint": {
           "oneOf": [
             { "type": "null" },
             { "type": "string", "pattern": "^[a-f0-9]{64}$" }
@@ -60,7 +73,10 @@
               "network_enforcement": { "const": "none" },
               "filesystem_enforcement": { "const": "none" },
               "resource_enforcement": { "const": "process_timeout_and_output_limit" },
-              "launcher_sha256": { "type": "null" }
+              "launcher_sha256": { "type": "null" },
+              "policy_id": { "type": "null" },
+              "policy_fingerprint": { "type": "null" },
+              "probe_fingerprint": { "type": "null" }
             }
           }
         }
@@ -75,7 +91,10 @@
               "network_enforcement": { "const": "denied" },
               "filesystem_enforcement": { "const": "read_only_inputs_temp_output_only" },
               "resource_enforcement": { "const": "os_enforced" },
-              "launcher_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+              "launcher_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+              "policy_id": { "type": "string", "minLength": 1 },
+              "policy_fingerprint": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+              "probe_fingerprint": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
             }
           }
         }

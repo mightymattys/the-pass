@@ -6,6 +6,7 @@ import hashlib
 import json
 import os
 import signal
+import socket
 import stat
 import subprocess
 import sys
@@ -94,6 +95,41 @@ def _sandbox_launcher(path: Path | None) -> Path:
     return launcher
 
 
+def _sandbox_policy(
+    path: Path | None, *, launcher_sha256: str
+) -> tuple[dict[str, Any], str]:
+    if path is None:
+        raise StrategyRuntimeError(
+            "hardened runtime requires an explicit sandbox trust policy"
+        )
+    try:
+        policy_path = path.expanduser().resolve(strict=True)
+        document = load_json_object(policy_path, label="sandbox trust policy")
+    except (OSError, ValueError) as exc:
+        raise StrategyRuntimeError("sandbox trust policy is missing or invalid") from exc
+    if set(document) != {"schema_version", "policy_id", "launchers"}:
+        raise StrategyRuntimeError("sandbox trust policy has unexpected fields")
+    if document["schema_version"] != 1:
+        raise StrategyRuntimeError("sandbox trust policy schema_version must be 1")
+    if not isinstance(document["policy_id"], str) or not document["policy_id"].strip():
+        raise StrategyRuntimeError("sandbox trust policy requires policy_id")
+    launchers = document["launchers"]
+    if not isinstance(launchers, list):
+        raise StrategyRuntimeError("sandbox trust policy launchers must be an array")
+    matches = [
+        row
+        for row in launchers
+        if isinstance(row, dict)
+        and row.get("sha256") == launcher_sha256
+        and row.get("requirements") == HARDENED_REQUIREMENTS
+    ]
+    if len(matches) != 1:
+        raise StrategyRuntimeError(
+            "sandbox launcher is not uniquely authorized by the trust policy"
+        )
+    return document, stable_fingerprint(document)
+
+
 def _hardened_attestation(
     path: Path,
     *,
@@ -135,6 +171,102 @@ def _terminate(process: subprocess.Popen) -> None:
     process.wait()
 
 
+def _run_sandbox_probe(
+    *,
+    launcher: Path,
+    launcher_sha256: str,
+    temp_root: Path,
+    timeout_seconds: float,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    with tempfile.TemporaryDirectory() as forbidden_tmp:
+        forbidden_root = Path(forbidden_tmp)
+        forbidden_read = forbidden_root / "forbidden-read.txt"
+        forbidden_write = forbidden_root / "forbidden-write.txt"
+        forbidden_read.write_text("sandbox probe secret\n", encoding="utf-8")
+        probe_output = temp_root / "sandbox-probe-result.json"
+        probe_attestation = temp_root / "sandbox-probe-attestation.json"
+        probe_request_path = temp_root / "sandbox-probe-request.json"
+        stdout_path = temp_root / "sandbox-probe-stdout.log"
+        stderr_path = temp_root / "sandbox-probe-stderr.log"
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as listener:
+            listener.bind(("127.0.0.1", 0))
+            listener.listen(1)
+            host, port = listener.getsockname()
+            probe_argv = [
+                sys.executable,
+                "-m",
+                "the_pass.strategy_runtime.sandbox_probe",
+                str(probe_output),
+                str(forbidden_read),
+                str(forbidden_write),
+                str(host),
+                str(port),
+            ]
+            request_fingerprint = stable_fingerprint(
+                {
+                    "probe_contract": "the-pass/sandbox-probe/v1",
+                    "launcher_sha256": launcher_sha256,
+                    "requirements": HARDENED_REQUIREMENTS,
+                }
+            )
+            request = {
+                "schema_version": 1,
+                "worker_argv": probe_argv,
+                "working_directory": str(temp_root),
+                "attestation_path": str(probe_attestation),
+                "launcher_sha256": launcher_sha256,
+                "request_fingerprint": request_fingerprint,
+                "requirements": HARDENED_REQUIREMENTS,
+            }
+            probe_request_path.write_text(
+                json.dumps(
+                    request,
+                    ensure_ascii=True,
+                    separators=(",", ":"),
+                    sort_keys=True,
+                ),
+                encoding="utf-8",
+            )
+            with stdout_path.open("wb") as stdout, stderr_path.open("wb") as stderr:
+                process = subprocess.Popen(
+                    [str(launcher), str(probe_request_path)],
+                    cwd=temp_root,
+                    stdin=subprocess.DEVNULL,
+                    stdout=stdout,
+                    stderr=stderr,
+                    env=_worker_environment(),
+                    start_new_session=True,
+                )
+                try:
+                    return_code = process.wait(timeout=timeout_seconds)
+                except subprocess.TimeoutExpired as exc:
+                    _terminate(process)
+                    raise StrategyRuntimeError("sandbox probe timed out") from exc
+        if return_code != 0 or not probe_output.is_file():
+            raise StrategyRuntimeError("sandbox probe failed")
+        attestation = _hardened_attestation(
+            probe_attestation,
+            launcher_sha256=launcher_sha256,
+            request_fingerprint=request_fingerprint,
+        )
+        try:
+            probe = load_json_object(probe_output, label="sandbox probe result")
+        except ValueError as exc:
+            raise StrategyRuntimeError("sandbox probe returned malformed evidence") from exc
+        expected = {
+            "schema_version": 1,
+            "forbidden_read_succeeded": False,
+            "forbidden_write_succeeded": False,
+            "network_connect_succeeded": False,
+            "resource_limits_enforced": True,
+        }
+        if probe != expected:
+            raise StrategyRuntimeError(
+                "sandbox launcher failed active filesystem, network, or resource probes"
+            )
+        return probe, attestation
+
+
 def run_strategy(
     events: Iterable[CanonicalEvent],
     *,
@@ -146,6 +278,7 @@ def run_strategy(
     risk_policy: Mapping[str, Any] | None = None,
     runtime_mode: str = "trusted_local",
     sandbox_launcher: Path | None = None,
+    sandbox_policy: Path | None = None,
 ) -> Dict[str, Any]:
     """Run a ``CanonicalEvent`` sequence in a credential-free child process."""
 
@@ -160,8 +293,19 @@ def run_strategy(
     if runtime_mode not in RUNTIME_MODES:
         raise ValueError("runtime_mode must be trusted_local or hardened")
     launcher = _sandbox_launcher(sandbox_launcher) if runtime_mode == "hardened" else None
-    if runtime_mode == "trusted_local" and sandbox_launcher is not None:
-        raise ValueError("sandbox_launcher is valid only for hardened runtime mode")
+    if runtime_mode == "trusted_local" and (
+        sandbox_launcher is not None or sandbox_policy is not None
+    ):
+        raise ValueError(
+            "sandbox_launcher and sandbox_policy are valid only for hardened runtime mode"
+        )
+    launcher_sha256 = _file_sha256(launcher) if launcher is not None else None
+    if launcher_sha256 is not None:
+        policy_document, policy_fingerprint = _sandbox_policy(
+            sandbox_policy, launcher_sha256=launcher_sha256
+        )
+    else:
+        policy_document, policy_fingerprint = None, None
 
     root = Path(workspace_root).expanduser().resolve(strict=True)
     parsed_descriptor = _descriptor(descriptor, root)
@@ -190,6 +334,15 @@ def run_strategy(
         stderr_path = temp_root / "stderr.log"
         sandbox_request_path = temp_root / "sandbox-request.json"
         sandbox_attestation_path = temp_root / "sandbox-attestation.json"
+        if launcher is not None:
+            sandbox_probe, sandbox_probe_attestation = _run_sandbox_probe(
+                launcher=launcher,
+                launcher_sha256=str(launcher_sha256),
+                temp_root=temp_root,
+                timeout_seconds=timeout_seconds,
+            )
+        else:
+            sandbox_probe, sandbox_probe_attestation = None, None
         request_path.write_text(
             json.dumps(request, ensure_ascii=True, separators=(",", ":"), sort_keys=True),
             encoding="utf-8",
@@ -202,13 +355,17 @@ def run_strategy(
             str(output_path),
             str(output_limit_bytes),
         ]
-        launcher_sha256 = _file_sha256(launcher) if launcher is not None else None
         sandbox_request_fingerprint = None
         process_argv = worker_argv
         if launcher is not None:
             sandbox_request_fingerprint = stable_fingerprint(
                 {
-                    "strategy_request": request,
+                    "strategy_request": {
+                        key: value
+                        for key, value in request.items()
+                        if key != "workspace_root"
+                    },
+                    "worker_contract": "the-pass/strategy-worker/v1",
                     "output_limit_bytes": output_limit_bytes,
                     "launcher_sha256": launcher_sha256,
                     "requirements": HARDENED_REQUIREMENTS,
@@ -290,6 +447,10 @@ def run_strategy(
         "resource_enforcement": "process_timeout_and_output_limit",
         "launcher_sha256": None,
         "attestation_fingerprint": None,
+        "policy_id": None,
+        "policy_fingerprint": None,
+        "probe_fingerprint": None,
+        "probe_attestation_fingerprint": None,
     }
     if sandbox_attestation is not None:
         isolation.update(
@@ -297,10 +458,21 @@ def run_strategy(
                 **HARDENED_REQUIREMENTS,
                 "launcher_sha256": launcher_sha256,
                 "attestation_fingerprint": stable_fingerprint(sandbox_attestation),
+                "policy_id": policy_document["policy_id"],
+                "policy_fingerprint": policy_fingerprint,
+                "probe_fingerprint": stable_fingerprint(sandbox_probe),
+                "probe_attestation_fingerprint": stable_fingerprint(
+                    sandbox_probe_attestation
+                ),
             }
         )
     result["isolation"] = isolation
-    result["runtime_promotion_eligible"] = runtime_mode == "hardened"
+    result["runtime_promotion_eligible"] = (
+        runtime_mode == "hardened"
+        and sandbox_attestation is not None
+        and sandbox_probe is not None
+        and policy_document is not None
+    )
     result["result_fingerprint"] = stable_fingerprint(
         {key: value for key, value in result.items() if key != "result_fingerprint"}
     )
@@ -318,6 +490,7 @@ def run_strategy_verified(
     risk_policy: Mapping[str, Any] | None = None,
     runtime_mode: str = "trusted_local",
     sandbox_launcher: Path | None = None,
+    sandbox_policy: Path | None = None,
 ) -> Dict[str, Any]:
     """Require two fresh workers to produce the same semantic result."""
 
@@ -332,6 +505,7 @@ def run_strategy_verified(
         risk_policy=risk_policy,
         runtime_mode=runtime_mode,
         sandbox_launcher=sandbox_launcher,
+        sandbox_policy=sandbox_policy,
     )
     second = run_strategy(
         rows,
@@ -343,6 +517,7 @@ def run_strategy_verified(
         risk_policy=risk_policy,
         runtime_mode=runtime_mode,
         sandbox_launcher=sandbox_launcher,
+        sandbox_policy=sandbox_policy,
     )
     if first != second:
         raise StrategyRuntimeError(

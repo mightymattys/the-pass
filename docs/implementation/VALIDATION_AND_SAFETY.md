@@ -37,9 +37,10 @@ Implemented CLI:
 the-pass validate <artifact>
 the-pass validate-package <run-dir>
 the-pass receipts add <run-dir>
-the-pass gate evaluate <run-dir> --gate <gate> --reviewer <reviewer> --output <decision>
-the-pass receipts add-decision <decision>
-the-pass receipts verify
+the-pass gate evaluate <run-dir> --gate <gate> --reviewer <reviewer> \
+  --trusted-reviewers <registry-file-or-directory> --output <decision>
+the-pass receipts add-decision <decision> --trusted-reviewers <registry-file-or-directory>
+the-pass receipts verify --trusted-reviewers <registry-file-or-directory>
 the-pass receipts
 ```
 
@@ -86,7 +87,9 @@ positive row count, and a 64-character SHA-256 fingerprint. Promotion cost water
 contain numeric fee/spread/slippage components whose sum reconciles gross PnL to net PnL.
 Promotion also requires an explicit out-of-sample or walk-forward holdout window, numeric
 DSR/PSR or PBO evidence, stress-test results, parameter-stability evidence, and a predefined
-train/test plus holdout policy.
+train/test plus holdout policy. Those values must be derived from a schema-valid
+`robustness_report.v2`; validation recomputes its matrix statistics, null comparison, neighboring
+parameter stability, mandatory stress coverage, runtime eligibility, and fingerprints.
 Every source note used for promotion must contain the claim, evidence, limitations, market
 applicability, required tests, failure modes, and system requirements, and its status must be
 `reviewed` or `implemented`.
@@ -108,14 +111,17 @@ decisions. Run entries include:
 - entry hash.
 
 Gate-decision entries additionally include the canonical gate, computed result, policy
-version/hash, independent reviewer, exact package ID, and decision evidence. A run entry alone
-never proves gate passage. Legacy v1 entries remain verifiable but cannot prove a v2 gate.
+version/hash, independent reviewer, external reviewer-registry fingerprint, exact package ID, and
+decision evidence. A package-local key registry proves signature consistency but is not an
+authorization source. A run entry alone never proves gate passage. Legacy v1 entries remain
+verifiable but cannot prove a v2 gate.
 
 `the-pass receipts add` and `the-pass receipts add-decision` refuse to append when the
 existing ledger or any referenced artifact is invalid. `the-pass receipts verify` recomputes
 the chain and artifact hashes, rebuilds every v2 run, and replays every v2 gate decision in order
-against the bundled policy. A gate can satisfy a prerequisite only after that semantic replay.
-This fails closed for handwritten decisions, forged hash-consistent entries, stale policies, and
+against the bundled policy and the same external trust registry used during evaluation. A gate can
+satisfy a prerequisite only after that semantic replay. This fails closed for handwritten
+decisions, self-issued reviewer identities, forged hash-consistent entries, stale policies, and
 silently edited evidence.
 
 Authoritative v2 replay also enforces the resolved package path, run-before-gate ordering,

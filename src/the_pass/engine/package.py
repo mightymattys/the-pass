@@ -256,7 +256,7 @@ def write_run_package(
         "created_at": created_at,
         "owner": str(spec.get("owner", "strategy_implementer")),
         "strategy_spec": "strategy_spec.json",
-        "code_version": "the-pass-0.13.0-runtime" if generic else "the-pass-0.4.0-b2",
+        "code_version": "the-pass-0.14.0-runtime" if generic else "the-pass-0.4.0-b2",
         "data_manifest": "data_manifest.json",
         "command": command or f"the-pass backtest baseline --name {result.strategy_id}",
         "config_hash": stable_fingerprint(runtime_evidence or search_space),
@@ -417,6 +417,9 @@ def write_run_package(
                     "resource_enforcement", "process_timeout_and_output_limit"
                 ),
                 "launcher_sha256": isolation.get("launcher_sha256"),
+                "policy_id": isolation.get("policy_id"),
+                "policy_fingerprint": isolation.get("policy_fingerprint"),
+                "probe_fingerprint": isolation.get("probe_fingerprint"),
             },
             "inputs": {
                 "strategy_spec": "strategy_spec.json",

@@ -16,6 +16,7 @@ from jsonschema import Draft202012Validator, FormatChecker
 from jsonschema.exceptions import ValidationError
 
 from .adapter_contract import validate_adapter_contract
+from .candidate_contract import candidate_assembly_manifest
 
 _VERSIONED_ARTIFACTS = (
     "adapter",
@@ -80,6 +81,9 @@ ARTIFACT_SCHEMAS["reviewer_attestation"] = {
 ARTIFACT_SCHEMAS["reviewer_key_registry"] = {
     1: "reviewer_key_registry.v1.schema.json"
 }
+ARTIFACT_SCHEMAS["robustness_report"] = {
+    2: "robustness_report.v2.schema.json"
+}
 ARTIFACT_TYPES = {
     artifact_type: versions[max(versions)]
     for artifact_type, versions in ARTIFACT_SCHEMAS.items()
@@ -97,6 +101,7 @@ PACKAGE_CORE_ARTIFACTS = (
 PACKAGE_OPTIONAL_ARTIFACTS = ("adapter", "source_note", "findings")
 PACKAGE_EVIDENCE_ARTIFACTS = (
     "audit_report",
+    "robustness_report",
     "instrument_registry",
     "quality_report",
     "feature_manifest",
@@ -289,6 +294,17 @@ def detect_artifact_type(path: Path, document: Any) -> str | None:
         return "run_receipt"
     if {"sample", "gross_metrics", "net_metrics", "robustness"} <= keys:
         return "metrics_report"
+    if {
+        "source_package_id",
+        "registration",
+        "matrix",
+        "cells",
+        "statistics",
+        "validation",
+        "promotion_eligible",
+        "report_fingerprint",
+    } <= keys:
+        return "robustness_report"
     if {"gross_pnl", "costs", "net_pnl", "assumptions"} <= keys:
         return "cost_waterfall"
     if {"verdict", "gate_results", "evidence", "risks", "next_action"} <= keys:
@@ -578,6 +594,382 @@ def validate_workflow_artifact(
                             "must be a finite number or null",
                         )
                     )
+
+    if artifact_type == "robustness_report":
+        from .robustness import (
+            cscv_pbo,
+            deflated_sharpe_ratio,
+            probabilistic_sharpe_ratio,
+            reality_check,
+        )
+        from .data.contracts import stable_fingerprint
+
+        registration = document["registration"]
+        registration_fingerprint = registration.get("registration_fingerprint")
+        registration_core = {
+            key: value
+            for key, value in registration.items()
+            if key != "registration_fingerprint"
+        }
+        if registration_fingerprint != stable_fingerprint(registration_core):
+            issues.append(
+                ValidationIssue(
+                    "$.registration.registration_fingerprint",
+                    "does not match the registered experiment inputs",
+                )
+            )
+
+        expected_report_fingerprint = stable_fingerprint(
+            {
+                key: value
+                for key, value in document.items()
+                if key != "report_fingerprint"
+            }
+        )
+        if document["report_fingerprint"] != expected_report_fingerprint:
+            issues.append(
+                ValidationIssue(
+                    "$.report_fingerprint",
+                    "does not match the robustness report contents",
+                )
+            )
+
+        matrix = document["matrix"]
+        variants = registration["variants"]
+        selected_index = registration["selected_index"]
+        folds = document["validation"]["folds"]
+        cells = document["cells"]
+        if selected_index >= len(variants):
+            issues.append(
+                ValidationIssue(
+                    "$.registration.selected_index",
+                    "must identify a registered variant",
+                )
+            )
+        null_index = document["null_baseline"]["variant_index"]
+        if null_index >= len(variants) or null_index == selected_index:
+            issues.append(
+                ValidationIssue(
+                    "$.null_baseline.variant_index",
+                    "must identify a registered variant distinct from the selected variant",
+                )
+            )
+        if len(matrix) != len(folds):
+            issues.append(
+                ValidationIssue("$.matrix", "must contain one row per validation fold")
+            )
+        if any(len(row) != len(variants) for row in matrix):
+            issues.append(
+                ValidationIssue("$.matrix", "must contain one column per registered variant")
+            )
+        expected_cells = len(matrix) * len(variants)
+        if len(cells) != expected_cells:
+            issues.append(
+                ValidationIssue(
+                    "$.cells", "must contain exactly one cell per fold and variant"
+                )
+            )
+        observed_keys: set[tuple[int, int]] = set()
+        for index, cell in enumerate(cells):
+            if not isinstance(cell, dict):
+                continue
+            key = (cell["fold_id"], cell["variant_index"])
+            if key in observed_keys:
+                issues.append(
+                    ValidationIssue(
+                        f"$.cells[{index}]",
+                        "duplicates a fold and variant cell",
+                    )
+                )
+                continue
+            observed_keys.add(key)
+            fold_id, variant_index = key
+            if not (
+                0 <= fold_id < len(matrix)
+                and 0 <= variant_index < len(variants)
+            ):
+                issues.append(
+                    ValidationIssue(
+                        f"$.cells[{index}]",
+                        "fold_id or variant_index is outside the registered matrix",
+                    )
+                )
+                continue
+            matrix_value = matrix[fold_id][variant_index]
+            cell_value = cell["net_return"]
+            if matrix_value is None:
+                matches = cell["status"] == "failed" and cell_value is None
+            else:
+                matches = (
+                    cell["status"] == "complete"
+                    and is_finite_number(cell_value)
+                    and math.isclose(
+                        cell_value,
+                        matrix_value,
+                        rel_tol=1e-12,
+                        abs_tol=1e-15,
+                    )
+                )
+            if not matches:
+                issues.append(
+                    ValidationIssue(
+                        f"$.cells[{index}]",
+                        "must match the status and return in the registered matrix",
+                    )
+                )
+        if document["validation"]["mode"] == "purged_walk_forward":
+            for index, fold in enumerate(folds):
+                if fold["id"] != index:
+                    issues.append(
+                        ValidationIssue(
+                            f"$.validation.folds[{index}].id",
+                            "fold IDs must be contiguous and match matrix row order",
+                        )
+                    )
+                if not (
+                    fold["train_start"] < fold["train_end"] <= fold["test_start"]
+                    < fold["test_end"]
+                ):
+                    issues.append(
+                        ValidationIssue(
+                            f"$.validation.folds[{index}]",
+                            "train and test intervals must be ordered and non-overlapping",
+                        )
+                    )
+                train = set(range(fold["train_start"], fold["train_end"]))
+                test = set(range(fold["test_start"], fold["test_end"]))
+                expected_purged = list(
+                    range(
+                        max(
+                            fold["train_end"],
+                            fold["test_start"]
+                            - document["validation"]["purge_observations"],
+                        ),
+                        fold["test_start"],
+                    )
+                )
+                expected_embargoed = list(
+                    range(
+                        fold["test_end"],
+                        fold["test_end"]
+                        + document["validation"]["embargo_observations"],
+                    )
+                )
+                observed_embargoed = fold["embargoed"]
+                embargo_matches = (
+                    observed_embargoed == expected_embargoed
+                    if index < len(folds) - 1
+                    else observed_embargoed
+                    == expected_embargoed[: len(observed_embargoed)]
+                    and len(observed_embargoed)
+                    <= document["validation"]["embargo_observations"]
+                )
+                purged = set(fold["purged"])
+                embargoed = set(observed_embargoed)
+                if (
+                    fold["purged"] != expected_purged
+                    or not embargo_matches
+                    or train & test
+                    or train & purged
+                    or train & embargoed
+                    or test & purged
+                    or test & embargoed
+                    or purged & embargoed
+                ):
+                    issues.append(
+                        ValidationIssue(
+                            f"$.validation.folds[{index}]",
+                            "purge and embargo indices must exactly match the registered non-overlapping policy",
+                        )
+                    )
+                if index and fold["test_start"] < (
+                    folds[index - 1]["test_end"]
+                    + len(folds[index - 1]["embargoed"])
+                ):
+                    issues.append(
+                        ValidationIssue(
+                            f"$.validation.folds[{index}].test_start",
+                            "test folds must advance beyond the prior test and embargo",
+                        )
+                    )
+        holdout = require_ordered_interval(
+            document["validation"]["holdout_start_time"],
+            document["validation"]["holdout_end_time"],
+            "$.validation.holdout",
+            issues,
+        )
+        if holdout is None:
+            issues.append(
+                ValidationIssue(
+                    "$.validation.holdout",
+                    "robustness holdout must be an ordered RFC3339 interval",
+                )
+            )
+        failed_cells = sum(
+            1 for cell in cells if isinstance(cell, dict) and cell.get("status") != "complete"
+        )
+        if document["failed_cells"] != failed_cells:
+            issues.append(
+                ValidationIssue(
+                    "$.failed_cells", "must equal the number of non-complete cells"
+                )
+            )
+
+        if not issues and failed_cells == 0:
+            complete_matrix = [[float(value) for value in row] for row in matrix]
+            selected = [row[selected_index] for row in complete_matrix]
+            baseline = [row[null_index] for row in complete_matrix]
+            selected_mean = sum(selected) / len(selected)
+            baseline_mean = sum(baseline) / len(baseline)
+            if (
+                not math.isclose(
+                    document["null_baseline"]["selected_mean_return"],
+                    selected_mean,
+                    rel_tol=1e-12,
+                    abs_tol=1e-15,
+                )
+                or not math.isclose(
+                    document["null_baseline"]["baseline_mean_return"],
+                    baseline_mean,
+                    rel_tol=1e-12,
+                    abs_tol=1e-15,
+                )
+                or document["null_baseline"]["status"]
+                != ("pass" if selected_mean > baseline_mean else "blocked")
+            ):
+                issues.append(
+                    ValidationIssue(
+                        "$.null_baseline",
+                        "must be derived from selected and preregistered null returns",
+                    )
+                )
+            expected_neighbors = [
+                index
+                for index in (selected_index - 1, selected_index + 1)
+                if 0 <= index < len(variants) and index != null_index
+            ]
+            neighbor_means = [
+                sum(row[index] for row in complete_matrix) / len(complete_matrix)
+                for index in expected_neighbors
+            ]
+            worst_neighbor = min(neighbor_means) if neighbor_means else None
+            stability = document["parameter_stability"]
+            observed_worst = stability["worst_neighbor_return"]
+            worst_matches = (
+                worst_neighbor is None
+                and observed_worst is None
+                or is_finite_number(observed_worst)
+                and worst_neighbor is not None
+                and math.isclose(
+                    observed_worst,
+                    worst_neighbor,
+                    rel_tol=1e-12,
+                    abs_tol=1e-15,
+                )
+            )
+            expected_stability = (
+                "pass"
+                if expected_neighbors
+                and worst_neighbor is not None
+                and worst_neighbor > 0
+                else "blocked"
+            )
+            if (
+                stability["neighbor_indices"] != expected_neighbors
+                or not worst_matches
+                or stability["status"] != expected_stability
+            ):
+                issues.append(
+                    ValidationIssue(
+                        "$.parameter_stability",
+                        "must be derived from registered neighboring variants",
+                    )
+                )
+            trial_sharpes = []
+            for column in range(len(variants)):
+                values = [row[column] for row in complete_matrix]
+                average = sum(values) / len(values)
+                variance = sum((value - average) ** 2 for value in values) / max(
+                    1, len(values) - 1
+                )
+                trial_sharpes.append(average / variance**0.5 if variance else 0.0)
+            blocks = document["validation"]["cscv_blocks"]
+            expected_statistics = {
+                "pbo": cscv_pbo(complete_matrix, blocks=blocks),
+                "psr": probabilistic_sharpe_ratio(selected),
+                "dsr": deflated_sharpe_ratio(
+                    selected, trial_sharpes=trial_sharpes
+                ),
+                "reality_check": reality_check(
+                    complete_matrix, bootstrap_samples=500, seed=7
+                ),
+            }
+            for field, expected in expected_statistics.items():
+                observed = document["statistics"].get(field)
+                if isinstance(expected, dict):
+                    if observed != expected:
+                        issues.append(
+                            ValidationIssue(
+                                f"$.statistics.{field}",
+                                "does not match recomputation from the registered matrix",
+                            )
+                        )
+                elif not is_finite_number(observed) or not math.isclose(
+                    observed, expected, rel_tol=1e-12, abs_tol=1e-15
+                ):
+                    issues.append(
+                        ValidationIssue(
+                            f"$.statistics.{field}",
+                            "does not match recomputation from the registered matrix",
+                        )
+                    )
+
+        mandatory_stress = {
+            "fees_x1_5",
+            "slippage_x2",
+            "latency_x2",
+            "depth_x0_5",
+            "depth_x0_25",
+            "maker_fill_probability_x0_5",
+            "funding_worst_decile",
+            "exchange_outage",
+            "missing_interval",
+            "correlated_gap",
+            "forced_deleverage",
+        }
+        stress_names = {
+            row["scenario"] for row in document["stress_results"]
+        }
+        if len(stress_names) != len(document["stress_results"]):
+            issues.append(
+                ValidationIssue(
+                    "$.stress_results",
+                    "stress scenario names must be unique",
+                )
+            )
+        promotion_conditions = (
+            document["status"] == "complete"
+            and failed_cells == 0
+            and isinstance(document["source_package_id"], str)
+            and document["validation"]["mode"] == "purged_walk_forward"
+            and document["null_baseline"]["status"] == "pass"
+            and document["parameter_stability"]["status"] == "pass"
+            and bool(document["stress_results"])
+            and mandatory_stress <= stress_names
+            and all(row["status"] == "pass" for row in document["stress_results"])
+            and all(
+                cell.get("runtime_promotion_eligible") is True
+                for cell in cells
+                if isinstance(cell, dict)
+            )
+        )
+        if document["promotion_eligible"] != promotion_conditions:
+            issues.append(
+                ValidationIssue(
+                    "$.promotion_eligible",
+                    "must be derived from complete purged walk-forward, runtime, baseline, stress, and stability evidence",
+                )
+            )
 
     if artifact_type == "screen_report":
         decision = document["decision"]
@@ -1030,6 +1422,7 @@ def validate_artifact(
         elif detected_type in {
             "run_receipt",
             "metrics_report",
+            "robustness_report",
             "screen_report",
             "findings",
             "refire_ticket",
@@ -1241,6 +1634,7 @@ def validate_package(
     except ArtifactValidationError as exc:
         issues.append(ValidationIssue(str(package_dir), str(exc)))
         promotion_evidence = []
+    promotion_documents: dict[str, dict[str, Any]] = {}
     for artifact_type, path in promotion_evidence:
         result = validate_artifact(
             path, schema_dir=schema_dir, artifact_type=artifact_type
@@ -1249,6 +1643,10 @@ def validate_package(
             ValidationIssue(f"{path.name}:{issue.path}", issue.message)
             for issue in result.issues
         )
+        if result.ok and artifact_type not in promotion_documents:
+            loaded = load_document(path)
+            if isinstance(loaded, dict):
+                promotion_documents[artifact_type] = loaded
 
     if issues:
         return ValidationResult(False, issues, "package")
@@ -1416,6 +1814,68 @@ def validate_package(
             )
 
     if verdict.get("verdict") == "paper_candidate":
+        robustness_report = promotion_documents.get("robustness_report")
+        if robustness_report is None:
+            issues.append(
+                ValidationIssue(
+                    "$.robustness_report",
+                    "paper_candidate requires a validated robustness_report.v2 artifact",
+                )
+            )
+        else:
+            source_package_id = receipt.get("supersedes_package_id")
+            if (
+                source_package_id is not None
+                and robustness_report.get("source_package_id") != source_package_id
+            ):
+                issues.append(
+                    ValidationIssue(
+                        "$.robustness_report.source_package_id",
+                        "must match run_receipt.supersedes_package_id",
+                    )
+                )
+            expected_assembly = candidate_assembly_manifest(
+                strategy=strategy_spec,
+                metrics=metrics,
+                verdict=verdict,
+                robustness=robustness_report,
+                findings=documents.get("findings", {}),
+            )
+            if receipt.get("candidate_assembly") != expected_assembly:
+                issues.append(
+                    ValidationIssue(
+                        "$.run_receipt.candidate_assembly",
+                        "must match the deterministic candidate assembly contract",
+                    )
+                )
+            if robustness_report.get("promotion_eligible") is not True:
+                issues.append(
+                    ValidationIssue(
+                        "$.robustness_report.promotion_eligible",
+                        "paper_candidate requires promotion-eligible robustness evidence",
+                    )
+                )
+            robustness_evidence = verdict.get("evidence", {}).get(
+                "robustness_report"
+            )
+            robustness_path = next(
+                (
+                    path
+                    for artifact_type, path in promotion_evidence
+                    if artifact_type == "robustness_report"
+                ),
+                None,
+            )
+            if (
+                robustness_path is None
+                or robustness_evidence != robustness_path.name
+            ):
+                issues.append(
+                    ValidationIssue(
+                        "$.verdict_report.evidence.robustness_report",
+                        "must reference the exact robustness_report artifact",
+                    )
+                )
         non_v2 = sorted(
             artifact_type
             for artifact_type in PACKAGE_CORE_ARTIFACTS
@@ -1706,6 +2166,49 @@ def validate_package(
                     "paper_candidate requires parameter-stability evidence",
                 )
             )
+        if robustness_report is not None and isinstance(robustness, dict):
+            expected_robustness = {
+                "null_baseline_result": robustness_report["null_baseline"][
+                    "summary"
+                ],
+                "dsr_or_psr": robustness_report["statistics"]["dsr"],
+                "pbo": robustness_report["statistics"]["pbo"]["pbo"],
+                "stress_results": [
+                    row["summary"] for row in robustness_report["stress_results"]
+                ],
+                "parameter_stability": robustness_report[
+                    "parameter_stability"
+                ]["summary"],
+            }
+            for field, expected in expected_robustness.items():
+                observed = robustness.get(field)
+                if isinstance(expected, float):
+                    matches = is_finite_number(observed) and math.isclose(
+                        observed, expected, rel_tol=1e-12, abs_tol=1e-15
+                    )
+                else:
+                    matches = observed == expected
+                if not matches:
+                    issues.append(
+                        ValidationIssue(
+                            f"$.metrics_report.robustness.{field}",
+                            "must be derived from the exact robustness_report",
+                        )
+                    )
+            validation_evidence = robustness_report["validation"]
+            if (
+                sample.get("evaluation_scope") != "walk_forward"
+                or sample.get("holdout_start_time")
+                != validation_evidence["holdout_start_time"]
+                or sample.get("holdout_end_time")
+                != validation_evidence["holdout_end_time"]
+            ):
+                issues.append(
+                    ValidationIssue(
+                        "$.metrics_report.sample",
+                        "walk-forward scope and holdout must match robustness_report",
+                    )
+                )
         execution = strategy_spec.get("execution", {})
         required_execution = (
             "order_type",

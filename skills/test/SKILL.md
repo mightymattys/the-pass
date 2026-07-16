@@ -79,6 +79,10 @@ immutable backtest package.
   space, run receipt, metrics, cost waterfall, verdict, and static reports.
 - For a trusted local strategy, bundle the declared strategy source and replay inputs, then require
   `the-pass audit reproduce` to pass before independent review.
+- Promotion-capable sweeps must emit `robustness_report.v2` from generated purged walk-forward
+  folds, a preregistered null variant, mandatory stresses, and a policy-authorized hardened runtime.
+- Do not write promotion values directly into `metrics_report` or `verdict_report`; the later
+  candidate assembler derives them from exact robustness and review evidence.
 - Check portfolio conservation and gross-to-net reconciliation after simulation.
 - Finalize before ledger append. Every valid blocked or killed run is still recorded.
 
@@ -106,6 +110,13 @@ the-pass backtest run --descriptor <descriptor> --strategy-spec <strategy-spec> 
   --events <events> --data-manifest <manifest> --quality-report <quality> \
   --execution <execution> --workspace-root <workspace> --output <new-package>
 the-pass audit reproduce <new-package> --output <reproduction-report>
+the-pass robustness sweep --source-package <new-package> \
+  --descriptor <descriptor> --events <events> --execution <execution> \
+  --variants <variants> --train-size <rows> --test-size <rows> \
+  --purge <rows> --embargo <rows> --selected-index <index> \
+  --null-variant-index <index> --stress-results <stress-results> \
+  --runtime-mode hardened --sandbox-launcher <launcher> \
+  --sandbox-policy <policy> --output <robustness-report>
 ```
 
 Finalize and record:
