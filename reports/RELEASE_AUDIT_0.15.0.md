@@ -29,6 +29,7 @@ uv run python scripts/validate_distribution.py "$DIST_DIR"/the_pass-*.whl
 
 - Python 3.12 unit and integration suite: 249 passed.
 - Isolated Python 3.9 unit and integration suite: 249 passed.
+- GitHub PR #26 CI: Python 3.12 passed in 1m44s and Python 3.9 passed in 1m53s.
 - Ruff, compileall, lockfile check, and `git diff --check`: passed.
 - Public repository validation: passed through H0, R0, D1, B2, V3, P4, and locked L5-L6.
 - B2 clean replay: 6 packages and 11 variants reproduced deterministically.
