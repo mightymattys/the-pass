@@ -107,6 +107,8 @@ preflight -> research -> screen -> backtest -> robustness
   successor with `the-pass workflow supersede` and a new run ID.
 - Place every artifact needed by `gate evaluate` in the exact successor package root before
   finalization. Working copies elsewhere are not gate evidence.
+- Build a research candidate with `the-pass candidate assemble`; never ask an agent to rewrite
+  metrics or verdict fields into a pass-shaped package.
 - Append the finalized successor, verify the ledger, evaluate the exact gate, append its decision,
   and verify again.
 - For a successor, replay every prerequisite gate on that exact package ID in canonical order:
@@ -165,17 +167,27 @@ the-pass gate attest <package> --gate <gate> --reviewer <reviewer> \
   --state-before <before-state> --state-after <after-state> --task-evidence <review-artifact> \
   --output <package>/reviewer_attestation.<gate>.json
 the-pass gate evaluate <package> --gate <gate> --reviewer <reviewer> \
-  --ledger <ledger> --output <package>/gate_decision.<gate>.yaml
-the-pass receipts add-decision <package>/gate_decision.<gate>.yaml --ledger <ledger>
-the-pass receipts verify --ledger <ledger>
+  --ledger <ledger> --trusted-reviewers <trusted-registry> \
+  --output <package>/gate_decision.<gate>.yaml
+the-pass receipts add-decision <package>/gate_decision.<gate>.yaml \
+  --ledger <ledger> --trusted-reviewers <trusted-registry>
+the-pass receipts verify --ledger <ledger> --trusted-reviewers <trusted-registry>
 ```
 
 Before extending recorded evidence:
 
 ```bash
 the-pass workflow supersede <recorded-package> <new-package> \
-  --ledger <ledger> --run-id <new-run-id> --created-at <rfc3339>
+  --ledger <ledger> --run-id <new-run-id> --created-at <rfc3339> \
+  [--trusted-reviewers <trusted-registry>]
+the-pass candidate assemble <recorded-package> <candidate-package> \
+  --ledger <ledger> --run-id <candidate-run-id> --created-at <rfc3339> \
+  --robustness-report <robustness-report> --findings <independent-findings> \
+  [--trusted-reviewers <trusted-registry>]
 ```
+
+After the first passed gate is in the ledger, pass `--trusted-reviewers <trusted-registry>` to
+every later `receipts add`, `workflow supersede`, and `candidate assemble`.
 
 ## Outputs
 

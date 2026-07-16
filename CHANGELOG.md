@@ -5,6 +5,37 @@ and the Keep a Changelog structure.
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-07-16
+
+### Added
+
+- Added `robustness_report.v2`, including registered source/run fingerprints, full fold/variant
+  matrix, purged walk-forward policy, null control, mandatory stresses, parameter stability, and
+  runtime eligibility.
+- Added `the-pass candidate assemble` for deterministic ledger-linked research-candidate
+  successors.
+- Added operator-controlled reviewer trust registries and hardened sandbox launcher policies with
+  active filesystem, loopback-network, and resource-limit probes.
+
+### Changed
+
+- Paper candidates now require robustness evidence whose PBO, PSR, DSR, Reality Check/SPA,
+  baseline comparison, and parameter stability are recomputed by the validator.
+- Gate passage and ledger replay require the same reviewer registry outside the evaluated package;
+  key generation no longer implies authorization.
+- Run append and successor/candidate creation accept the same explicit reviewer trust store after
+  the ledger contains passed decisions.
+- Hardened runtime evidence is promotional only when the launcher is allowlisted and both probe and
+  worker attestations verify.
+- Review-stage agents may write only gate-specific findings or audit reports inside a package.
+
+### Fixed
+
+- Self-issued reviewer registries can no longer authorize their own gate pass.
+- A launcher that merely echoes requested isolation claims can no longer be marked hardened.
+- Manually copied DSR/PBO/stress strings can no longer substitute for measured robustness evidence.
+- Custom diagnostic runs now have a supported, validated path to an immutable research candidate.
+
 ## [0.13.0] - 2026-07-15
 
 ### Added
@@ -228,7 +259,8 @@ and the Keep a Changelog structure.
 
 - Initial public plugin, slash skills, artifact schemas, validators, and synthetic examples.
 
-[Unreleased]: https://github.com/mightymattys/the-pass/compare/v0.13.0...HEAD
+[Unreleased]: https://github.com/mightymattys/the-pass/compare/v0.14.0...HEAD
+[0.14.0]: https://github.com/mightymattys/the-pass/compare/v0.13.0...v0.14.0
 [0.13.0]: https://github.com/mightymattys/the-pass/compare/v0.12.0...v0.13.0
 [0.12.0]: https://github.com/mightymattys/the-pass/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/mightymattys/the-pass/compare/v0.10.0...v0.11.0

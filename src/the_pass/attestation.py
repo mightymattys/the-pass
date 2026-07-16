@@ -26,6 +26,7 @@ from .validator import load_document, validate_artifact
 
 ATTESTATION_KEY_ENV = "THE_PASS_REVIEW_ATTESTATION_KEY"
 SIGNING_KEY_ENV = "THE_PASS_REVIEW_SIGNING_KEY"
+TRUSTED_REGISTRY_ENV = "THE_PASS_TRUSTED_REVIEWER_REGISTRY"
 ATTESTABLE_GATES = ("research_gate", "paper_gate", "risk_review")
 
 
@@ -517,3 +518,119 @@ def verify_reviewer_attestation(
     except AttestationError as exc:
         blockers.append(str(exc))
     return document, blockers
+
+
+def verify_trusted_reviewer_registry(
+    path: Path | None,
+    *,
+    package_dir: Path,
+    attestation: Mapping[str, Any] | None,
+) -> tuple[dict[str, Any], list[str]]:
+    """Authorize an attestation signer against an operator-controlled registry."""
+
+    metadata = {
+        "registry_id": None,
+        "registry_fingerprint": None,
+        "key_id": None,
+        "trusted": False,
+    }
+    configured = path
+    if configured is None:
+        environment_path = os.environ.get(TRUSTED_REGISTRY_ENV)
+        configured = Path(environment_path) if environment_path else None
+    if configured is None:
+        return metadata, [
+            "gate pass requires an external trusted reviewer registry"
+        ]
+    try:
+        trusted_path = configured.expanduser().resolve(strict=True)
+    except OSError:
+        return metadata, ["external trusted reviewer registry does not exist"]
+    package_root = package_dir.resolve()
+    try:
+        trusted_path.relative_to(package_root)
+    except ValueError:
+        pass
+    else:
+        return metadata, [
+            "trusted reviewer registry must be outside the evaluated package"
+        ]
+    if not isinstance(attestation, Mapping):
+        return metadata, ["trusted reviewer registry or attestation is invalid"]
+    signer = attestation.get("signer", {})
+    if not isinstance(signer, Mapping):
+        return metadata, ["reviewer attestation signer is invalid"]
+    candidates = (
+        [
+            candidate
+            for pattern in ("*.json", "*.yaml", "*.yml")
+            for candidate in trusted_path.glob(pattern)
+            if candidate.is_file()
+        ]
+        if trusted_path.is_dir()
+        else [trusted_path]
+    )
+    registries: list[dict[str, Any]] = []
+    invalid: list[str] = []
+    for candidate in sorted(candidates):
+        validation = validate_artifact(
+            candidate, artifact_type="reviewer_key_registry"
+        )
+        if not validation.ok:
+            invalid.extend(
+                f"{candidate.name}:{issue.path}: {issue.message}"
+                for issue in validation.issues
+            )
+            continue
+        registry_document = load_document(candidate)
+        if isinstance(registry_document, dict):
+            registries.append(registry_document)
+    if invalid:
+        return metadata, [
+            "trusted reviewer registry contains invalid documents: "
+            + "; ".join(invalid)
+        ]
+    fingerprint_matches = [
+        registry
+        for registry in registries
+        if registry.get("id") == signer.get("registry_id")
+        and stable_fingerprint(registry) == signer.get("registry_fingerprint")
+    ]
+    if len(fingerprint_matches) != 1:
+        return metadata, [
+            "external trusted reviewer registry does not authorize the signer fingerprint"
+        ]
+    registry = fingerprint_matches[0]
+    fingerprint = stable_fingerprint(registry)
+    metadata.update(
+        {
+            "registry_id": registry.get("id"),
+            "registry_fingerprint": fingerprint,
+            "key_id": signer.get("key_id"),
+        }
+    )
+    if signer.get("registry_id") != registry.get("id"):
+        return metadata, [
+            "trusted reviewer registry ID does not authorize the signer"
+        ]
+    if signer.get("registry_fingerprint") != fingerprint:
+        return metadata, [
+            "trusted reviewer registry fingerprint does not authorize the signer"
+        ]
+    matches = [
+        row
+        for row in registry.get("keys", [])
+        if isinstance(row, dict)
+        and row.get("key_id") == signer.get("key_id")
+        and row.get("public_key") == signer.get("public_key")
+        and row.get("reviewer") == attestation.get("reviewer")
+        and row.get("principal_type")
+        == attestation.get("principal", {}).get("type")
+        and row.get("provider") == attestation.get("principal", {}).get("provider")
+    ]
+    if len(matches) != 1:
+        return metadata, [
+            "trusted reviewer registry has no unique authorized signer entry"
+        ]
+    metadata["trusted"] = True
+    return metadata, []

@@ -65,6 +65,8 @@ evidence. It replaces `taste` and routes checks by the actual target gate.
   multiple testing, parameter sensitivity, reproducibility, fills, costs, accounting, stress, and
   strategy-independent risk.
 - Run robustness and risk CLI operations when their structured inputs exist.
+- Require `robustness_report.v2` and verify that production validation recomputes it successfully;
+  text-only DSR/PBO, stress, baseline, or stability claims are blockers.
 - A pass requires `verdict_report.verdict: paper_candidate`, independent findings with no blocker,
   and exact package evidence.
 
@@ -122,9 +124,11 @@ the-pass gate attest <package> --gate <target-gate> --reviewer <reviewer> \
   --state-before <before-state> --state-after <after-state> --task-evidence <review-artifact> \
   --output <package>/reviewer_attestation.<target-gate>.json
 the-pass gate evaluate <package> --gate <target-gate> --reviewer <reviewer> \
-  --policy <policy> --ledger <ledger> --output <package>/gate_decision.<target-gate>.yaml
-the-pass receipts add-decision <package>/gate_decision.<target-gate>.yaml --ledger <ledger>
-the-pass receipts verify --ledger <ledger>
+  --policy <policy> --ledger <ledger> --trusted-reviewers <trusted-registry> \
+  --output <package>/gate_decision.<target-gate>.yaml
+the-pass receipts add-decision <package>/gate_decision.<target-gate>.yaml \
+  --ledger <ledger> --trusted-reviewers <trusted-registry>
+the-pass receipts verify --ledger <ledger> --trusted-reviewers <trusted-registry>
 ```
 
 `live_gate` is a safety test only and must return forbidden/exit 3.

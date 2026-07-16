@@ -68,7 +68,8 @@ Use this skill only after an exact package has a recorded passed `research_gate`
 
 ```bash
 the-pass workflow supersede <research-package> <paper-package> \
-  --ledger <ledger> --run-id <paper-run-id> --created-at <rfc3339>
+  --ledger <ledger> --run-id <paper-run-id> --created-at <rfc3339> \
+  --trusted-reviewers <trusted-registry>
 the-pass paper run --strategy <supported-strategy> --events <events> \
   --risk-policy <risk-policy> --observation-time-ns <time> \
   --max-staleness-ns <limit> --max-clock-skew-ns <limit> \
@@ -77,8 +78,9 @@ the-pass validate <paper-package>/paper_plan.yaml --type paper_plan
 the-pass validate <paper-package>/observation_manifest.yaml --type observation_manifest
 the-pass validate <paper-package>/divergence_report.yaml --type divergence_report
 the-pass validate-package <paper-package>
-the-pass receipts add <paper-package> --ledger <ledger>
-the-pass receipts verify --ledger <ledger>
+the-pass receipts add <paper-package> --ledger <ledger> \
+  --trusted-reviewers <trusted-registry>
+the-pass receipts verify --ledger <ledger> --trusted-reviewers <trusted-registry>
 ```
 
 If the decision code is unsupported by the reference worker, return `blocked`; do not substitute a

@@ -78,7 +78,8 @@ the-pass workflow supersede
 `start`, `advance`, and `status` manage validated local state. `fingerprint` computes package
 identity without recording it. `supersede` requires `--ledger`, `--run-id`, and `--created-at`;
 it proves that the exact source path is a valid recorded v2 run before creating a mutable
-successor.
+successor. If the ledger already contains passed decisions, `--trusted-reviewers` or
+`THE_PASS_TRUSTED_REVIEWER_REGISTRY` is also required for semantic replay.
 
 `execute` is inspect-only unless `--execute` is present. It invokes at most one stage per cycle,
 validates each resulting checkpoint, and cannot return exit `0` before the exact target gate has a
@@ -100,9 +101,17 @@ the-pass data ingest --provider futures|binance|polymarket
 the-pass data plan --provider futures|binance|polymarket ...
 the-pass data build --plan <dataset-plan> --output <dataset>
 the-pass backtest run --descriptor <json> --strategy-spec <artifact> ... \
-  [--runtime-mode trusted_local|hardened] [--sandbox-launcher <executable>]
-the-pass audit reproduce <package> --output <report> [--sandbox-launcher <executable>]
-the-pass robustness sweep --descriptor <json> --variants <json> --splits <json> ...
+  [--runtime-mode trusted_local|hardened] [--sandbox-launcher <executable>] \
+  [--sandbox-policy <json>]
+the-pass audit reproduce <package> --output <report> \
+  [--sandbox-launcher <executable>] [--sandbox-policy <json>]
+the-pass robustness sweep --source-package <package> --descriptor <json> \
+  --variants <json> --train-size <rows> --test-size <rows> --purge <rows> \
+  --embargo <rows> --null-variant-index <index> --stress-results <json> ...
+the-pass candidate assemble <source-package> <candidate-package> \
+  --ledger <ledger> --run-id <id> --created-at <RFC3339> \
+  --robustness-report <json> --findings <artifact> \
+  [--trusted-reviewers <registry>]
 the-pass paper observe --descriptor <json> --batch-id <id> ...
 ```
 
@@ -116,10 +125,11 @@ gate.
 
 `trusted_local` is the portable default. It reports process separation, credential stripping, and
 import filtering, while explicitly reporting no OS network/filesystem enforcement and no runtime
-promotion eligibility. `hardened` requires an explicit executable launcher. The launcher receives
-one JSON request, must enforce no network, read-only strategy inputs, temporary-output-only writes,
-and OS resource limits, and must emit an exact attestation. The launcher and attestation are
-fingerprinted; missing or mismatched evidence fails closed.
+promotion eligibility. `hardened` requires an executable launcher and a trust policy that
+allowlists its exact SHA-256 and enforcement contract. Before each strategy run, The Pass executes
+an active probe through the launcher for forbidden filesystem access, loopback network access, and
+OS CPU/file-size limits. The launcher, policy, probe, and attestations are fingerprinted; any
+missing or mismatched evidence fails closed.
 
 `data plan` freezes a contiguous, non-overlapping chunk set. `data build` serializes builders for
 one output, resumes only valid committed chunks, rejects conflicting duplicate events, and fully
@@ -134,14 +144,23 @@ New `research_gate`, `paper_gate`, and `risk_review` passes require
 provider/model/run provenance, author/reviewer separation, and review evidence hashes using
 Ed25519. `the-pass gate keygen` writes a create-only mode-`0600` private key and a public
 `reviewer_key_registry`. Signing reads the base64 raw private key from
-`THE_PASS_REVIEW_SIGNING_KEY`; verification uses only the package-local public registry snapshot.
-Automated review requires a reviewer provider different from the author provider and stops at
-`waiting` until an external reviewer signs. Missing, mismatched, expired, revoked, or unverifiable
-attestations produce a valid blocked gate result. Legacy HMAC attestations remain readable but can
-never authorize a new pass; `live_gate` remains forbidden.
+`THE_PASS_REVIEW_SIGNING_KEY`; signature verification uses the package-local public registry
+snapshot. Authorization additionally requires an operator-controlled matching registry outside the
+package through `--trusted-reviewers` or `THE_PASS_TRUSTED_REVIEWER_REGISTRY`. A self-issued
+registry therefore proves key ownership but cannot authorize a pass. Missing, mismatched, expired,
+revoked, or unverifiable trust evidence produces a valid blocked result. Legacy HMAC attestations
+remain readable but can never authorize a new pass; `live_gate` remains forbidden.
 
-`robustness sweep` create-only writes `<output-stem>.registration.json` with all variants and
-non-overlapping splits before its first worker call. Every cell is retained, including failures.
+`robustness sweep` create-only writes `<output-stem>.registration.json` before its first worker
+call. Promotion-capable v2 reports require purged walk-forward folds, a preregistered null variant,
+all mandatory stress scenarios, neighboring-parameter stability, and promotion-eligible hardened
+runtime cells. Artifact validation recomputes all statistics from the stored matrix.
+`candidate assemble` is the only supported automatic conversion from a recorded diagnostic run to
+a research candidate: it creates a ledger-linked successor, copies exact robustness/findings
+evidence, derives summary fields, and validates the final package before returning it.
+`receipts add`, `workflow supersede`, and `candidate assemble` all accept
+`--trusted-reviewers` so a ledger containing passed decisions can be replayed under the same trust
+anchor before another append or successor operation.
 `paper observe` stores immutable batches, verifies cumulative replay prefixes and configuration
 continuity, and returns exit `2` on a sticky freeze. A worker failure after batch commit freezes and
 tracks that batch instead of leaving orphan evidence. Neither command may write a gate decision.

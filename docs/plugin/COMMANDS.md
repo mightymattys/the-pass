@@ -119,13 +119,19 @@ the-pass workflow status --state <path>
 the-pass workflow execute --state <path> [--execute] --driver auto|<trusted argv>
 the-pass workflow fingerprint <package>
 the-pass workflow supersede <source-package> <target-package> \
-  --ledger <ledger> --run-id <new-id> --created-at <RFC3339>
+  --ledger <ledger> --run-id <new-id> --created-at <RFC3339> \
+  [--trusted-reviewers <registry>]
+the-pass candidate assemble <source-package> <candidate-package> \
+  --ledger <ledger> --run-id <new-id> --created-at <RFC3339> \
+  --robustness-report <report> --findings <findings> \
+  [--trusted-reviewers <registry>]
 the-pass agents route --stage <stage> [--author-provider codex|claude]
 ```
 
 The orchestrator maps stages only to the exact parser contracts in
 `config/skill-pipeline.v1.yaml`. Core evidence commands include `data`, `features`, `screen`,
-`backtest`, `robustness`, `risk`, `paper`, `gate`, `receipts`, `report`, and `dashboard`.
+`backtest`, `robustness`, `candidate`, `risk`, `paper`, `gate`, `receipts`, `report`, and
+`dashboard`.
 
 All machine responses follow [CLI_CONTRACT.md](../public/CLI_CONTRACT.md). Exit `0` means a
 successful operation or passed gate; `1` is invalid input or technical failure; `2` is a valid

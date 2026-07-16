@@ -922,6 +922,7 @@ def create_superseding_package(
     ledger_path: Path,
     run_id: str,
     created_at: str,
+    trusted_registry_path: Path | None = None,
 ) -> tuple[Path, str]:
     source = source.resolve()
     target = target.resolve()
@@ -951,7 +952,9 @@ def create_superseding_package(
 
     if not ledger_path.is_file():
         raise WorkflowError("superseding package requires an existing source ledger")
-    ledger_issues = verify_ledger_file(ledger_path)
+    ledger_issues = verify_ledger_file(
+        ledger_path, trusted_registry_path=trusted_registry_path
+    )
     if ledger_issues:
         details = "; ".join(f"{issue.path}: {issue.message}" for issue in ledger_issues)
         raise WorkflowError(f"cannot supersede from an invalid ledger: {details}")

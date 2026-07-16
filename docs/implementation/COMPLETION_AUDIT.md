@@ -34,7 +34,10 @@ resumable datasets, clean generic reproduction, and signed reviewer provenance a
 [`v0.12.0` release audit](../../reports/RELEASE_AUDIT_0.12.0.md). Complete dataset provenance,
 transactional agent worktrees, truthful runtime isolation, and publicly verifiable reviewer
 signatures are recorded in the [`v0.13.0` trust-boundary plan](TRUST_BOUNDARY_HARDENING_PLAN.md) and
-[`v0.13.0` release audit](../../reports/RELEASE_AUDIT_0.13.0.md).
+[`v0.13.0` release audit](../../reports/RELEASE_AUDIT_0.13.0.md). Derived robustness evidence,
+external reviewer authorization, active sandbox probes, and deterministic candidate assembly are
+recorded in the [`v0.14.0` hardening report](EVIDENCE_TRUST_HARDENING_V0.14.md) and
+[`v0.14.0` release audit](../../reports/RELEASE_AUDIT_0.14.0.md).
 
 Trading roadmap gate evidence is tracked separately:
 
@@ -71,6 +74,8 @@ Trading roadmap gate evidence is tracked separately:
 - [`v0.13.0` trust-boundary hardening plan](TRUST_BOUNDARY_HARDENING_PLAN.md)
 - [`v0.13.0` release audit](../../reports/RELEASE_AUDIT_0.13.0.md)
 - [`v0.13.0` post-release verification](../../reports/POST_RELEASE_AUDIT_0.13.0.md)
+- [`v0.14.0` evidence and trust hardening](EVIDENCE_TRUST_HARDENING_V0.14.md)
+- [`v0.14.0` release audit](../../reports/RELEASE_AUDIT_0.14.0.md)
 - [Repository hardening audit](../../reports/REPOSITORY_HARDENING_AUDIT_2026-07-10.md)
 - [Supervised workflow and model-routing plan](SUPERVISED_WORKFLOW_EXECUTION_PLAN.md)
 - [Supervised workflow implementation audit](../../reports/SUPERVISED_WORKFLOW_AUDIT_2026-07-11.md)

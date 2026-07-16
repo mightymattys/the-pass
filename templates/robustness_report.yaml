@@ -1,0 +1,65 @@
+schema_version: 2
+id: example-diagnostic-robustness
+created_at: "2026-07-16T00:00:00Z"
+source_package_id: null
+registration:
+  schema_version: 2
+  descriptor_fingerprint: "0000000000000000000000000000000000000000000000000000000000000000"
+  strategy_source_sha256: "0000000000000000000000000000000000000000000000000000000000000000"
+  execution_fingerprint: "0000000000000000000000000000000000000000000000000000000000000000"
+  events_fingerprint: "0000000000000000000000000000000000000000000000000000000000000000"
+  variants: [{lookback: 10}, {lookback: 20}]
+  selected_index: 0
+  selection_policy: Example selection was registered before execution.
+  registration_fingerprint: "3121be1cb55d156e96ed5697c1e75a1a85665cac8a7b68fc7cabb4000ae404ce"
+matrix:
+  - [0.01, 0.00]
+  - [0.02, 0.01]
+  - [-0.01, -0.02]
+  - [0.01, 0.00]
+cells:
+  - {fold_id: 0, variant_index: 0, status: complete, net_return: 0.01, result_fingerprint: "0000000000000000000000000000000000000000000000000000000000000000", runtime_promotion_eligible: false}
+  - {fold_id: 0, variant_index: 1, status: complete, net_return: 0.00, result_fingerprint: "0000000000000000000000000000000000000000000000000000000000000000", runtime_promotion_eligible: false}
+  - {fold_id: 1, variant_index: 0, status: complete, net_return: 0.02, result_fingerprint: "0000000000000000000000000000000000000000000000000000000000000000", runtime_promotion_eligible: false}
+  - {fold_id: 1, variant_index: 1, status: complete, net_return: 0.01, result_fingerprint: "0000000000000000000000000000000000000000000000000000000000000000", runtime_promotion_eligible: false}
+  - {fold_id: 2, variant_index: 0, status: complete, net_return: -0.01, result_fingerprint: "0000000000000000000000000000000000000000000000000000000000000000", runtime_promotion_eligible: false}
+  - {fold_id: 2, variant_index: 1, status: complete, net_return: -0.02, result_fingerprint: "0000000000000000000000000000000000000000000000000000000000000000", runtime_promotion_eligible: false}
+  - {fold_id: 3, variant_index: 0, status: complete, net_return: 0.01, result_fingerprint: "0000000000000000000000000000000000000000000000000000000000000000", runtime_promotion_eligible: false}
+  - {fold_id: 3, variant_index: 1, status: complete, net_return: 0.00, result_fingerprint: "0000000000000000000000000000000000000000000000000000000000000000", runtime_promotion_eligible: false}
+failed_cells: 0
+statistics:
+  pbo:
+    pbo: 0.0
+    combinations: 6
+    logits: [0.6931471805599452, 0.6931471805599452, 0.6931471805599452, 0.6931471805599452, 0.6931471805599452, 0.6931471805599452]
+    selected_variants: [0, 0, 0, 0, 0, 0]
+  psr: 0.7646347804085416
+  dsr: 0.6435025320517186
+  reality_check: {reality_check_pvalue: 0.12974051896207583, spa_pvalue: 0.12974051896207583}
+validation:
+  mode: diagnostic_splits
+  purge_observations: 0
+  embargo_observations: 0
+  cscv_blocks: 4
+  holdout_start_time: "2026-01-01T00:00:00Z"
+  holdout_end_time: "2026-01-02T00:00:00Z"
+  folds:
+    - {id: 0, train_start: 0, train_end: 1, test_start: 1, test_end: 2, purged: [], embargoed: []}
+    - {id: 1, train_start: 0, train_end: 2, test_start: 2, test_end: 3, purged: [], embargoed: []}
+    - {id: 2, train_start: 0, train_end: 3, test_start: 3, test_end: 4, purged: [], embargoed: []}
+    - {id: 3, train_start: 0, train_end: 4, test_start: 4, test_end: 5, purged: [], embargoed: []}
+null_baseline:
+  variant_index: 1
+  status: pass
+  selected_mean_return: 0.0075
+  baseline_mean_return: -0.0025
+  summary: Example selected variant exceeds the example null variant.
+stress_results: []
+parameter_stability:
+  status: blocked
+  neighbor_indices: []
+  worst_neighbor_return: null
+  summary: Diagnostic example has no independent neighboring variant.
+status: complete
+promotion_eligible: false
+report_fingerprint: "f9c788e44622a29b6071ed530e86767d314b77647e16bb5883ad482734d5688e"

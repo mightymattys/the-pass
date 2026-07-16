@@ -327,6 +327,17 @@ class _IsolatedWorkflowTransaction:
             in_package = package_scope is not None and (
                 relative == package_scope or relative.startswith(package_scope + "/")
             )
+            stage = str(self.isolated_before.get("stage", ""))
+            if in_package and stage in REVIEW_GATE_TRANSITIONS:
+                allowed_prefixes = (
+                    ("findings.",)
+                    if stage == "review_research"
+                    else (f"audit_report.{REVIEW_GATE_TRANSITIONS[stage]}.",)
+                )
+                if not name.startswith(allowed_prefixes):
+                    raise WorkflowSupervisorError(
+                        f"review stage cannot modify scientific package artifact: {relative}"
+                    )
             if relative not in evidence_scope and not in_package:
                 raise WorkflowSupervisorError(
                     f"auto workflow changed path outside declared evidence scope: {relative}"
@@ -806,8 +817,12 @@ def _run_deterministic_stage(state_path: Path, state: Mapping[str, Any]) -> None
             raise WorkflowSupervisorError(
                 f"deterministic review stage {stage} requires package and reviewer state"
             )
-        public_evidence, blockers = gate_attestation_artifact(
-            Path(str(package_value)), gate, str(reviewer), str(package_id)
+        public_evidence, _, blockers = gate_attestation_artifact(
+            Path(str(package_value)),
+            gate,
+            str(reviewer),
+            str(package_id),
+            None,
         )
         if blockers:
             raise WorkflowSupervisorError(
@@ -1028,11 +1043,12 @@ def _supervise_workflow_locked(
                 and isinstance(before.get("package_id"), str)
                 and isinstance(before.get("reviewer"), str)
             ):
-                _, attestation_blockers = gate_attestation_artifact(
+                _, _, attestation_blockers = gate_attestation_artifact(
                     Path(str(before["package_path"])),
                     REVIEW_GATE_TRANSITIONS[str(before["stage"])],
                     str(before["reviewer"]),
                     str(before["package_id"]),
+                    None,
                 )
                 if not attestation_blockers:
                     route = {

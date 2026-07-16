@@ -13,6 +13,8 @@ from pathlib import Path
 from unittest.mock import patch
 
 import the_pass.validator as validator_module
+from the_pass.candidate import assemble_research_candidate
+from the_pass.candidate_contract import candidate_assembly_manifest
 from the_pass.attestation import (
     create_reviewer_key_registry,
     create_reviewer_attestation,
@@ -22,6 +24,7 @@ from the_pass.attestation import (
     write_reviewer_attestation,
 )
 from the_pass.cli import main as cli_main
+from the_pass.data.contracts import stable_fingerprint
 from the_pass.ledger import (
     LEDGER_SCHEMA_V1,
     LedgerError,
@@ -35,6 +38,12 @@ from the_pass.ledger import (
     verify_ledger_file,
 )
 from the_pass.gates import GateEvaluationError, evaluate_gate, write_gate_decision
+from the_pass.robustness import (
+    cscv_pbo,
+    deflated_sharpe_ratio,
+    probabilistic_sharpe_ratio,
+    reality_check,
+)
 from the_pass.validator import default_schema_dir, validate_artifact, validate_package
 
 
@@ -52,7 +61,140 @@ SCHEMA_DIR = ROOT / "schemas"
 ATTESTATION_TEST_PRIVATE, ATTESTATION_TEST_PUBLIC = generate_reviewer_keypair()
 
 
-def add_reviewer_attestation(package: Path, gate: str, reviewer: str) -> None:
+def add_robustness_report(package: Path) -> None:
+    matrix = [
+        [0.01, 0.02, -0.01],
+        [0.02, 0.03, -0.01],
+        [0.01, 0.02, -0.005],
+        [0.02, 0.025, -0.01],
+    ]
+    selected_index = 1
+    null_index = 2
+    selected = [row[selected_index] for row in matrix]
+    trial_sharpes = []
+    for column in range(len(matrix[0])):
+        values = [row[column] for row in matrix]
+        average = sum(values) / len(values)
+        variance = sum((value - average) ** 2 for value in values) / (
+            len(values) - 1
+        )
+        trial_sharpes.append(average / variance**0.5 if variance else 0.0)
+    registration = {
+        "schema_version": 2,
+        "descriptor_fingerprint": "1" * 64,
+        "strategy_source_sha256": "2" * 64,
+        "execution_fingerprint": "3" * 64,
+        "events_fingerprint": "4" * 64,
+        "variants": [
+            {"lookback": 5},
+            {"lookback": 10},
+            {"role": "null"},
+        ],
+        "selected_index": selected_index,
+        "selection_policy": "fixture selection registered before execution",
+    }
+    registration["registration_fingerprint"] = stable_fingerprint(registration)
+    mandatory_stress = (
+        "fees_x1_5",
+        "slippage_x2",
+        "latency_x2",
+        "depth_x0_5",
+        "depth_x0_25",
+        "maker_fill_probability_x0_5",
+        "funding_worst_decile",
+        "exchange_outage",
+        "missing_interval",
+        "correlated_gap",
+        "forced_deleverage",
+    )
+    report = {
+        "schema_version": 2,
+        "id": "fixture-robustness",
+        "created_at": "2026-01-31T00:00:00Z",
+        "source_package_id": "pkg_" + "a" * 24,
+        "registration": registration,
+        "matrix": matrix,
+        "cells": [
+            {
+                "fold_id": fold,
+                "variant_index": variant,
+                "status": "complete",
+                "net_return": matrix[fold][variant],
+                "result_fingerprint": hashlib.sha256(
+                    f"{fold}:{variant}".encode()
+                ).hexdigest(),
+                "runtime_promotion_eligible": True,
+            }
+            for fold in range(len(matrix))
+            for variant in range(len(matrix[0]))
+        ],
+        "failed_cells": 0,
+        "statistics": {
+            "pbo": cscv_pbo(matrix, blocks=4),
+            "psr": probabilistic_sharpe_ratio(selected),
+            "dsr": deflated_sharpe_ratio(
+                selected, trial_sharpes=trial_sharpes
+            ),
+            "reality_check": reality_check(
+                matrix, bootstrap_samples=500, seed=7
+            ),
+        },
+        "validation": {
+            "mode": "purged_walk_forward",
+            "purge_observations": 1,
+            "embargo_observations": 1,
+            "cscv_blocks": 4,
+            "holdout_start_time": "2026-01-21T00:00:00Z",
+            "holdout_end_time": "2026-01-31T00:00:00Z",
+            "folds": [
+                {
+                    "id": index,
+                    "train_start": 0,
+                    "train_end": index * 3 + 2,
+                    "test_start": index * 3 + 3,
+                    "test_end": index * 3 + 4,
+                    "purged": [index * 3 + 2],
+                    "embargoed": [index * 3 + 4],
+                }
+                for index in range(4)
+            ],
+        },
+        "null_baseline": {
+            "variant_index": null_index,
+            "status": "pass",
+            "selected_mean_return": sum(selected) / len(selected),
+            "baseline_mean_return": (
+                sum(row[null_index] for row in matrix) / len(matrix)
+            ),
+            "summary": "candidate exceeded the preregistered null baseline",
+        },
+        "stress_results": [
+            {
+                "scenario": scenario,
+                "status": "pass",
+                "net_pnl": 0.1,
+                "summary": f"{scenario} remained net positive",
+            }
+            for scenario in mandatory_stress
+        ],
+        "parameter_stability": {
+            "status": "pass",
+            "neighbor_indices": [0],
+            "worst_neighbor_return": (
+                sum(row[0] for row in matrix) / len(matrix)
+            ),
+            "summary": "registered neighboring parameters remained net positive",
+        },
+        "status": "complete",
+        "promotion_eligible": True,
+    }
+    report["report_fingerprint"] = stable_fingerprint(report)
+    (package / "robustness_report.json").write_text(
+        json.dumps(report), encoding="utf-8"
+    )
+
+
+def add_reviewer_attestation(package: Path, gate: str, reviewer: str) -> Path:
     package_id = build_run_entry(package)["package_id"]
     empty_hash = hashlib.sha256(b"").hexdigest()
     task_path = (
@@ -95,6 +237,12 @@ def add_reviewer_attestation(package: Path, gate: str, reviewer: str) -> None:
     write_reviewer_attestation(
         package / f"reviewer_attestation.{gate}.json", document
     )
+    trusted_dir = package.parent / "trusted-reviewers"
+    trusted_dir.mkdir(exist_ok=True)
+    write_registry_snapshot(
+        trusted_dir / f"{gate}-{reviewer}.json", registry
+    )
+    return trusted_dir
 
 
 def workflow_artifacts() -> dict[str, dict]:
@@ -399,7 +547,7 @@ def prepare_paper_candidate(
     metrics["sample"]["trades"] = 10
     metrics["sample"].update(
         {
-            "evaluation_scope": "out_of_sample",
+            "evaluation_scope": "walk_forward",
             "holdout_start_time": "2026-01-21T00:00:00Z",
             "holdout_end_time": "2026-01-31T00:00:00Z",
         }
@@ -410,17 +558,19 @@ def prepare_paper_candidate(
         "median_interval_seconds": 60,
         "periods_per_year": 525960,
     }
-    metrics["robustness"]["null_baseline_result"] = (
-        "candidate exceeded the matched random baseline"
+    add_robustness_report(package)
+    robustness = json.loads(
+        (package / "robustness_report.json").read_text(encoding="utf-8")
     )
-    metrics["robustness"].update(
-        {
-            "dsr_or_psr": 0.95,
-            "pbo": 0.1,
-            "stress_results": ["remains net positive at 1.5x fees and 2x slippage"],
-            "parameter_stability": "neighboring parameter values remain net positive",
-        }
-    )
+    metrics["robustness"] = {
+        "null_baseline_result": robustness["null_baseline"]["summary"],
+        "dsr_or_psr": robustness["statistics"]["dsr"],
+        "pbo": robustness["statistics"]["pbo"]["pbo"],
+        "stress_results": [
+            row["summary"] for row in robustness["stress_results"]
+        ],
+        "parameter_stability": robustness["parameter_stability"]["summary"],
+    }
     metrics_path.write_text(json.dumps(metrics), encoding="utf-8")
 
     costs_path = package / "cost_waterfall.json"
@@ -458,6 +608,7 @@ def prepare_paper_candidate(
     verdict["verdict"] = "paper_candidate"
     verdict["owner"] = reviewer
     verdict["gate_results"]["failed_gates"] = []
+    verdict["evidence"]["robustness_report"] = "robustness_report.json"
     verdict_path.write_text(json.dumps(verdict), encoding="utf-8")
 
     strategy_path = package / "strategy_spec.json"
@@ -486,6 +637,17 @@ def prepare_paper_candidate(
         "holdout_end": "2026-01-31T00:00:00Z",
     }
     strategy_path.write_text(json.dumps(strategy), encoding="utf-8")
+
+    receipt_path = package / "run_receipt.json"
+    receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+    receipt["candidate_assembly"] = candidate_assembly_manifest(
+        strategy=strategy,
+        metrics=metrics,
+        verdict=verdict,
+        robustness=robustness,
+        findings=findings,
+    )
+    receipt_path.write_text(json.dumps(receipt), encoding="utf-8")
 
 
 def add_risk_review_artifacts(
@@ -1244,6 +1406,93 @@ safety:
 
         self.assertTrue(result.ok, [issue.as_dict() for issue in result.issues])
 
+    def test_candidate_assembler_derives_successor_and_rejects_tampered_robustness(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            source = root / "source"
+            target = root / "candidate"
+            ledger = root / "ledger.jsonl"
+            robustness_path = root / "robustness.json"
+            findings_path = root / "findings.json"
+            shutil.copytree(EXAMPLE_PACKAGE, source)
+            prepare_paper_candidate(source)
+            robustness = json.loads(
+                (source / "robustness_report.json").read_text(encoding="utf-8")
+            )
+            findings = json.loads(
+                (source / "findings.json").read_text(encoding="utf-8")
+            )
+            (source / "robustness_report.json").unlink()
+            (source / "findings.json").unlink()
+            verdict_path = source / "verdict_report.json"
+            verdict = json.loads(verdict_path.read_text(encoding="utf-8"))
+            verdict["owner"] = "framework-auditor"
+            verdict["verdict"] = "blocked"
+            verdict["gate_results"]["failed_gates"] = [
+                "robustness and independent review pending"
+            ]
+            verdict["evidence"].pop("robustness_report", None)
+            verdict_path.write_text(json.dumps(verdict), encoding="utf-8")
+            append_ledger_entry(ledger, source)
+            source_id = build_run_entry(source, ledger_path=ledger)["package_id"]
+            robustness["source_package_id"] = source_id
+            robustness["report_fingerprint"] = stable_fingerprint(
+                {
+                    key: value
+                    for key, value in robustness.items()
+                    if key != "report_fingerprint"
+                }
+            )
+            robustness_path.write_text(json.dumps(robustness), encoding="utf-8")
+            findings_path.write_text(json.dumps(findings), encoding="utf-8")
+
+            assembled, package_id = assemble_research_candidate(
+                source,
+                target,
+                ledger_path=ledger,
+                run_id="assembled-candidate-v1",
+                created_at="2026-07-16T00:00:00Z",
+                robustness_report_path=robustness_path,
+                findings_path=findings_path,
+            )
+
+            self.assertEqual(assembled, target.resolve())
+            self.assertTrue(validate_package(target).ok)
+            self.assertEqual(
+                json.loads(
+                    (target / "verdict_report.json").read_text(encoding="utf-8")
+                )["verdict"],
+                "paper_candidate",
+            )
+            self.assertEqual(build_run_entry(target)["package_id"], package_id)
+
+            tampered = json.loads(robustness_path.read_text(encoding="utf-8"))
+            tampered["statistics"]["dsr"] = 0.999
+            tampered["report_fingerprint"] = stable_fingerprint(
+                {
+                    key: value
+                    for key, value in tampered.items()
+                    if key != "report_fingerprint"
+                }
+            )
+            robustness_path.write_text(json.dumps(tampered), encoding="utf-8")
+            tampered_target = root / "tampered-candidate"
+            with self.assertRaisesRegex(
+                ValueError, "does not match recomputation"
+            ):
+                assemble_research_candidate(
+                    source,
+                    tampered_target,
+                    ledger_path=ledger,
+                    run_id="tampered-candidate-v1",
+                    created_at="2026-07-16T00:01:00Z",
+                    robustness_report_path=robustness_path,
+                    findings_path=findings_path,
+                )
+            self.assertFalse(tampered_target.exists())
+
     def test_paper_candidate_rejects_self_review(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             package = Path(tmp) / "package"
@@ -1583,7 +1832,7 @@ safety:
             package = tmp_path / "package"
             shutil.copytree(EXAMPLE_PACKAGE, package)
             prepare_paper_candidate(package)
-            add_reviewer_attestation(
+            trusted_reviewers = add_reviewer_attestation(
                 package, "research_gate", "independent-auditor"
             )
             evaluation = evaluate_gate(
@@ -1591,17 +1840,28 @@ safety:
                 gate="research_gate",
                 reviewer="independent-auditor",
                 ledger_path=ledger,
+                trusted_registry_path=trusted_reviewers,
             )
             decision_path = package / "gate_decision.research_gate.yaml"
             write_gate_decision(decision_path, evaluation.decision)
 
             with self.assertRaises(LedgerError):
-                append_gate_decision(ledger, decision_path)
+                append_gate_decision(
+                    ledger,
+                    decision_path,
+                    trusted_registry_path=trusted_reviewers,
+                )
 
             append_ledger_entry(ledger, package)
-            appended = append_gate_decision(ledger, decision_path)
+            appended = append_gate_decision(
+                ledger,
+                decision_path,
+                trusted_registry_path=trusted_reviewers,
+            )
             entries = read_ledger_entries(ledger)
-            issues = verify_ledger_file(ledger)
+            issues = verify_ledger_file(
+                ledger, trusted_registry_path=trusted_reviewers
+            )
 
         self.assertEqual(evaluation.exit_code, 0)
         self.assertEqual(evaluation.decision["gate_result"], "pass")
@@ -1739,8 +1999,11 @@ safety:
                 ("paper_gate", "independent-paper-reviewer"),
                 ("risk_review", "independent-risk-reviewer"),
             )
+            trusted_reviewers = None
             for gate, reviewer in gates:
-                add_reviewer_attestation(package, gate, reviewer)
+                trusted_reviewers = add_reviewer_attestation(
+                    package, gate, reviewer
+                )
             append_ledger_entry(ledger, package)
             for gate, reviewer in gates:
                 evaluation = evaluate_gate(
@@ -1748,16 +2011,23 @@ safety:
                     gate=gate,
                     reviewer=reviewer,
                     ledger_path=ledger,
+                    trusted_registry_path=trusted_reviewers,
                 )
                 self.assertEqual(
                     evaluation.exit_code, 0, evaluation.decision["blockers"]
                 )
                 decision_path = package / f"gate_decision.{gate}.json"
                 write_gate_decision(decision_path, evaluation.decision)
-                append_gate_decision(ledger, decision_path)
+                append_gate_decision(
+                    ledger,
+                    decision_path,
+                    trusted_registry_path=trusted_reviewers,
+                )
 
             entries = read_ledger_entries(ledger)
-            issues = verify_ledger_file(ledger)
+            issues = verify_ledger_file(
+                ledger, trusted_registry_path=trusted_reviewers
+            )
 
         self.assertEqual(
             [
@@ -1909,11 +2179,22 @@ safety:
             state = tmp_path / "state.yaml"
             shutil.copytree(EXAMPLE_PACKAGE, package)
             prepare_paper_candidate(package)
-            add_reviewer_attestation(
+            trusted_reviewers = add_reviewer_attestation(
                 package, "research_gate", "independent-auditor"
             )
 
-            with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
+            with (
+                patch.dict(
+                    os.environ,
+                    {
+                        "THE_PASS_TRUSTED_REVIEWER_REGISTRY": str(
+                            trusted_reviewers
+                        )
+                    },
+                ),
+                redirect_stdout(io.StringIO()),
+                redirect_stderr(io.StringIO()),
+            ):
                 add_run_exit = cli_main(
                     ["receipts", "add", str(package), "--ledger", str(ledger)]
                 )
@@ -1928,12 +2209,22 @@ safety:
                         "independent-auditor",
                         "--ledger",
                         str(ledger),
+                        "--trusted-reviewers",
+                        str(trusted_reviewers),
                         "--output",
                         str(decision),
                     ]
                 )
                 add_decision_exit = cli_main(
-                    ["receipts", "add-decision", str(decision), "--ledger", str(ledger)]
+                    [
+                        "receipts",
+                        "add-decision",
+                        str(decision),
+                        "--ledger",
+                        str(ledger),
+                        "--trusted-reviewers",
+                        str(trusted_reviewers),
+                    ]
                 )
                 duplicate_gate_exit = cli_main(
                     [
@@ -1946,11 +2237,22 @@ safety:
                         "independent-auditor",
                         "--ledger",
                         str(ledger),
+                        "--trusted-reviewers",
+                        str(trusted_reviewers),
                         "--output",
                         str(decision),
                     ]
                 )
-                verify_exit = cli_main(["receipts", "verify", "--ledger", str(ledger)])
+                verify_exit = cli_main(
+                    [
+                        "receipts",
+                        "verify",
+                        "--ledger",
+                        str(ledger),
+                        "--trusted-reviewers",
+                        str(trusted_reviewers),
+                    ]
+                )
                 workflow_start_exit = cli_main(
                     [
                         "workflow",
@@ -2090,7 +2392,7 @@ safety:
             shutil.copytree(EXAMPLE_PACKAGE, package)
             prepare_paper_candidate(package)
             add_paper_gate_artifacts(package)
-            add_reviewer_attestation(
+            trusted_reviewers = add_reviewer_attestation(
                 package, "paper_gate", "independent-paper-reviewer"
             )
 
@@ -2100,6 +2402,7 @@ safety:
                     gate="paper_gate",
                     reviewer="independent-paper-reviewer",
                     ledger_path=Path(tmp) / "ledger.jsonl",
+                    trusted_registry_path=trusted_reviewers,
                 )
 
         self.assertEqual(evaluation.exit_code, 0)
@@ -2117,7 +2420,7 @@ safety:
             shutil.copytree(EXAMPLE_PACKAGE, package)
             prepare_paper_candidate(package)
             add_risk_review_artifacts(package)
-            add_reviewer_attestation(
+            trusted_reviewers = add_reviewer_attestation(
                 package, "risk_review", "independent-risk-reviewer"
             )
 
@@ -2127,6 +2430,7 @@ safety:
                     gate="risk_review",
                     reviewer="independent-risk-reviewer",
                     ledger_path=Path(tmp) / "ledger.jsonl",
+                    trusted_registry_path=trusted_reviewers,
                 )
 
         self.assertEqual(evaluation.exit_code, 0)

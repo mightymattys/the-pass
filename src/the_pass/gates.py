@@ -19,6 +19,7 @@ from .attestation import (
     registry_snapshot_path,
     review_task_path,
     verify_reviewer_attestation,
+    verify_trusted_reviewer_registry,
 )
 from .ledger import (
     DEFAULT_LEDGER_PATH,
@@ -106,11 +107,18 @@ def workflow_artifact(
 
 
 def prior_gate_passes(
-    ledger_path: Path, package_dir: Path, package_id: str, gate: str
+    ledger_path: Path,
+    package_dir: Path,
+    package_id: str,
+    gate: str,
+    *,
+    trusted_registry_path: Path | None = None,
 ) -> bool:
     if not ledger_path.exists():
         return False
-    if verify_ledger_file(ledger_path):
+    if verify_ledger_file(
+        ledger_path, trusted_registry_path=trusted_registry_path
+    ):
         return False
     return has_passed_gate(
         read_ledger_entries(ledger_path),
@@ -234,16 +242,32 @@ def gate_attestation_artifact(
     gate: str,
     reviewer: str,
     package_id: str,
-) -> tuple[list[Path], list[str]]:
+    trusted_registry_path: Path | None,
+) -> tuple[list[Path], dict[str, Any], list[str]]:
     path = attestation_path(package_dir, gate)
     if not path.is_file():
-        return [], [f"missing reviewer_attestation.{gate} artifact"]
+        return (
+            [],
+            {
+                "registry_id": None,
+                "registry_fingerprint": None,
+                "key_id": None,
+                "trusted": False,
+            },
+            [f"missing reviewer_attestation.{gate} artifact"],
+        )
     document, blockers = verify_reviewer_attestation(
         path,
         gate=gate,
         package_id=package_id,
         reviewer=reviewer,
     )
+    trust, trust_blockers = verify_trusted_reviewer_registry(
+        trusted_registry_path,
+        package_dir=package_dir,
+        attestation=document,
+    )
+    blockers.extend(trust_blockers)
     try:
         task_path = review_task_path(package_dir, gate)
     except AttestationError as exc:
@@ -260,7 +284,7 @@ def gate_attestation_artifact(
     registry = registry_snapshot_path(package_dir, gate)
     if registry.is_file():
         evidence.append(registry)
-    return evidence, blockers
+    return evidence, trust, blockers
 
 
 def evaluate_gate(
@@ -271,6 +295,7 @@ def evaluate_gate(
     policy_path: Path = DEFAULT_POLICY_PATH,
     ledger_path: Path = DEFAULT_LEDGER_PATH,
     trusted_entries: list[dict[str, Any]] | None = None,
+    trusted_registry_path: Path | None = None,
 ) -> GateEvaluation:
     package_dir = package_dir.resolve()
     if gate not in CORE_GATES:
@@ -302,10 +327,22 @@ def evaluate_gate(
     blockers: list[str] = []
     result = "blocked"
     extra_evidence: list[dict[str, Any]] = []
+    reviewer_trust = {
+        "registry_id": None,
+        "registry_fingerprint": None,
+        "key_id": None,
+        "trusted": False,
+    }
     if gate != "live_gate":
         blockers.extend(reviewer_identity_blockers(package_dir, reviewer))
-        attestation_files, attestation_issues = gate_attestation_artifact(
-            package_dir, gate, reviewer, package_id
+        attestation_files, reviewer_trust, attestation_issues = (
+            gate_attestation_artifact(
+                package_dir,
+                gate,
+                reviewer,
+                package_id,
+                trusted_registry_path,
+            )
         )
         blockers.extend(attestation_issues)
         for attestation_file in attestation_files:
@@ -366,7 +403,11 @@ def evaluate_gate(
             )
             if trusted_entries is not None
             else prior_gate_passes(
-                ledger_path.resolve(), package_dir, package_id, "research_gate"
+                ledger_path.resolve(),
+                package_dir,
+                package_id,
+                "research_gate",
+                trusted_registry_path=trusted_registry_path,
             )
         )
         if not research_passes:
@@ -450,7 +491,11 @@ def evaluate_gate(
             )
             if trusted_entries is not None
             else prior_gate_passes(
-                ledger_path.resolve(), package_dir, package_id, "paper_gate"
+                ledger_path.resolve(),
+                package_dir,
+                package_id,
+                "paper_gate",
+                trusted_registry_path=trusted_registry_path,
             )
         )
         if not paper_passes:
@@ -524,6 +569,7 @@ def evaluate_gate(
         "package_id": package_id,
         "package_path": ".",
         "reviewer": reviewer,
+        "reviewer_trust": reviewer_trust,
         "evidence": evidence,
         "blockers": blockers,
         "summary": "gate passed" if result == "pass" else "; ".join(blockers),

@@ -8,6 +8,9 @@ isolation:
   filesystem_enforcement: none
   resource_enforcement: process_timeout_and_output_limit
   launcher_sha256: null
+  policy_id: null
+  policy_fingerprint: null
+  probe_fingerprint: null
 inputs:
   strategy_spec: strategy_spec.json
   data_manifest: data_manifest.json

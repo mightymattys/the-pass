@@ -196,19 +196,22 @@ the-pass gate evaluate experiments/runs/<strategy>/<run>/package \
   --gate research_gate \
   --reviewer independent-reviewer \
   --ledger .the-pass/receipts.jsonl \
+  --trusted-reviewers /absolute/path/to/trusted-reviewers \
   --output experiments/runs/<strategy>/<run>/package/gate_decision.research_gate.yaml \
   --format json
 
 the-pass receipts --ledger .the-pass/receipts.jsonl --format json add-decision \
-  experiments/runs/<strategy>/<run>/package/gate_decision.research_gate.yaml
+  experiments/runs/<strategy>/<run>/package/gate_decision.research_gate.yaml \
+  --trusted-reviewers /absolute/path/to/trusted-reviewers
 ```
 
 A run receipt proves that a run happened. It never proves that a gate passed. A gate pass requires
 a valid reviewer attestation and the separate decision for the exact package ID, package path,
-reviewer, policy hash, and evidence fingerprints. Gate evaluation copies the public registry
-snapshot into the package, and ledger replay needs no private key or secret environment variable.
-The registry establishes a cryptographic key binding, not organizational identity by itself;
-approve and distribute registries through your own identity and access process.
+reviewer, policy hash, evidence fingerprints, and external reviewer trust anchor. `gate keygen`
+creates a key binding but does not authorize it. Place approved registries outside the evaluated
+package and provide the file or directory through `--trusted-reviewers` or
+`THE_PASS_TRUSTED_REVIEWER_REGISTRY`. Ledger replay requires the same trust store but never needs
+the private signing key.
 
 ## 6. Run Your Own Strategy
 
@@ -221,17 +224,21 @@ intents, input mutation, same-event fills, timeouts, and oversized output.
 The default `trusted_local` mode contains failures and strips credentials, but it has no OS-enforced
 network or filesystem denial. Only run code you trust. `hardened` mode is available only when an
 operator supplies an executable sandbox launcher that enforces the request contract and writes the
-matching launcher attestation:
+matching launcher attestation. The launcher must also be authorized by an operator-controlled
+policy and pass active filesystem, loopback-network, and resource-limit probes:
 
 ```bash
 the-pass backtest run ... \
   --runtime-mode hardened \
-  --sandbox-launcher /absolute/path/to/audited-sandbox-launcher
+  --sandbox-launcher /absolute/path/to/audited-sandbox-launcher \
+  --sandbox-policy /absolute/path/to/sandbox-policy.json
 ```
 
-The Pass fingerprints the launcher and verifies its attestation. It does not ship a portable
-privileged sandbox because enforcement differs by operating system. Missing or mismatched launcher
-evidence fails closed; `trusted_local` evidence is always diagnostic and non-promotional.
+The policy allowlists the exact launcher SHA-256 and required enforcement contract. Before every
+strategy worker, The Pass runs a probe through that launcher. A self-declared attestation without
+the allowlist and passing probe fails closed. The Pass does not ship a portable privileged sandbox
+because enforcement differs by operating system; `trusted_local` evidence is always diagnostic and
+non-promotional.
 
 Start with the complete offline example:
 
@@ -266,11 +273,44 @@ strategy files into a clean temporary workspace, invokes the fixed internal runn
 and compares the rebuilt artifacts. Its reproduction specification records the exact runtime mode
 and isolation evidence instead of inferring sandboxing from an import filter.
 
-For preregistered parameter work, provide JSON arrays of variants and non-overlapping event-index
-splits to `the-pass robustness sweep`. Every cell is executed and failed variants remain in the
-report instead of disappearing from multiple-testing evidence. Before the first strategy worker
-runs, the command create-only writes `<output-stem>.registration.json`; a conflicting existing
-registration fails rather than being overwritten.
+For promotion-capable parameter work, use generated purged walk-forward folds rather than
+hand-selected result windows:
+
+```bash
+the-pass robustness sweep \
+  --source-package "$WORK/package" \
+  --descriptor descriptor.json --events canonical-events.jsonl \
+  --execution execution.json --variants variants.json \
+  --train-size 10000 --test-size 2000 --purge 30 --embargo 30 \
+  --selected-index 2 --null-variant-index 0 \
+  --stress-results stress-results.json \
+  --runtime-mode hardened --sandbox-launcher /path/launcher \
+  --sandbox-policy /path/sandbox-policy.json \
+  --output "$WORK/robustness_report.json"
+```
+
+Every cell is retained, including failures. The v2 report binds the source package, strategy,
+execution, events, variants, folds, null control, mandatory stresses, and runtime eligibility.
+Validation recomputes PBO, PSR, DSR, Reality Check/SPA, null comparison, and neighboring-parameter
+stability from the stored matrix.
+
+After a separate reviewer writes passing `findings.json`, do not edit metrics or verdict files:
+
+```bash
+the-pass candidate assemble "$WORK/package" "$WORK/candidate" \
+  --ledger "$WORK/ledger.jsonl" --run-id candidate-v1 \
+  --created-at "2026-07-16T00:00:00Z" \
+  --robustness-report "$WORK/robustness_report.json" \
+  --findings "$WORK/findings.json"
+```
+
+The assembler creates a successor, derives the robustness summary and verdict links, validates the
+complete package, and removes the target on failure.
+
+If the ledger already contains any passed gate decision, add
+`--trusted-reviewers /absolute/path/to/trusted-reviewers` to `candidate assemble`,
+`workflow supersede`, and every later `receipts add`. This forces all mutations to replay the
+existing decisions against the same operator-controlled trust anchor.
 
 After research passage, `the-pass paper observe` can append immutable event batches. Each resume
 replays all batches, verifies the previous intent/fill prefix, enforces the same strategy,
@@ -390,8 +430,8 @@ rewrite the evidence to force exit `0`.
 - Resolve the named blocker or wait condition.
 - Resume through a validated workflow transition; do not edit state counters by hand.
 - Never modify a package after its run receipt is recorded.
-- Create a successor package with `the-pass workflow supersede` for new robustness, paper, risk,
-  or remediation evidence.
+- Use `the-pass candidate assemble` for the research candidate; use `workflow supersede` for later
+  paper, risk, or remediation evidence.
 - Every successor receives a new run ID and package ID and must replay prerequisite gates.
 
 ## 11. Build Reports
@@ -412,6 +452,10 @@ limits, gate decisions, ledgers, or approval state.
 - Forgetting `/reload-plugins` or a new session after installing the Claude Code plugin.
 - Starting with `paper_gate` before an exact research-gated package exists.
 - Using the same identity for strategy owner, run owner, and reviewer.
+- Treating a package-local reviewer registry as authorization instead of supplying an external
+  trusted registry.
+- Marking a launcher `hardened` without an allowlist policy and passing active probe.
+- Editing metrics or verdict JSON instead of using `candidate assemble`.
 - Editing a recorded package instead of creating a successor.
 - Treating a receipt, verdict string, filename, or dashboard label as gate passage.
 - Treating exit `2` as a software failure.

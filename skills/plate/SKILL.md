@@ -68,14 +68,16 @@ for `risk_review`; it does not perform that independent gate and never approves 
 the-pass risk build --returns <returns> --scenarios <scenarios> --package-id <package-id> \
   --asset-class <asset-class> --capacity <capacity> --output-dir <risk-work-dir>
 the-pass workflow supersede <paper-package> <risk-package> \
-  --ledger <ledger> --run-id <risk-run-id> --created-at <rfc3339>
+  --ledger <ledger> --run-id <risk-run-id> --created-at <rfc3339> \
+  --trusted-reviewers <trusted-registry>
 the-pass workflow fingerprint <risk-package>
 the-pass validate <risk-package>/risk_report.yaml --type risk_report
 the-pass validate <risk-package>/config_diff.yaml --type config_diff
 the-pass validate <risk-package>/approval_pack.yaml --type approval_pack
 the-pass validate-package <risk-package>
-the-pass receipts add <risk-package> --ledger <ledger>
-the-pass receipts verify --ledger <ledger>
+the-pass receipts add <risk-package> --ledger <ledger> \
+  --trusted-reviewers <trusted-registry>
+the-pass receipts verify --ledger <ledger> --trusted-reviewers <trusted-registry>
 ```
 
 ## Outputs
