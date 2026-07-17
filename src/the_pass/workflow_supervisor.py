@@ -3,21 +3,26 @@
 from __future__ import annotations
 
 import hashlib
-import json
 import os
-import signal
 import shutil
 import subprocess
 import tempfile
 import time
 from contextlib import contextmanager
 from dataclasses import dataclass
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterator, Mapping, Sequence
 
 import yaml
 
+from ._infra import (
+    exclusive_workflow_lock,
+    json_fingerprint,
+    terminate_process_strict,
+    terminate_remaining_process_group,
+    utc_now_iso_precise,
+    write_json_atomic,
+)
 from .agent_orchestration import route_workflow_stage
 from .attestation import (
     ATTESTATION_KEY_ENV,
@@ -446,90 +451,19 @@ class _IsolatedWorkflowTransaction:
         shutil.rmtree(self.temporary_root, ignore_errors=True)
 
 
-def _utc_now() -> str:
-    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+_utc_now = utc_now_iso_precise
 
 
-def _fingerprint(value: Any) -> str:
-    payload = json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
-    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+_fingerprint = json_fingerprint
 
 
-def _write_json_atomic(path: Path, document: Mapping[str, Any]) -> None:
-    path = path.resolve()
-    path.parent.mkdir(parents=True, exist_ok=True)
-    descriptor, temporary_name = tempfile.mkstemp(
-        prefix=f".{path.name}.", suffix=".tmp", dir=str(path.parent)
-    )
-    try:
-        with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
-            json.dump(document, handle, indent=2, sort_keys=True)
-            handle.write("\n")
-            handle.flush()
-            os.fsync(handle.fileno())
-        os.replace(temporary_name, path)
-    except Exception:
-        try:
-            os.unlink(temporary_name)
-        except FileNotFoundError:
-            pass
-        raise
+_write_json_atomic = write_json_atomic
 
 
 @contextmanager
 def _exclusive_workflow_lock(state_path: Path) -> Iterator[None]:
-    """Serialize supervisors for one canonical workflow state without stale lock cleanup."""
-
-    state_path = state_path.resolve()
-    lock_path = state_path.with_name(f"{state_path.name}.lock")
-    flags = os.O_RDWR | os.O_CREAT
-    if hasattr(os, "O_NOFOLLOW"):
-        flags |= os.O_NOFOLLOW
-    descriptor = os.open(lock_path, flags, 0o600)
-    acquired = False
-    try:
-        metadata = os.fstat(descriptor)
-        if not lock_path.is_file() or lock_path.is_symlink():
-            raise WorkflowSupervisorError("workflow lock must be a regular file")
-        if hasattr(os, "getuid") and metadata.st_uid != os.getuid():
-            raise WorkflowSupervisorError("workflow lock has an unexpected owner")
-        if hasattr(os, "fchmod"):
-            os.fchmod(descriptor, 0o600)
-        if os.name == "nt":
-            import msvcrt
-
-            if metadata.st_size == 0:
-                os.write(descriptor, b"0")
-            os.lseek(descriptor, 0, os.SEEK_SET)
-            try:
-                msvcrt.locking(descriptor, msvcrt.LK_NBLCK, 1)
-            except OSError as exc:
-                raise WorkflowSupervisorError(
-                    "another supervisor is active for this workflow state"
-                ) from exc
-        else:
-            import fcntl
-
-            try:
-                fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
-            except BlockingIOError as exc:
-                raise WorkflowSupervisorError(
-                    "another supervisor is active for this workflow state"
-                ) from exc
-        acquired = True
+    with exclusive_workflow_lock(state_path, WorkflowSupervisorError):
         yield
-    finally:
-        if acquired:
-            if os.name == "nt":
-                import msvcrt
-
-                os.lseek(descriptor, 0, os.SEEK_SET)
-                msvcrt.locking(descriptor, msvcrt.LK_UNLCK, 1)
-            else:
-                import fcntl
-
-                fcntl.flock(descriptor, fcntl.LOCK_UN)
-        os.close(descriptor)
 
 
 def _new_proposal_path(state_path: Path) -> Path:
@@ -586,38 +520,10 @@ def validate_supervised_transition(
     verify_workflow_evidence(dict(after))
 
 
-def _terminate(process: subprocess.Popen[bytes]) -> None:
-    if process.poll() is not None:
-        return
-    try:
-        if os.name != "nt":
-            os.killpg(process.pid, signal.SIGTERM)
-        else:
-            process.terminate()
-        process.wait(timeout=2)
-    except (OSError, subprocess.TimeoutExpired):
-        if os.name != "nt":
-            try:
-                os.killpg(process.pid, signal.SIGKILL)
-            except ProcessLookupError:
-                pass
-        else:
-            process.kill()
-        process.wait()
+_terminate = terminate_process_strict
 
 
-def _terminate_remaining_process_group(process: subprocess.Popen[bytes]) -> None:
-    if os.name == "nt":
-        return
-    try:
-        os.killpg(process.pid, signal.SIGTERM)
-    except ProcessLookupError:
-        return
-    time.sleep(0.05)
-    try:
-        os.killpg(process.pid, signal.SIGKILL)
-    except ProcessLookupError:
-        pass
+_terminate_remaining_process_group = terminate_remaining_process_group
 
 
 def _sha256_file(path: Path) -> str:

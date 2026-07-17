@@ -7,10 +7,10 @@ import json
 import os
 from contextlib import contextmanager
 from dataclasses import dataclass
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, BinaryIO, Iterator
 
+from ._infra import canonical_json, sha256_text, utc_now_iso_seconds as utc_now_iso
 from .validator import (
     PACKAGE_CORE_ARTIFACTS,
     PACKAGE_OPTIONAL_ARTIFACTS,
@@ -42,12 +42,8 @@ class LedgerAppendResult:
     message: str
 
 
-def canonical_json(value: Any) -> str:
-    return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
 
 
-def sha256_text(value: str) -> str:
-    return hashlib.sha256(value.encode("utf-8")).hexdigest()
 
 
 def sha256_file(path: Path) -> str:
@@ -63,13 +59,6 @@ def hash_entry(entry: dict[str, Any]) -> str:
     return sha256_text(canonical_json(without_hash))
 
 
-def utc_now_iso() -> str:
-    return (
-        datetime.now(timezone.utc)
-        .replace(microsecond=0)
-        .isoformat()
-        .replace("+00:00", "Z")
-    )
 
 
 @contextmanager

@@ -7,8 +7,6 @@ import json
 import os
 import re
 import shutil
-import signal
-import stat
 import subprocess
 import tempfile
 import time
@@ -21,6 +19,13 @@ from typing import Any, Iterator, Mapping, Sequence
 
 import yaml
 
+from ._infra import (
+    exclusive_dispatch_lock,
+    json_fingerprint,
+    terminate_process_safely,
+    terminate_remaining_process_group,
+    utc_now_iso_precise,
+)
 from .validator import load_document, repo_root_from, validate_artifact
 
 
@@ -89,13 +94,10 @@ class ModelSelection:
         }
 
 
-def _utc_now() -> str:
-    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+_utc_now = utc_now_iso_precise
 
 
-def _fingerprint(value: Any) -> str:
-    payload = json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
-    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+_fingerprint = json_fingerprint
 
 
 def _sha256_bytes(value: bytes) -> str:
@@ -576,81 +578,8 @@ def _runtime_depth(environment: Mapping[str, str] | None = None) -> int:
 
 @contextmanager
 def _exclusive_dispatch_lock(scope: str | Path | None = None) -> Iterator[None]:
-    """Serialize one workspace while runtime depth prevents recursive delegation."""
-
-    if os.name == "posix":
-        import pwd
-
-        account_home = Path(pwd.getpwuid(os.getuid()).pw_dir)
-    else:
-        account_home = Path.home()
-    lock_dir = account_home
-    for component in (".cache", "the-pass", "locks"):
-        lock_dir = lock_dir / component
-        if lock_dir.is_symlink():
-            raise AgentSafetyError("agent dispatch lock directory cannot use symlinks")
-        lock_dir.mkdir(mode=0o700, exist_ok=True)
-        metadata = lock_dir.stat()
-        if not stat.S_ISDIR(metadata.st_mode):
-            raise AgentSafetyError("agent dispatch lock path must be a directory")
-        if hasattr(os, "getuid") and metadata.st_uid != os.getuid():
-            raise AgentSafetyError("agent dispatch lock directory has an unexpected owner")
-    if hasattr(os, "chmod"):
-        os.chmod(lock_dir, 0o700)
-    scope_value = "global" if scope is None else str(Path(scope).expanduser().resolve())
-    scope_id = hashlib.sha256(scope_value.encode("utf-8")).hexdigest()[:24]
-    path = lock_dir / f"external-dispatch-{scope_id}.lock"
-    flags = os.O_RDWR | os.O_CREAT
-    if hasattr(os, "O_NOFOLLOW"):
-        flags |= os.O_NOFOLLOW
-    try:
-        descriptor = os.open(path, flags, 0o600)
-    except OSError as exc:
-        raise AgentSafetyError("cannot securely open the agent dispatch lock") from exc
-    acquired = False
-    try:
-        metadata = os.fstat(descriptor)
-        if not stat.S_ISREG(metadata.st_mode):
-            raise AgentSafetyError("agent dispatch lock must be a regular file")
-        if hasattr(os, "getuid") and metadata.st_uid != os.getuid():
-            raise AgentSafetyError("agent dispatch lock has an unexpected owner")
-        if hasattr(os, "fchmod"):
-            os.fchmod(descriptor, 0o600)
-        if os.name == "nt":
-            import msvcrt
-
-            if metadata.st_size == 0:
-                os.write(descriptor, b"0")
-            os.lseek(descriptor, 0, os.SEEK_SET)
-            try:
-                msvcrt.locking(descriptor, msvcrt.LK_NBLCK, 1)
-            except OSError as exc:
-                raise AgentSafetyError(
-                    "another external agent dispatch is active; nested or concurrent dispatch is forbidden"
-                ) from exc
-        else:
-            import fcntl
-
-            try:
-                fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
-            except BlockingIOError as exc:
-                raise AgentSafetyError(
-                    "another external agent dispatch is active; nested or concurrent dispatch is forbidden"
-                ) from exc
-        acquired = True
+    with exclusive_dispatch_lock(scope, AgentSafetyError):
         yield
-    finally:
-        if acquired:
-            if os.name == "nt":
-                import msvcrt
-
-                os.lseek(descriptor, 0, os.SEEK_SET)
-                msvcrt.locking(descriptor, msvcrt.LK_UNLCK, 1)
-            else:
-                import fcntl
-
-                fcntl.flock(descriptor, fcntl.LOCK_UN)
-        os.close(descriptor)
 
 
 def _forbidden_objective(task: Mapping[str, Any], policy: Mapping[str, Any]) -> str | None:
@@ -979,38 +908,10 @@ def _child_environment(context: TaskContext, run_id: str) -> dict[str, str]:
     return child
 
 
-def _terminate(process: subprocess.Popen) -> None:
-    if process.poll() is not None:
-        return
-    try:
-        if os.name != "nt":
-            os.killpg(process.pid, signal.SIGTERM)
-        else:
-            process.terminate()
-        process.wait(timeout=2)
-    except (OSError, subprocess.TimeoutExpired):
-        try:
-            if os.name != "nt":
-                os.killpg(process.pid, signal.SIGKILL)
-            else:
-                process.kill()
-        except OSError:
-            pass
-        process.wait()
+_terminate = terminate_process_safely
 
 
-def _terminate_remaining_process_group(process: subprocess.Popen) -> None:
-    if os.name == "nt":
-        return
-    try:
-        os.killpg(process.pid, signal.SIGTERM)
-    except ProcessLookupError:
-        return
-    time.sleep(0.05)
-    try:
-        os.killpg(process.pid, signal.SIGKILL)
-    except ProcessLookupError:
-        pass
+_terminate_remaining_process_group = terminate_remaining_process_group
 
 
 def _run_bounded_process(

@@ -1,8 +1,12 @@
 # Schemas
 
-These JSON Schemas define the first public contract for The Pass artifacts. They are
+These JSON Schemas define the public contract for The Pass artifacts. They are
 intentionally conservative: a file can contain more detail than the schema requires, but
 gate-critical fields should be present and typed.
+
+The root `schemas/` directory is authoritative. After changing it, run
+`python3 scripts/sync_schemas.py` to copy the exact JSON schema set into
+`src/the_pass/schemas/`; `scripts/validate_public_repo.py` enforces byte equality.
 
 Core run artifacts:
 
@@ -31,7 +35,7 @@ Slash-workflow artifacts:
 Current hardening artifacts:
 
 - `dataset_plan.v1.schema.json`
-- `dataset_receipt.v1.schema.json`
+- `dataset_receipt.v2.schema.json`
 - `reproduction_spec.v1.schema.json`
 - `reviewer_attestation.v1.schema.json`
 

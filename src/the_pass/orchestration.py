@@ -6,12 +6,12 @@ import json
 import os
 import shutil
 import tempfile
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 import yaml
 
+from ._infra import atomic_write_document, utc_now_iso_seconds
 from .ledger import (
     LEDGER_SCHEMA_V2,
     LedgerError,
@@ -82,13 +82,7 @@ class ForbiddenWorkflowError(WorkflowError):
     """Raised when a workflow attempts to cross the public live boundary."""
 
 
-def utc_now_iso() -> str:
-    return (
-        datetime.now(timezone.utc)
-        .replace(microsecond=0)
-        .isoformat()
-        .replace("+00:00", "Z")
-    )
+utc_now_iso = utc_now_iso_seconds
 
 
 def load_pipeline_policy(path: Path = DEFAULT_PIPELINE_PATH) -> dict[str, Any]:
@@ -892,27 +886,7 @@ def advance_workflow_state(
 
 
 def _write_document_atomic(path: Path, document: dict[str, Any]) -> None:
-    path = path.resolve()
-    path.parent.mkdir(parents=True, exist_ok=True)
-    descriptor, temporary_name = tempfile.mkstemp(
-        prefix=f".{path.name}.", suffix=".tmp", dir=str(path.parent)
-    )
-    try:
-        with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
-            if path.suffix.lower() == ".json":
-                json.dump(document, handle, indent=2, sort_keys=True)
-                handle.write("\n")
-            else:
-                yaml.safe_dump(document, handle, sort_keys=False)
-            handle.flush()
-            os.fsync(handle.fileno())
-        os.replace(temporary_name, path)
-    except Exception:
-        try:
-            os.unlink(temporary_name)
-        except FileNotFoundError:
-            pass
-        raise
+    atomic_write_document(path, document)
 
 
 def create_superseding_package(

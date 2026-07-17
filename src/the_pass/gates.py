@@ -7,12 +7,12 @@ import json
 import os
 import tempfile
 from dataclasses import dataclass
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 import yaml
 
+from ._infra import utc_now_iso_seconds as utc_now_iso
 from .attestation import (
     AttestationError,
     attestation_path,
@@ -56,13 +56,6 @@ class GateEvaluation:
     exit_code: int
 
 
-def utc_now_iso() -> str:
-    return (
-        datetime.now(timezone.utc)
-        .replace(microsecond=0)
-        .isoformat()
-        .replace("+00:00", "Z")
-    )
 
 
 def policy_document(policy_path: Path) -> tuple[dict[str, Any], str]:
