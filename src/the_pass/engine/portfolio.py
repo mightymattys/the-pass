@@ -54,6 +54,13 @@ class AccountingPortfolio:
     def positions(self) -> Mapping[str, Decimal]:
         return {instrument: state.quantity for instrument, state in self._positions.items()}
 
+    @property
+    def instrument_multipliers(self) -> Mapping[str, Decimal]:
+        return {
+            instrument: metadata.multiplier
+            for instrument, metadata in self._instruments.items()
+        }
+
     def register_instrument(
         self,
         instrument_id: str,

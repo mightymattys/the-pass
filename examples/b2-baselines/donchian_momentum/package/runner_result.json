@@ -12,9 +12,11 @@
   "diagnostics": {
     "equity_sampling_interval": 1,
     "fill_model_promotion_eligible": true,
+    "instrument_multipliers": {},
     "lifecycle_events": [],
     "missed_fill_opportunity_cost": "not estimated",
     "missed_intents": 0,
+    "promotion_eligible": true,
     "rejected_intents": 0,
     "streaming_replay": true
   },

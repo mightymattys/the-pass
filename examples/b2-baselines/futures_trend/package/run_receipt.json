@@ -6,7 +6,7 @@
   "data_manifest": "data_manifest.json",
   "id": "futures_diversified_trend_v1-run",
   "inputs": {
-    "dataset_fingerprint": "00db3c45989ad1dab8285f1c8745e1d779c1df148ce13dc66343f49be214e42d",
+    "dataset_fingerprint": "95490d438a8228a4b9a443f5aab50d120bf882b49b0f7169dd85805fef0a7def",
     "search_space": "search_space.json"
   },
   "notes": "Deterministic public synthetic B2 baseline.",

@@ -12,6 +12,8 @@ from .contracts import SimulatedIntent
 
 @dataclass(frozen=True)
 class LinearCostModel:
+    """Costs relative to a mid-execution gross-PnL baseline."""
+
     fee_rate: Decimal = Decimal("0.001")
     impact_bps: Decimal = Decimal(0)
 
@@ -43,7 +45,10 @@ class LinearCostModel:
         fee = notional * effective_fee_rate
         spread = Decimal(0)
         if reference_mid is not None:
-            spread = abs(price - reference_mid) * quantity
+            direction = Decimal(1) if intent.side == "buy" else Decimal(-1)
+            spread = max(
+                Decimal(0), direction * (price - reference_mid) * quantity
+            )
         impact = notional * self.impact_bps / Decimal(10_000)
         return {
             "fee": fee,

@@ -89,6 +89,9 @@ class EventSimulator:
             if checkpoint is not None
             else AccountingPortfolio(self.initial_cash)
         )
+        checkpoint_pending = (
+            list(checkpoint["pending"]) if checkpoint is not None else []
+        )
         pending: list[SimulatedIntent] = (
             [
                 SimulatedIntent(
@@ -104,16 +107,25 @@ class EventSimulator:
                         else None
                     ),
                 )
-                for row in checkpoint["pending"]
+                for row in checkpoint_pending
             ]
             if checkpoint is not None
             else []
         )
+        pending_reasons = {
+            str(row["intent_id"]): str(row.get("latest_outcome_reason", ""))
+            for row in checkpoint_pending
+            if row.get("latest_outcome_reason")
+        }
         all_intents: list[SimulatedIntent] = []
         fills = []
         rejected: list[dict[str, object]] = []
         missed: list[dict[str, object]] = []
-        equity_curve: list[dict[str, object]] = []
+        equity_curve: list[dict[str, object]] = (
+            list(checkpoint.get("equity_curve", []))
+            if checkpoint is not None
+            else []
+        )
         cost_names = (
                 "fees",
                 "spread",
@@ -147,6 +159,17 @@ class EventSimulator:
             if checkpoint is not None
             else None
         )
+        previous_receive_time_ns = (
+            int(checkpoint["last_receive_time_ns"])
+            if checkpoint is not None
+            and checkpoint.get("last_receive_time_ns") is not None
+            else None
+        )
+        previous_ingest_id = (
+            str(checkpoint["last_ingest_id"])
+            if checkpoint is not None and checkpoint.get("last_ingest_id")
+            else None
+        )
         previous_key: tuple[object, ...] | None = checkpoint_last_key
         last_event: CanonicalEvent | None = None
 
@@ -166,10 +189,25 @@ class EventSimulator:
                 )
             if previous_key is not None and key < previous_key:
                 raise ValueError("ordered event stream is not deterministic")
+            if (
+                previous_receive_time_ns is not None
+                and event.receive_time_ns < previous_receive_time_ns
+            ):
+                raise ValueError(
+                    "receive_time_ns decreased between "
+                    f"{previous_ingest_id or '<checkpoint event>'} "
+                    f"({previous_receive_time_ns}) and {event.ingest_id} "
+                    f"({event.receive_time_ns}); run the receive_time_inversion quality check"
+                )
             previous_key = key
+            previous_receive_time_ns = event.receive_time_ns
+            previous_ingest_id = event.ingest_id
             last_event = event
             processed += 1
             portfolio.begin_event(event.receive_time_ns)
+            begin_fill_event = getattr(self.fill_model, "begin_event", None)
+            if begin_fill_event is not None:
+                begin_fill_event(event)
 
             if event.event_type == EventType.INSTRUMENT_DEFINITION:
                 portfolio.register_instrument(
@@ -239,6 +277,7 @@ class EventSimulator:
                 )
 
             still_pending = []
+            next_pending_reasons: dict[str, str] = {}
             for intent in pending:
                 outcome = self.fill_model.evaluate(
                     intent, event, self.cost_model
@@ -267,6 +306,10 @@ class EventSimulator:
                         }
                     )
                 elif outcome.remaining_quantity > 0:
+                    latest_reason = (
+                        outcome.reason
+                        or pending_reasons.get(intent.intent_id, "")
+                    )
                     still_pending.append(
                         SimulatedIntent(
                             intent.intent_id,
@@ -278,7 +321,10 @@ class EventSimulator:
                             intent.limit_price,
                         )
                     )
+                    if latest_reason:
+                        next_pending_reasons[intent.intent_id] = latest_reason
             pending = still_pending
+            pending_reasons = next_pending_reasons
 
             mark_value = event.payload.get(
                 "close", event.payload.get("price")
@@ -315,9 +361,10 @@ class EventSimulator:
                 EventType.SETTLEMENT,
             }:
                 snapshot = portfolio.snapshot(event.receive_time_ns)
+            absolute_index = event_offset + index
             if snapshot is not None and (
-                index % self.equity_sampling_interval == 0
-                or index == total_events - 1
+                absolute_index % self.equity_sampling_interval == 0
+                or (not checkpoint_mode and index == total_events - 1)
             ):
                 equity_curve.append(snapshot)
 
@@ -382,11 +429,13 @@ class EventSimulator:
                     {
                         "intent_id": intent.intent_id,
                         "quantity": intent.quantity,
-                        "reason": "no subsequent fill evidence",
+                        "reason": pending_reasons.get(
+                            intent.intent_id, "no subsequent fill evidence"
+                        ),
                     }
                 )
         final_snapshot = portfolio.snapshot(last_event.receive_time_ns)
-        if (
+        if not checkpoint_mode and (
             not equity_curve
             or equity_curve[-1]["event_time_ns"]
             != final_snapshot["event_time_ns"]
@@ -411,6 +460,9 @@ class EventSimulator:
                             if intent.limit_price is not None
                             else None
                         ),
+                        "latest_outcome_reason": pending_reasons.get(
+                            intent.intent_id, ""
+                        ),
                     }
                     for intent in pending
                 ],
@@ -421,6 +473,9 @@ class EventSimulator:
                     for name, value in sorted(costs.items())
                 },
                 "last_event_key": list(previous_key or ()),
+                "last_receive_time_ns": previous_receive_time_ns,
+                "last_ingest_id": previous_ingest_id,
+                "equity_curve": equity_curve,
             }
             if checkpoint_mode
             else None
@@ -438,12 +493,15 @@ class EventSimulator:
             final_snapshot=final_snapshot,
             diagnostics={
                 "fill_model_promotion_eligible": self.fill_model.promotion_eligible,
+                "promotion_eligible": self.fill_model.promotion_eligible
+                and all(Decimal(row["equity"]) > 0 for row in equity_curve),
                 "rejected_intents": len(rejected),
                 "missed_intents": len(missed),
                 "missed_fill_opportunity_cost": "not estimated",
                 "lifecycle_events": lifecycle_events,
                 "equity_sampling_interval": self.equity_sampling_interval,
                 "streaming_replay": True,
+                "instrument_multipliers": dict(portfolio.instrument_multipliers),
             },
             checkpoint=checkpoint_document,
         )

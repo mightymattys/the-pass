@@ -42,8 +42,12 @@ the metrics/verdict references. Agents and users should never hand-edit a record
   limits, and record unfilled remainder.
 - Limit intents require a later trade or book event; queue and adverse-selection haircuts
   are applied after participation limits.
-- Bar intents fill only at a later bar open with adverse slippage.
+- Bar intents fill only at a later bar open with adverse slippage and at most 10% of
+  reported bar volume by default across all intents evaluated on that bar. Missing- or
+  zero-volume bars cannot fill, and capped remainder stays pending with its latest miss reason.
 - Dynamic event-level fees and market impact are recorded separately from spread and slippage.
+  Spread cost is adverse execution versus the contemporaneous mid; favorable passive
+  execution contributes zero spread cost to the mid-execution gross baseline.
 - Futures multiplier PnL, signed funding, borrow, roll, and settlement are explicit lifecycle
   accounting events.
 - Midpoint fills are diagnostic and have `promotion_eligible = false`.
@@ -52,12 +56,19 @@ the metrics/verdict references. Agents and users should never hand-edit a record
 ## Metrics And Costs
 
 - Net metrics use the accounting equity curve after explicit costs.
+- Sampling uses the absolute replay offset, so checkpointed and single-pass equity curves
+  match. Only the true final replay call force-samples its last event.
 - Gross path metrics use a separate reconstructed equity curve that adds timestamped fill costs
   back at each observation; unallocated costs fail the reconstruction instead of silently reusing
   net returns.
 - Annualization is explicit in `metrics_report.annualization`. Continuous crypto and prediction
   markets use a 365.25-day calendar; listed-futures diagnostics use 252 sessions of 6.5 hours.
   Both derive observations per year from the median equity interval.
+- Any sampled equity at or below zero blocks promotion and invalidates the reported return,
+  volatility, ratio, drawdown, and turnover metrics instead of silently skipping a period.
+- Turnover uses instrument multipliers when converting fills to notional. A non-empty multiplier
+  map must cover every filled instrument. The synthetic futures-trend baseline declares a 50x
+  contract multiplier through an instrument-definition event.
 - A `paper_candidate` without a positive, named annualization policy is invalid.
 
 ## Reproduction

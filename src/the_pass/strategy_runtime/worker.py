@@ -8,6 +8,7 @@ import os
 import resource
 import sys
 from dataclasses import asdict
+from decimal import Decimal
 from pathlib import Path
 from typing import Any, Dict, Mapping, Sequence
 
@@ -45,6 +46,11 @@ def _build_fill_model(config: ExecutionConfig) -> Any:
         return BarFillModel(
             slippage_bps=config.slippage_bps,
             minimum_latency_ns=config.minimum_latency_ns,
+            participation_rate=(
+                config.participation_rate
+                if config.schema_version == 2
+                else Decimal("0.10")
+            ),
         )
     if config.fill_model == "market_depth":
         return MarketDepthFillModel(
@@ -260,7 +266,7 @@ def execute_request(request: Mapping[str, Any]) -> Dict[str, Any]:
             "execution_fingerprint": execution.fingerprint,
             "risk_fingerprint": risk_fingerprint,
             "strategy_state": strategy_state,
-            "simulator": result.checkpoint,
+            "simulator": canonical_value(result.checkpoint),
         }
         checkpoint_document["checkpoint_fingerprint"] = stable_fingerprint(
             checkpoint_document
@@ -302,7 +308,8 @@ def execute_request(request: Mapping[str, Any]) -> Dict[str, Any]:
         "equity": canonical_value(result.equity_curve, allow_float=True),
         "final_portfolio": canonical_value(result.final_snapshot, allow_float=True),
         "diagnostics": canonical_value(result.diagnostics, allow_float=True),
-        "promotion_eligible": execution.promotion_eligible,
+        "promotion_eligible": execution.promotion_eligible
+        and bool(result.diagnostics.get("promotion_eligible")),
         "promotion_status": "blocked",
     }
     return {**core, "result_fingerprint": stable_fingerprint(core)}

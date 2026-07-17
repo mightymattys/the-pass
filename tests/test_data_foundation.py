@@ -63,6 +63,36 @@ class FakePublicClient:
         return self.responses[url]
 
 
+class BinanceWindowClient:
+    def __init__(self, rows: list[list[object]]) -> None:
+        self.rows = rows
+        self.calls: list[dict[str, object]] = []
+
+    def get_json(self, url: str, *, params: object = None) -> object:
+        assert isinstance(params, dict)
+        self.calls.append(dict(params))
+        start = int(params.get("startTime", 0))
+        end = int(params.get("endTime", 2**63 - 1))
+        limit = int(params["limit"])
+        return [row for row in self.rows if start <= int(row[0]) <= end][
+            :limit
+        ]
+
+
+def binance_kline(open_time_ms: int, close: str = "100") -> list[object]:
+    return [
+        open_time_ms,
+        close,
+        close,
+        close,
+        close,
+        "10",
+        open_time_ms + 59_999,
+        "1000",
+        5,
+    ]
+
+
 def bar(
     timestamp: int,
     close: str,
@@ -125,6 +155,19 @@ class CanonicalContractTests(unittest.TestCase):
         )
         self.assertEqual(left, right)
         self.assertEqual(left.rows[1]["return_1"], "0.1")
+
+    def test_feature_build_rejects_events_that_do_not_match_fingerprint(self) -> None:
+        first = bar(1_000, "100", sequence=1)
+        blessed = stable_fingerprint([first.as_dict()])
+        edited = bar(1_000, "101", sequence=1)
+        with self.assertRaisesRegex(ValueError, "dataset_fingerprint"):
+            build_bar_features(
+                [edited],
+                dataset_fingerprint=blessed,
+                code_version="test",
+                config={},
+                created_at="2026-07-10T00:00:00Z",
+            )
 
     def test_receive_time_controls_decision_availability(self) -> None:
         event = bar(100, "10", sequence=1, receive_offset=50)
@@ -226,6 +269,22 @@ class QualityTests(unittest.TestCase):
         self.assertEqual(crossed["count"], 1)
         self.assertEqual(report["promotion_impact"], "blocked")
 
+    def test_receive_time_inversion_blocks_quality(self) -> None:
+        first = bar(100, "100", sequence=1, receive_offset=200)
+        second = bar(200, "101", sequence=2, receive_offset=1)
+        report = build_quality_report(
+            "receive-inversion",
+            [first, second],
+            created_at="2026-07-10T00:00:00Z",
+        )
+        check = next(
+            item
+            for item in report["checks"]
+            if item["code"] == "receive_time_inversion"
+        )
+        self.assertEqual(check["count"], 1)
+        self.assertEqual(report["promotion_impact"], "blocked")
+
 
 class AdapterContractTests(unittest.TestCase):
     def test_binance_fixture_normalizes_losslessly(self) -> None:
@@ -235,8 +294,71 @@ class AdapterContractTests(unittest.TestCase):
         events = adapter.normalize(raw, FetchRequest(kind="klines", instrument_id="BTCUSDT"), receive_time_ns=1704067260000000000)
         self.assertIsInstance(adapter, ReadOnlyAdapter)
         self.assertEqual(events[0].payload["close"], Decimal("42050.25"))
-        self.assertEqual(events[0].receive_time_ns, 1704067259999000000)
+        self.assertEqual(events[0].receive_time_ns, 1704067260000000000)
+        self.assertEqual(events[0].payload["close_time_ns"], 1704067259999000000)
         self.assertEqual(adapter.capabilities.maximum_promotion_mode, "diagnostic")
+
+    def test_binance_excludes_unclosed_candle_and_keeps_receive_time(self) -> None:
+        adapter = BinanceSpotAdapter(client=FakePublicClient({}))  # type: ignore[arg-type]
+        receive_time_ns = 120_000_000_000
+        events = adapter.normalize(
+            [binance_kline(0), binance_kline(120_000)],
+            FetchRequest(kind="klines", instrument_id="BTCUSDT"),
+            receive_time_ns=receive_time_ns,
+        )
+        self.assertEqual(len(events), 1)
+        self.assertEqual(events[0].receive_time_ns, receive_time_ns)
+
+    def test_binance_half_open_chunks_and_refetches_are_stable(self) -> None:
+        client = BinanceWindowClient([binance_kline(0), binance_kline(60_000)])
+        adapter = BinanceSpotAdapter(client=client)  # type: ignore[arg-type]
+        first_request = FetchRequest(
+            kind="klines",
+            instrument_id="BTCUSDT",
+            start_ns=0,
+            end_ns=60_000_000_000,
+            limit=2,
+        )
+        second_request = FetchRequest(
+            kind="klines",
+            instrument_id="BTCUSDT",
+            start_ns=60_000_000_000,
+            end_ns=120_000_000_000,
+            limit=2,
+        )
+        first_raw = adapter.fetch_raw(first_request)
+        second_raw = adapter.fetch_raw(second_request)
+        first = adapter.normalize(first_raw, first_request, receive_time_ns=200_000_000_000)
+        second = adapter.normalize(second_raw, second_request, receive_time_ns=200_000_000_000)
+        refetched = adapter.normalize(
+            adapter.fetch_raw(first_request),
+            first_request,
+            receive_time_ns=200_000_000_000,
+        )
+        self.assertEqual(client.calls[0]["endTime"], 59_999)
+        self.assertEqual(len({event.ingest_id for event in [*first, *second]}), 2)
+        self.assertEqual(first, refetched)
+
+    def test_binance_fetch_paginates_until_short_page(self) -> None:
+        client = BinanceWindowClient(
+            [
+                binance_kline(0),
+                binance_kline(60_000),
+                binance_kline(120_000),
+            ]
+        )
+        adapter = BinanceSpotAdapter(client=client)  # type: ignore[arg-type]
+        rows = adapter.fetch_raw(
+            FetchRequest(
+                kind="klines",
+                instrument_id="BTCUSDT",
+                start_ns=0,
+                end_ns=180_000_000_000,
+                limit=2,
+            )
+        )
+        self.assertEqual([row[0] for row in rows], [0, 60_000, 120_000])
+        self.assertEqual(len(client.calls), 2)
 
     def test_polymarket_dynamic_fee_and_book_normalization(self) -> None:
         fee_url = f"{PolymarketAdapter.clob_base}/fee-rate/token-yes"
@@ -257,6 +379,19 @@ class AdapterContractTests(unittest.TestCase):
         self.assertTrue(snapshot["dynamic"])
         self.assertIsNone(client.calls[0][1])
 
+    def test_polymarket_rejects_seconds_and_microseconds_timestamps(self) -> None:
+        adapter = PolymarketAdapter(client=FakePublicClient({}))  # type: ignore[arg-type]
+        request = FetchRequest(kind="book", instrument_id="token-yes")
+        for timestamp in ("1704067200", "1704067200000000"):
+            with self.subTest(timestamp=timestamp), self.assertRaisesRegex(
+                ValueError, "timestamp units"
+            ):
+                adapter.normalize(
+                    {"timestamp": timestamp, "bids": [], "asks": []},
+                    request,
+                    receive_time_ns=1_704_067_201_000_000_000,
+                )
+
     def test_futures_fixture_replay_and_path_boundary(self) -> None:
         adapter = DatabentoCompatibleFuturesAdapter(FUTURES_FIXTURE)
         instruments = adapter.discover_instruments()
@@ -270,8 +405,13 @@ class AdapterContractTests(unittest.TestCase):
 
     def test_futures_volume_roll_keeps_concrete_execution_contract(self) -> None:
         events = []
-        for timestamp, front_volume, back_volume in ((100, "10", "5"), (200, "4", "12")):
-            for contract, close, volume in (("ESU6", "5000", front_volume), ("ESZ6", "5010", back_volume)):
+        fixtures = (
+            (100, "5000", "5010", "10", "5"),
+            (200, "5002", "5012", "4", "12"),
+            (300, "5005", "5015", "3", "13"),
+        )
+        for timestamp, old_close, new_close, front_volume, back_volume in fixtures:
+            for contract, close, volume in (("ESU6", old_close, front_volume), ("ESZ6", new_close, back_volume)):
                 events.append(
                     CanonicalEvent.from_raw(
                         raw={"contract": contract, "timestamp": timestamp},
@@ -287,10 +427,104 @@ class AdapterContractTests(unittest.TestCase):
                     )
                 )
         rows = build_volume_rolled_series(events)
-        self.assertEqual([row["execution_instrument_id"] for row in rows], ["ESU6", "ESZ6"])
+        self.assertEqual([row["execution_instrument_id"] for row in rows], ["ESU6", "ESU6", "ESZ6"])
         self.assertFalse(rows[0]["rolled"])
-        self.assertTrue(rows[1]["rolled"])
-        self.assertEqual(rows[1]["signal_close"], "5000")
+        self.assertTrue(rows[2]["rolled"])
+        self.assertEqual(rows[2]["roll_adjustment"], "-10")
+        self.assertEqual(rows[2]["signal_close"], "5005")
+
+    def test_futures_volume_roll_hysteresis_ignores_flip_flops(self) -> None:
+        events = []
+        volumes = ((100, "10", "5"), (200, "4", "12"), (300, "11", "6"), (400, "3", "13"))
+        for timestamp, front_volume, back_volume in volumes:
+            for contract, volume in (("ESU6", front_volume), ("ESZ6", back_volume)):
+                events.append(
+                    CanonicalEvent.from_raw(
+                        raw={"contract": contract, "timestamp": timestamp},
+                        source="fixture",
+                        venue="XCME",
+                        asset_class="futures",
+                        instrument_id=contract,
+                        event_type=EventType.BAR,
+                        event_time_ns=timestamp,
+                        receive_time_ns=timestamp + 1,
+                        ingest_id=f"flip-{contract}-{timestamp}",
+                        payload={"close": Decimal("5000"), "volume": Decimal(volume)},
+                    )
+                )
+        rows = build_volume_rolled_series(events)
+        self.assertEqual(
+            [row["execution_instrument_id"] for row in rows],
+            ["ESU6", "ESU6", "ESU6", "ESU6"],
+        )
+        self.assertFalse(any(row["rolled"] for row in rows))
+
+    def test_futures_volume_roll_ties_retain_incumbent_and_reset_streak(self) -> None:
+        events = []
+        volumes = (
+            (100, "10", "5"),
+            (200, "4", "12"),
+            (300, "8", "8"),
+            (400, "4", "12"),
+        )
+        for timestamp, front_volume, back_volume in volumes:
+            for contract, volume in (
+                ("ESU6", front_volume),
+                ("ESZ6", back_volume),
+            ):
+                events.append(
+                    CanonicalEvent.from_raw(
+                        raw={"contract": contract, "timestamp": timestamp},
+                        source="fixture",
+                        venue="XCME",
+                        asset_class="futures",
+                        instrument_id=contract,
+                        event_type=EventType.BAR,
+                        event_time_ns=timestamp,
+                        receive_time_ns=timestamp + 1,
+                        ingest_id=f"tie-{contract}-{timestamp}",
+                        payload={
+                            "close": Decimal("5000"),
+                            "volume": Decimal(volume),
+                        },
+                    )
+                )
+        rows = build_volume_rolled_series(events)
+        self.assertEqual(
+            [row["execution_instrument_id"] for row in rows],
+            ["ESU6", "ESU6", "ESU6", "ESU6"],
+        )
+        self.assertFalse(any(row["rolled"] for row in rows))
+
+    def test_futures_volume_roll_names_missing_incumbent_before_switch(self) -> None:
+        events = []
+        for timestamp, contracts in (
+            (100, (("ESU6", "10"), ("ESZ6", "5"))),
+            (200, (("ESZ6", "12"),)),
+        ):
+            for contract, volume in contracts:
+                events.append(
+                    CanonicalEvent.from_raw(
+                        raw={"contract": contract, "timestamp": timestamp},
+                        source="fixture",
+                        venue="XCME",
+                        asset_class="futures",
+                        instrument_id=contract,
+                        event_type=EventType.BAR,
+                        event_time_ns=timestamp,
+                        receive_time_ns=timestamp + 1,
+                        ingest_id=f"missing-{contract}-{timestamp}",
+                        payload={
+                            "close": Decimal("5000"),
+                            "volume": Decimal(volume),
+                        },
+                    )
+                )
+        with self.assertRaisesRegex(
+            ValueError,
+            r"incumbent contract ESU6 missing while challenger ESZ6.*timestamp 200",
+        ):
+            build_volume_rolled_series(events, persistence_bars=1)
 
     def test_polymarket_book_hash_gap_requires_resync(self) -> None:
         snapshot = CanonicalEvent.from_raw(

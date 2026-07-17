@@ -52,6 +52,7 @@ CHECK_DEFINITIONS = (
     ("roll_gaps", "warning"),
     ("provider_truncation", "error"),
     ("negative_receive_latency", "critical"),
+    ("receive_time_inversion", "error"),
 )
 
 
@@ -90,6 +91,14 @@ def build_quality_report(
     for index in range(1, len(original)):
         if original[index - 1].sort_key() > original[index].sort_key():
             _record(affected, "timestamp_disorder", f"rows:{index - 1}-{index}")
+
+    for previous, current in zip(ordered, ordered[1:]):
+        if current.receive_time_ns < previous.receive_time_ns:
+            _record(
+                affected,
+                "receive_time_inversion",
+                f"{previous.ingest_id}->{current.ingest_id}",
+            )
 
     seen: dict[tuple[Any, ...], int] = {}
     for index, event in enumerate(original):

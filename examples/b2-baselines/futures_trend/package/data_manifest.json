@@ -13,7 +13,7 @@
   "dataset_name": "futures_diversified_trend_v1-synthetic-bars",
   "fingerprint": {
     "method": "sha256",
-    "value": "00db3c45989ad1dab8285f1c8745e1d779c1df148ce13dc66343f49be214e42d"
+    "value": "95490d438a8228a4b9a443f5aab50d120bf882b49b0f7169dd85805fef0a7def"
   },
   "id": "futures_diversified_trend_v1-data",
   "limitations": [
@@ -26,7 +26,7 @@
     ],
     "duplicate_policy": "duplicates block packaging",
     "missing_intervals": [],
-    "row_count": 96,
+    "row_count": 97,
     "sequence_gap_policy": "gaps block packaging"
   },
   "schema": {

@@ -204,6 +204,8 @@ class CanonicalEvent:
         )
 
     def sort_key(self) -> tuple[int, int, int, str]:
+        """Canonical storage order; replay additionally requires nondecreasing receive time."""
+
         sequence = self.sequence if self.sequence is not None else 2**63 - 1
         return (self.event_time_ns, sequence, self.receive_time_ns, self.ingest_id)
 

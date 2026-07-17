@@ -12,6 +12,9 @@ from the_pass.data.contracts import CanonicalEvent, EventType
 from .contracts import RunnerContext, SimulatedIntent
 
 
+FUTURES_TREND_CONTRACT_MULTIPLIER = Decimal("50")
+
+
 class TargetPositionStrategy:
     strategy_id = "target-position-base"
 
@@ -132,6 +135,38 @@ class VolatilityFilteredMeanReversionBaseline(TargetPositionStrategy):
 
 class FuturesTrendBaseline(DonchianMomentumBaseline):
     strategy_id = "futures_diversified_trend_v1"
+
+
+def with_synthetic_instrument_definition(
+    bars: Sequence[CanonicalEvent], *, multiplier: Decimal
+) -> list[CanonicalEvent]:
+    """Prepend accounting metadata to a synthetic futures bar series."""
+
+    if not bars:
+        raise ValueError("instrument definition requires at least one bar")
+    if not multiplier.is_finite() or multiplier <= 0:
+        raise ValueError("instrument multiplier must be positive and finite")
+    first = bars[0]
+    definition = CanonicalEvent.from_raw(
+        raw={
+            "instrument_id": first.instrument_id,
+            "instrument_type": "future",
+            "multiplier": format(multiplier, "f"),
+        },
+        source=first.source,
+        venue=first.venue,
+        asset_class=first.asset_class,
+        instrument_id=first.instrument_id,
+        event_type=EventType.INSTRUMENT_DEFINITION,
+        event_time_ns=first.event_time_ns - 1,
+        receive_time_ns=first.receive_time_ns - 1,
+        ingest_id=f"{first.instrument_id}-instrument-definition",
+        payload={
+            "instrument_type": "future",
+            "multiplier": multiplier,
+        },
+    )
+    return [definition, *bars]
 
 
 def generate_synthetic_bars(

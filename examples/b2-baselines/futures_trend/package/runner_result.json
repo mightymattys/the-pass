@@ -12,19 +12,23 @@
   "diagnostics": {
     "equity_sampling_interval": 1,
     "fill_model_promotion_eligible": true,
+    "instrument_multipliers": {
+      "ES_CONT": "50"
+    },
     "lifecycle_events": [],
     "missed_fill_opportunity_cost": "not estimated",
     "missed_intents": 0,
+    "promotion_eligible": true,
     "rejected_intents": 0,
     "streaming_replay": true
   },
-  "events_processed": 96,
+  "events_processed": 97,
   "fills": 2,
   "final_snapshot": {
     "borrow": "0",
-    "cash": "100021.009885675",
+    "cash": "101061.604510675",
     "collateral": "0",
-    "equity": "100021.009885675",
+    "equity": "101061.604510675",
     "event_time_ns": 1704072900001000000,
     "fees": "0.226739325",
     "funding": "0",
@@ -33,7 +37,7 @@
     "positions": {
       "ES_CONT": "0"
     },
-    "realized_pnl": "21.236625",
+    "realized_pnl": "1061.831250",
     "roll": "0",
     "unrealized_pnl": "0.00"
   },

@@ -2,9 +2,9 @@
 
 Status: diagnostic baseline
 
-- Net PnL: 21.00988567
-- Total return: 0.00021010
-- Max drawdown: 0.00000800
+- Net PnL: 1061.60451068
+- Total return: 0.01061605
+- Max drawdown: 0.00039987
 - Trades: 2
 - Fees: 0.22673932
 - Slippage: 0.11337500

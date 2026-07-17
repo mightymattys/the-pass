@@ -8,8 +8,8 @@
     "task_sha256": "907fc832d534369f4a204335c828413393e9a3e67d88fcc4ee9a6eec941009a8"
   },
   "gate_id": "research_gate",
-  "id": "att_research_gate_4d49e7573d3ed8aa992b4ee9_2139521b",
-  "package_id": "pkg_4d49e7573d3ed8aa992b4ee9",
+  "id": "att_research_gate_93103c0d7ae0a3d1066456af_2139521b",
+  "package_id": "pkg_93103c0d7ae0a3d1066456af",
   "principal": {
     "model": "independent-v3-review",
     "provider": "fixture_provider",
@@ -22,7 +22,7 @@
     "author_provider": "codex",
     "reviewer_provider": "fixture_provider"
   },
-  "signature": "avH9gsjGGJnGN/mQQCQW7mRJcdo0TdgiSNXbumcZTFjXmA+pdwI5koYHhOrObxRpkqOX3ooU6mV59z9WEvVsBg==",
+  "signature": "T7OJNecf826kjSf1aRo/4ScUssjh0dUB/jPgfpqdTyMLhvZe2j11RFPqQ8Io72szNLmNucEe5qh5H8liUWS1Dw==",
   "signature_algorithm": "ed25519",
   "signer": {
     "key_id": "key_2139521b63ef9f16",

@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any, Iterable
 
 from the_pass.adapters.base import AdapterCapabilities, FetchRequest, manifest_for_events
-from the_pass.data.contracts import CanonicalEvent, EventType
+from the_pass.data.contracts import CanonicalEvent, EventType, stable_fingerprint
 from the_pass.data.dataset import build_dataset, build_dataset_plan, validate_dataset_plan
 from the_pass.validator import validate_artifact
 
@@ -125,6 +125,19 @@ def plan(*, cross_check_required: bool = False) -> dict[str, Any]:
 
 
 class DatasetBuildTests(unittest.TestCase):
+    def test_bar_plan_requires_expected_interval(self) -> None:
+        with self.assertRaisesRegex(ValueError, "require expected_interval_ns"):
+            build_dataset_plan(
+                plan_id="missing-interval",
+                provider="fixture",
+                kind="bars",
+                instrument_id="TEST",
+                start_ns=1_000,
+                end_ns=2_000,
+                chunk_ns=1_000,
+                created_at="2026-07-15T00:00:00Z",
+            )
+
     def test_plan_is_exact_contiguous_and_fingerprinted(self) -> None:
         document = validate_dataset_plan(plan())
         self.assertEqual(len(document["requests"]), 3)
@@ -133,6 +146,18 @@ class DatasetBuildTests(unittest.TestCase):
             for item in document["requests"]
         ]
         self.assertEqual(intervals, [(1_000, 2_000), (2_000, 3_000), (3_000, 4_000)])
+
+    def test_refingerprinted_bar_plan_cannot_omit_expected_interval(self) -> None:
+        document = plan()
+        document["expected_interval_ns"] = None
+        core = {
+            key: value
+            for key, value in document.items()
+            if key != "plan_fingerprint"
+        }
+        document["plan_fingerprint"] = stable_fingerprint(core)
+        with self.assertRaisesRegex(ValueError, "require expected_interval_ns"):
+            validate_dataset_plan(document)
 
     def test_interrupted_build_resumes_committed_chunks(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -202,6 +227,15 @@ class DatasetBuildTests(unittest.TestCase):
             self.assertTrue(
                 validate_artifact(result.receipt_path, artifact_type="dataset_receipt").ok
             )
+
+    def test_complete_bar_chunks_have_passing_quality(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            output = Path(tmp) / "dataset"
+            build_dataset(ChunkAdapter(), plan(), output, clock_ns=lambda: 10_000)
+            for quality_path in sorted((output / "chunks").glob("*/quality-report.json")):
+                quality = json.loads(quality_path.read_text(encoding="utf-8"))
+                self.assertEqual(quality["summary"]["status"], "pass")
+                self.assertEqual(quality["promotion_impact"], "none")
 
     def test_conflicting_duplicate_blocks_publication(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

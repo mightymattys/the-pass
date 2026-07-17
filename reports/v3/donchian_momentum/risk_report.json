@@ -18,8 +18,8 @@
   "exposure_correlation": {
     "single_series": 1.0
   },
-  "id": "risk-pkg_4d49e7573d3ed8aa992b4ee9",
-  "package_id": "pkg_4d49e7573d3ed8aa992b4ee9",
+  "id": "risk-pkg_93103c0d7ae0a3d1066456af",
+  "package_id": "pkg_93103c0d7ae0a3d1066456af",
   "policy_hash": "1c0e9a238c0092085b20da7034398aed6ff5b01e339e650dfe576410c38fcf04",
   "policy_id": "risk-policy-v1-crypto_intraday",
   "risk_of_ruin_proxy": 0.0,

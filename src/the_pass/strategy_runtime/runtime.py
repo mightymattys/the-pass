@@ -542,6 +542,7 @@ def run_strategy(
         and sandbox_attestation is not None
         and sandbox_probe is not None
         and policy_document is not None
+        and result.get("promotion_eligible") is True
     )
     result["result_fingerprint"] = stable_fingerprint(
         {key: value for key, value in result.items() if key != "result_fingerprint"}

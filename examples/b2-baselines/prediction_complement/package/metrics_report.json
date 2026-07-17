@@ -66,6 +66,7 @@
     "net_metrics.sharpe": "insufficient observations for diagnostic metric",
     "net_metrics.sortino": "insufficient observations for diagnostic metric"
   },
+  "promotion_eligible": true,
   "robustness": {
     "dsr_or_psr": null,
     "null_baseline_result": "not evaluated until V3",

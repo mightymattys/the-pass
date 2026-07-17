@@ -24,7 +24,7 @@ class BinanceSpotAdapter:
         live_read=True,
         authentication="none",
         replay=False,
-        timestamp_quality="provider event milliseconds plus local receive nanoseconds",
+        timestamp_quality="provider event/close milliseconds plus honest local receive nanoseconds; unclosed bars excluded",
         license_mode="public endpoint; redistribution review required",
         maximum_promotion_mode="diagnostic",
     )
@@ -75,12 +75,12 @@ class BinanceSpotAdapter:
         if not request.instrument_id:
             raise ValueError("Binance fetch requires instrument_id")
         params: dict[str, Any] = {"symbol": request.instrument_id}
-        if request.limit is not None:
-            params["limit"] = request.limit
+        page_limit = min(request.limit or 1_000, 1_000)
+        params["limit"] = page_limit
         if request.start_ns is not None:
             params["startTime"] = request.start_ns // 1_000_000
         if request.end_ns is not None:
-            params["endTime"] = request.end_ns // 1_000_000
+            params["endTime"] = request.end_ns // 1_000_000 - 1
         if request.kind == "klines":
             params["interval"] = (request.parameters or {}).get("interval", "1m")
             endpoint = "/api/v3/klines"
@@ -90,14 +90,46 @@ class BinanceSpotAdapter:
             endpoint = "/api/v3/depth"
         else:
             raise ValueError(f"unsupported Binance read kind: {request.kind}")
-        return self.client.get_json(f"{self.rest_base}{endpoint}", params=params)
+        url = f"{self.rest_base}{endpoint}"
+        if request.kind == "book" or request.start_ns is None or request.end_ns is None:
+            return self.client.get_json(url, params=params)
+
+        rows: list[Any] = []
+        page_params = dict(params)
+        end_ms = request.end_ns // 1_000_000
+        while True:
+            page = self.client.get_json(url, params=page_params)
+            if not isinstance(page, list):
+                raise TypeError("Binance paginated response must be a list")
+            if request.kind == "klines":
+                rows.extend(row for row in page if int(row[0]) < end_ms)
+            else:
+                rows.extend(row for row in page if int(row["T"]) < end_ms)
+            if len(page) < page_limit or not page:
+                break
+            if request.kind == "klines":
+                next_start = int(page[-1][0]) + 1
+                if next_start >= end_ms:
+                    break
+                page_params["startTime"] = next_start
+            else:
+                if int(page[-1]["T"]) >= end_ms:
+                    break
+                page_params = {
+                    "symbol": request.instrument_id,
+                    "limit": page_limit,
+                    "fromId": int(page[-1]["a"]) + 1,
+                }
+        return rows
 
     def normalize(self, raw: Any, request: FetchRequest, *, receive_time_ns: int) -> list[CanonicalEvent]:
         instrument_id = request.instrument_id or ""
         if request.kind == "klines":
             events = []
-            for index, row in enumerate(raw):
+            for row in raw:
                 close_time_ns = int(row[6]) * 1_000_000
+                if close_time_ns > receive_time_ns:
+                    continue
                 events.append(
                     CanonicalEvent.from_raw(
                         raw=row,
@@ -107,8 +139,8 @@ class BinanceSpotAdapter:
                         instrument_id=instrument_id,
                         event_type=EventType.BAR,
                         event_time_ns=int(row[0]) * 1_000_000,
-                        receive_time_ns=close_time_ns,
-                        ingest_id=f"binance-kline-{instrument_id}-{row[0]}-{index}",
+                        receive_time_ns=receive_time_ns,
+                        ingest_id=f"binance-kline-{instrument_id}-{row[0]}",
                         payload={
                             "open": Decimal(row[1]),
                             "high": Decimal(row[2]),

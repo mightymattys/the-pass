@@ -18,8 +18,8 @@
       "path": "data_manifest.json"
     },
     {
-      "expected": "eee553f98c966be1d412822373e0b903c5e0be49eafbcfadbb9837027a02aeff",
-      "observed": "eee553f98c966be1d412822373e0b903c5e0be49eafbcfadbb9837027a02aeff",
+      "expected": "1c34fcfda37b28e9e804d62ff83a8e554f00a201d9a2395e90db2623407e26f3",
+      "observed": "1c34fcfda37b28e9e804d62ff83a8e554f00a201d9a2395e90db2623407e26f3",
       "path": "quality_report.json"
     },
     {
@@ -28,8 +28,8 @@
       "path": "run_receipt.json"
     },
     {
-      "expected": "548c8e9dea87933dc1959eeec4f6f894fde792e73ac4af8ba7fd699cacc5e2e9",
-      "observed": "548c8e9dea87933dc1959eeec4f6f894fde792e73ac4af8ba7fd699cacc5e2e9",
+      "expected": "4b3ee5e08aadf32b3351849e8723ff1d9f02b89bb8ffa2525641b5ddd832fb39",
+      "observed": "4b3ee5e08aadf32b3351849e8723ff1d9f02b89bb8ffa2525641b5ddd832fb39",
       "path": "metrics_report.json"
     },
     {
@@ -48,8 +48,8 @@
       "path": "search_space.json"
     },
     {
-      "expected": "10e15146fc215d6d07bcd671034ea5cf9795c708c57201392042a33fe013ab10",
-      "observed": "10e15146fc215d6d07bcd671034ea5cf9795c708c57201392042a33fe013ab10",
+      "expected": "1537cf9da8422de021b720fbc9390ee298fc7c3f9ff9f24d9587d0f6c1015851",
+      "observed": "1537cf9da8422de021b720fbc9390ee298fc7c3f9ff9f24d9587d0f6c1015851",
       "path": "runner_result.json"
     },
     {
@@ -71,9 +71,9 @@
   "mismatches": [],
   "receipt_exit_code": 0,
   "robustness_binding": {
-    "binding_fingerprint": "dedcf110e44c71ccf9e97112f9da8d94ac446abc0a01d9871e8ff5eb4bc2d4c8",
+    "binding_fingerprint": "addc0d42cb81448f2e5606267b9117fe3736f5256472e9e71709dd31f346c364",
     "binding_grade": "reproduction_integrity_not_cell_provenance",
-    "cells_fingerprint": "bb683138d3927e30cbdc166ad7ba5cb945b5b831d034a10273938fd1cb47b27a",
+    "cells_fingerprint": "eec2d731e973cc05894ed00aff208a5f99aff1585e9dc518d7275e86837033d6",
     "events_fingerprint": "8e507c4ead58d2908cd6115852da41a31747d2d5f89d6cd1d7e18578819029d9",
     "registration_fingerprint": "bb0cafcf731d0f1b1893e0ab3f3b9222dceb5c403dbe92f3b617a925185a174d",
     "selected_oos_returns_fingerprint": "abca8e23bcfa4c5eec3499e523f7355b64213528f95746e242238cdc6a5b1c15",

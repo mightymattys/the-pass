@@ -16,12 +16,12 @@
     "spread": 0.0
   },
   "created_at": "2026-07-10T00:00:00Z",
-  "gross_pnl": 21.35,
+  "gross_pnl": 1061.944625,
   "id": "futures_diversified_trend_v1-costs",
   "limitations": [
     "synthetic diagnostic data"
   ],
-  "net_pnl": 21.009885675,
+  "net_pnl": 1061.604510675,
   "run_receipt": "run_receipt.json",
   "schema_version": 2
 }

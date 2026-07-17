@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from decimal import Decimal
 
 from the_pass.data.contracts import CanonicalEvent, EventType
@@ -168,17 +168,56 @@ class LimitEvidenceFillModel:
         return FillOutcome((fill,), remaining, "filled" if remaining == 0 else "partial", "")
 
 
-@dataclass(frozen=True)
+@dataclass
 class BarFillModel:
+    """Fill at the next bar open, capped to a share of reported bar volume."""
+
     slippage_bps: Decimal = Decimal("5")
     minimum_latency_ns: int = 0
+    participation_rate: Decimal = Decimal("0.10")
     promotion_eligible: bool = True
+    _budget_event_key: tuple[object, ...] | None = field(
+        default=None, init=False, repr=False, compare=False
+    )
+    _remaining_participation: Decimal = field(
+        default=Decimal(0), init=False, repr=False, compare=False
+    )
 
     def __post_init__(self) -> None:
         if not self.slippage_bps.is_finite() or self.slippage_bps < 0:
             raise ValueError("slippage_bps must be non-negative and finite")
         if self.minimum_latency_ns < 0:
             raise ValueError("minimum_latency_ns must be non-negative")
+        if (
+            not self.participation_rate.is_finite()
+            or self.participation_rate <= 0
+            or self.participation_rate > 1
+        ):
+            raise ValueError("participation_rate must be in (0, 1]")
+
+    @staticmethod
+    def _event_key(event: CanonicalEvent) -> tuple[object, ...]:
+        return (
+            event.instrument_id,
+            event.event_time_ns,
+            event.receive_time_ns,
+            event.ingest_id,
+        )
+
+    def begin_event(self, event: CanonicalEvent) -> None:
+        """Reset the shared participation budget for one simulator event."""
+
+        self._budget_event_key = self._event_key(event)
+        raw_volume = event.payload.get("volume")
+        self._remaining_participation = (
+            Decimal(str(raw_volume)) * self.participation_rate
+            if event.event_type == EventType.BAR and raw_volume is not None
+            else Decimal(0)
+        )
+
+    def _ensure_event_budget(self, event: CanonicalEvent) -> None:
+        if self._budget_event_key != self._event_key(event):
+            self.begin_event(event)
 
     def evaluate(self, intent: SimulatedIntent, event: CanonicalEvent, cost_model: CostModel) -> FillOutcome:
         if intent.intent_type != "bar" or event.instrument_id != intent.instrument_id:
@@ -189,22 +228,44 @@ class BarFillModel:
             or event.event_type != EventType.BAR
         ):
             return FillOutcome(remaining_quantity=intent.quantity)
+        raw_volume = event.payload.get("volume")
+        if raw_volume is None:
+            return FillOutcome(
+                remaining_quantity=intent.quantity,
+                reason="bar volume is missing",
+            )
+        volume = Decimal(str(raw_volume))
+        if not volume.is_finite() or volume < 0:
+            raise ValueError("bar volume must be non-negative and finite")
+        if volume == 0:
+            return FillOutcome(
+                remaining_quantity=intent.quantity,
+                reason="bar volume is zero",
+            )
+        self._ensure_event_budget(event)
+        quantity = min(intent.quantity, self._remaining_participation)
+        if quantity == 0:
+            return FillOutcome(
+                remaining_quantity=intent.quantity,
+                reason="bar participation cap",
+            )
+        self._remaining_participation -= quantity
         open_price = Decimal(str(event.payload["open"]))
         direction = Decimal(1) if intent.side == "buy" else Decimal(-1)
         price = open_price * (Decimal(1) + direction * self.slippage_bps / Decimal(10_000))
         costs = cost_model.costs(
             intent,
             price,
-            intent.quantity,
+            quantity,
             reference_mid=open_price,
             event=event,
         )
-        slippage = abs(price - open_price) * intent.quantity
+        slippage = abs(price - open_price) * quantity
         fill = Fill(
             intent_id=intent.intent_id,
             instrument_id=intent.instrument_id,
             side=intent.side,
-            quantity=intent.quantity,
+            quantity=quantity,
             price=price,
             event_time_ns=event.receive_time_ns,
             fee=costs["fee"],
@@ -214,7 +275,13 @@ class BarFillModel:
             impact_cost=costs.get("impact", Decimal(0)),
             latency_ns=event.receive_time_ns - intent.decision_time_ns,
         )
-        return FillOutcome((fill,), Decimal(0), "filled", "")
+        remaining = intent.quantity - quantity
+        return FillOutcome(
+            (fill,),
+            remaining,
+            "filled" if remaining == 0 else "partial",
+            "" if remaining == 0 else "bar participation cap",
+        )
 
 
 @dataclass(frozen=True)

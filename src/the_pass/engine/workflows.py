@@ -11,11 +11,13 @@ from the_pass.data.contracts import CanonicalEvent, EventType
 from .baselines import (
     BuyAndHoldBaseline,
     DonchianMomentumBaseline,
+    FUTURES_TREND_CONTRACT_MULTIPLIER,
     FuturesTrendBaseline,
     SeededRandomBaseline,
     VolatilityFilteredMeanReversionBaseline,
     generate_synthetic_bars,
     scan_prediction_complements,
+    with_synthetic_instrument_definition,
 )
 from .contracts import RunnerResult
 from .costs import LinearCostModel
@@ -71,7 +73,16 @@ def _event_definition(name: str) -> tuple[Any, list[CanonicalEvent], str, list[d
     if name == "mean_reversion":
         return make_baseline_strategy(name), generate_synthetic_bars(instrument_id="ETHUSDT", profile="mean_reversion"), "mean_reversion", [{"lookback": 8, "entry_z": "0.8"}, {"lookback": 12, "entry_z": "1.0"}, {"lookback": 20, "entry_z": "1.2"}], 1, "crypto_spot", None, "blocked"
     if name == "futures_trend":
-        return make_baseline_strategy(name), generate_synthetic_bars(instrument_id="ES_CONT", profile="trend", asset_class="futures"), "donchian", [{"lookback": 10}, {"lookback": 20}], 0, "futures", None, "blocked"
+        bars = generate_synthetic_bars(
+            instrument_id="ES_CONT",
+            profile="trend",
+            asset_class="futures",
+        )
+        events = with_synthetic_instrument_definition(
+            bars,
+            multiplier=FUTURES_TREND_CONTRACT_MULTIPLIER,
+        )
+        return make_baseline_strategy(name), events, "donchian", [{"lookback": 10}, {"lookback": 20}], 0, "futures", None, "blocked"
     raise ValueError(f"unknown event baseline: {name}")
 
 
@@ -115,7 +126,13 @@ def run_baseline(name: str, output_package: Path) -> Path:
         registered = _search_space(family, variants, selected)
         preregister_search_space(output_package, registered)
         screen_results = ReferenceScreenRunner().run(
-            [Decimal(str(event.payload["close"])) for event in events], family=family, variants=variants
+            [
+                Decimal(str(event.payload["close"]))
+                for event in events
+                if event.event_type == EventType.BAR
+            ],
+            family=family,
+            variants=variants,
         )
         result = EventSimulator(
             fill_model=BarFillModel(Decimal(5)),

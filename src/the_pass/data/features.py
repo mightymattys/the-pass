@@ -25,7 +25,13 @@ def build_bar_features(
 ) -> FeatureBuild:
     if len(dataset_fingerprint) != 64 or any(char not in "0123456789abcdefABCDEF" for char in dataset_fingerprint):
         raise ValueError("dataset_fingerprint must be a SHA-256 hex digest")
-    bars = sorted((event for event in events if event.event_type == EventType.BAR), key=CanonicalEvent.sort_key)
+    ordered = sorted(events, key=CanonicalEvent.sort_key)
+    actual_fingerprint = stable_fingerprint(
+        [event.as_dict() for event in ordered]
+    )
+    if actual_fingerprint != dataset_fingerprint.lower():
+        raise ValueError("input events do not match dataset_fingerprint")
+    bars = [event for event in ordered if event.event_type == EventType.BAR]
     if not bars:
         raise ValueError("bar feature build requires at least one bar")
     rows: list[dict[str, Any]] = []

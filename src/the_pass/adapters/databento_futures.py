@@ -135,8 +135,20 @@ class DatabentoCompatibleFuturesAdapter:
         }
 
 
-def build_volume_rolled_series(events: Iterable[CanonicalEvent]) -> list[dict[str, Any]]:
-    """Build a deterministic back-adjusted signal series with concrete execution contracts."""
+def build_volume_rolled_series(
+    events: Iterable[CanonicalEvent], *, persistence_bars: int = 2
+) -> list[dict[str, Any]]:
+    """Build a volume roll that requires consecutive wins before switching.
+
+    Back adjustment compares the old and new contracts at the roll timestamp.
+    """
+
+    if (
+        not isinstance(persistence_bars, int)
+        or isinstance(persistence_bars, bool)
+        or persistence_bars <= 0
+    ):
+        raise ValueError("persistence_bars must be a positive integer")
 
     bars = [event for event in events if event.event_type == EventType.BAR]
     grouped: dict[int, list[CanonicalEvent]] = {}
@@ -146,13 +158,73 @@ def build_volume_rolled_series(events: Iterable[CanonicalEvent]) -> list[dict[st
         raise ValueError("volume roll requires bar events")
 
     selected: list[CanonicalEvent] = []
+    current_contract: str | None = None
+    challenger: str | None = None
+    challenger_wins = 0
     for timestamp in sorted(grouped):
         candidates = grouped[timestamp]
-        winner = max(
-            candidates,
-            key=lambda event: (Decimal(str(event.payload.get("volume", "0"))), event.instrument_id),
-        )
-        selected.append(winner)
+        by_contract = {event.instrument_id: event for event in candidates}
+        if current_contract is None:
+            winner = max(
+                candidates,
+                key=lambda event: (
+                    Decimal(str(event.payload.get("volume", "0"))),
+                    event.instrument_id,
+                ),
+            )
+            current_contract = winner.instrument_id
+        else:
+            challenger_event = max(
+                (
+                    event
+                    for event in candidates
+                    if event.instrument_id != current_contract
+                ),
+                key=lambda event: (
+                    Decimal(str(event.payload.get("volume", "0"))),
+                    event.instrument_id,
+                ),
+                default=None,
+            )
+            if current_contract not in by_contract:
+                challenger_contract = (
+                    challenger_event.instrument_id
+                    if challenger_event is not None
+                    else "<none>"
+                )
+                raise ValueError(
+                    f"incumbent contract {current_contract} missing while challenger "
+                    f"{challenger_contract} was evaluated at timestamp {timestamp}"
+                )
+            incumbent_volume = Decimal(
+                str(by_contract[current_contract].payload.get("volume", "0"))
+            )
+            challenger_volume = (
+                Decimal(str(challenger_event.payload.get("volume", "0")))
+                if challenger_event is not None
+                else None
+            )
+            if challenger_volume is None or challenger_volume <= incumbent_volume:
+                challenger = None
+                challenger_wins = 0
+                challenger_event = None
+            elif challenger == challenger_event.instrument_id:
+                challenger_wins += 1
+            else:
+                challenger = challenger_event.instrument_id
+                challenger_wins = 1
+            if (
+                challenger_event is not None
+                and challenger_wins >= persistence_bars
+            ):
+                current_contract = challenger_event.instrument_id
+                challenger = None
+                challenger_wins = 0
+        if current_contract not in by_contract:
+            raise ValueError(
+                f"current roll contract {current_contract} missing at {timestamp}"
+            )
+        selected.append(by_contract[current_contract])
 
     adjustment = Decimal(0)
     previous: CanonicalEvent | None = None
@@ -161,8 +233,21 @@ def build_volume_rolled_series(events: Iterable[CanonicalEvent]) -> list[dict[st
         close = Decimal(str(event.payload["close"]))
         rolled = previous is not None and previous.instrument_id != event.instrument_id
         if rolled:
-            previous_close = Decimal(str(previous.payload["close"]))
-            adjustment += previous_close - close
+            old_at_roll = next(
+                (
+                    candidate
+                    for candidate in grouped[event.event_time_ns]
+                    if candidate.instrument_id == previous.instrument_id
+                ),
+                None,
+            )
+            if old_at_roll is None:
+                raise ValueError(
+                    f"incumbent contract {previous.instrument_id} missing while challenger "
+                    f"{event.instrument_id} rolled at timestamp {event.event_time_ns}"
+                )
+            old_close = Decimal(str(old_at_roll.payload["close"]))
+            adjustment += old_close - close
         rows.append(
             {
                 "event_time_ns": event.event_time_ns,

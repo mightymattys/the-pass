@@ -12,7 +12,7 @@ from pathlib import Path
 from the_pass.data.contracts import CanonicalEvent, EventType
 from the_pass.cli import main as cli_main
 from the_pass.engine.baselines import generate_synthetic_bars
-from the_pass.engine.contracts import Fill, SimulatedIntent
+from the_pass.engine.contracts import Fill, RunnerResult, SimulatedIntent
 from the_pass.engine.costs import LinearCostModel
 from the_pass.engine.fills import (
     BarFillModel,
@@ -20,8 +20,11 @@ from the_pass.engine.fills import (
     LimitEvidenceFillModel,
     MarketDepthFillModel,
 )
+from the_pass.engine.package import preregister_search_space, write_run_package
 from the_pass.engine.portfolio import AccountingPortfolio
+from the_pass.engine.reporting import build_metrics_and_costs
 from the_pass.engine.screen import ReferenceScreenRunner
+from the_pass.engine.simulator import EventSimulator
 from the_pass.engine.workflows import run_baseline
 from the_pass.validator import validate_package
 
@@ -77,11 +80,48 @@ class FillModelTests(unittest.TestCase):
 
     def test_bar_fill_uses_only_next_bar_and_adverse_slippage(self) -> None:
         intent = SimulatedIntent("i1", "TEST", "buy", Decimal(1), 10, "bar")
-        old_bar = event(EventType.BAR, timestamp=9, payload={"open": "100", "close": "100"})
-        next_bar = event(EventType.BAR, timestamp=11, payload={"open": "100", "close": "101"})
+        old_bar = event(EventType.BAR, timestamp=9, payload={"open": "100", "close": "100", "volume": "10"})
+        next_bar = event(EventType.BAR, timestamp=11, payload={"open": "100", "close": "101", "volume": "10"})
         model = BarFillModel(Decimal(5))
         self.assertFalse(model.evaluate(intent, old_bar, LinearCostModel()).fills)
         self.assertEqual(model.evaluate(intent, next_bar, LinearCostModel()).fills[0].price, Decimal("100.0500"))
+
+    def test_bar_fill_caps_oversized_intent_at_ten_percent_of_volume(self) -> None:
+        intent = SimulatedIntent("large", "TEST", "buy", Decimal(20), 10, "bar")
+        next_bar = event(
+            EventType.BAR,
+            timestamp=11,
+            payload={"open": "100", "close": "101", "volume": "50"},
+        )
+        outcome = BarFillModel().evaluate(intent, next_bar, LinearCostModel())
+        self.assertEqual(outcome.fills[0].quantity, Decimal("5.0"))
+        self.assertEqual(outcome.remaining_quantity, Decimal("15.0"))
+        self.assertEqual(outcome.status, "partial")
+
+    def test_bar_fill_does_not_fill_zero_or_missing_volume(self) -> None:
+        intent = SimulatedIntent("no-volume", "TEST", "buy", Decimal(1), 10, "bar")
+        for payload in (
+            {"open": "100", "close": "101", "volume": "0"},
+            {"open": "100", "close": "101"},
+        ):
+            with self.subTest(payload=payload):
+                outcome = BarFillModel().evaluate(
+                    intent,
+                    event(EventType.BAR, timestamp=11, payload=payload),
+                    LinearCostModel(),
+                )
+                self.assertFalse(outcome.fills)
+                self.assertEqual(outcome.remaining_quantity, Decimal(1))
+
+    def test_favorable_passive_price_has_zero_spread_cost(self) -> None:
+        intent = SimulatedIntent("passive", "TEST", "buy", Decimal(2), 1, "limit", Decimal(99))
+        costs = LinearCostModel().costs(
+            intent,
+            Decimal(99),
+            Decimal(2),
+            reference_mid=Decimal(100),
+        )
+        self.assertEqual(costs["spread"], Decimal(0))
 
     def test_midpoint_fill_rejects_cross_instrument_book(self) -> None:
         intent = SimulatedIntent("i1", "OTHER", "buy", Decimal(1), 1, "mid_diagnostic")
@@ -206,6 +246,302 @@ class PortfolioTests(unittest.TestCase):
         self.assertEqual(prediction.positions["YES"], Decimal(0))
         self.assertEqual(prediction.equity(), Decimal("100.6"))
         prediction.assert_conservation()
+
+
+class SimulatorRealismTests(unittest.TestCase):
+    class NoOpStrategy:
+        strategy_id = "no-op"
+
+        def on_event(self, replay_event, context):
+            return ()
+
+    class EmitOnceStrategy:
+        strategy_id = "emit-once"
+
+        def __init__(self, quantities: tuple[Decimal, ...]) -> None:
+            self.quantities = quantities
+
+        def on_event(self, replay_event, context):
+            if context.event_index != 0:
+                return ()
+            return tuple(
+                SimulatedIntent(
+                    intent_id=f"intent-{index}",
+                    instrument_id=replay_event.instrument_id,
+                    side="buy",
+                    quantity=quantity,
+                    decision_time_ns=context.decision_time_ns,
+                    intent_type="bar",
+                )
+                for index, quantity in enumerate(self.quantities)
+            )
+
+    @staticmethod
+    def bars(*, final_volume: str) -> list[CanonicalEvent]:
+        return [
+            event(
+                EventType.BAR,
+                timestamp=timestamp,
+                sequence=timestamp,
+                payload={
+                    "open": "100",
+                    "close": "100",
+                    "volume": volume,
+                },
+            )
+            for timestamp, volume in ((1, "100"), (2, final_volume))
+        ]
+
+    def test_bar_participation_budget_is_shared_across_pending_intents(self) -> None:
+        result = EventSimulator(
+            fill_model=BarFillModel(),
+            cost_model=LinearCostModel(),
+        ).run(
+            self.EmitOnceStrategy((Decimal(10), Decimal(10))),
+            self.bars(final_volume="100"),
+        )
+        self.assertEqual(
+            sum((fill.quantity for fill in result.fills), Decimal(0)),
+            Decimal(10),
+        )
+        self.assertEqual(result.missed[0]["reason"], "bar participation cap")
+
+    def test_terminal_capped_remainder_keeps_participation_reason(self) -> None:
+        result = EventSimulator(
+            fill_model=BarFillModel(),
+            cost_model=LinearCostModel(),
+        ).run(
+            self.EmitOnceStrategy((Decimal(20),)),
+            self.bars(final_volume="50"),
+        )
+        self.assertEqual(result.fills[0].quantity, Decimal(5))
+        self.assertEqual(result.missed[0]["quantity"], Decimal(15))
+        self.assertEqual(result.missed[0]["reason"], "bar participation cap")
+
+    def test_late_arrival_receive_time_inversion_is_rejected(self) -> None:
+        early_event_late_receive = CanonicalEvent.from_raw(
+            raw={"row": 1},
+            source="fixture",
+            venue="test",
+            asset_class="crypto_spot",
+            instrument_id="TEST",
+            event_type=EventType.BAR,
+            event_time_ns=1,
+            receive_time_ns=100,
+            ingest_id="late-first",
+            payload={"open": "100", "close": "100", "volume": "1"},
+        )
+        later_event_early_receive = CanonicalEvent.from_raw(
+            raw={"row": 2},
+            source="fixture",
+            venue="test",
+            asset_class="crypto_spot",
+            instrument_id="TEST",
+            event_type=EventType.BAR,
+            event_time_ns=2,
+            receive_time_ns=10,
+            ingest_id="early-second",
+            payload={"open": "100", "close": "100", "volume": "1"},
+        )
+        simulator = EventSimulator(
+            fill_model=BarFillModel(), cost_model=LinearCostModel()
+        )
+        with self.assertRaisesRegex(ValueError, "receive_time_inversion"):
+            simulator.run(
+                self.NoOpStrategy(),
+                [early_event_late_receive, later_event_early_receive],
+            )
+
+    def test_checkpointed_and_single_pass_equity_sampling_match(self) -> None:
+        events = [
+            CanonicalEvent.from_raw(
+                raw={"row": index},
+                source="fixture",
+                venue="test",
+                asset_class="crypto_spot",
+                instrument_id="TEST",
+                event_type=EventType.BAR,
+                event_time_ns=index,
+                receive_time_ns=index + 1,
+                ingest_id=f"sample-{index}",
+                sequence=index,
+                payload={"open": "100", "close": "100", "volume": "1"},
+            )
+            for index in range(100)
+        ]
+        simulator = EventSimulator(
+            fill_model=BarFillModel(),
+            cost_model=LinearCostModel(),
+            equity_sampling_interval=10,
+        )
+        single = simulator.run(self.NoOpStrategy(), events)
+        first = simulator.run_ordered(
+            self.NoOpStrategy(),
+            events[:50],
+            total_events=50,
+            instrument_ids={"TEST"},
+            checkpoint_mode=True,
+        )
+        chunked = simulator.run_ordered(
+            self.NoOpStrategy(),
+            events[50:],
+            total_events=50,
+            instrument_ids={"TEST"},
+            checkpoint=first.checkpoint,
+        )
+        self.assertEqual(chunked.equity_curve, single.equity_curve)
+
+
+class ReportingRealismTests(unittest.TestCase):
+    @staticmethod
+    def result(
+        *,
+        equities: list[Decimal],
+        fills: list[Fill] | None = None,
+        diagnostics: dict[str, object] | None = None,
+    ) -> RunnerResult:
+        curve = [
+            {"event_time_ns": (index + 1) * 1_000_000_000, "equity": value}
+            for index, value in enumerate(equities)
+        ]
+        return RunnerResult(
+            strategy_id="reporting-test",
+            events_processed=len(curve),
+            signals=0,
+            intents=[],
+            fills=fills or [],
+            rejected=[],
+            missed=[],
+            equity_curve=curve,
+            cost_components={
+                name: Decimal(0)
+                for name in (
+                    "fees",
+                    "spread",
+                    "slippage",
+                    "impact",
+                    "funding",
+                    "borrow",
+                    "roll",
+                    "rejects_or_missed_fills",
+                )
+            },
+            final_snapshot={"equity": equities[-1]},
+            diagnostics=diagnostics or {},
+        )
+
+    def test_zero_equity_hard_flags_metrics_and_promotion(self) -> None:
+        metrics, _costs = build_metrics_and_costs(
+            self.result(equities=[Decimal(100), Decimal(0)]),
+            initial_cash=Decimal(100),
+            created_at="2026-07-17T00:00:00Z",
+            start_time="2026-07-17T00:00:00Z",
+            end_time="2026-07-17T00:00:01Z",
+            asset_class="crypto_spot",
+        )
+        self.assertFalse(metrics["promotion_eligible"])
+        self.assertIn("equity reached zero — metrics invalid", metrics["limitations"])
+        self.assertTrue(all(value is None for value in metrics["net_metrics"].values()))
+
+    def test_turnover_uses_futures_multiplier(self) -> None:
+        fill = Fill(
+            "future-fill",
+            "ES",
+            "buy",
+            Decimal(2),
+            Decimal(100),
+            1_000_000_000,
+        )
+        metrics, _costs = build_metrics_and_costs(
+            self.result(
+                equities=[Decimal(100_000), Decimal(100_000)],
+                fills=[fill],
+                diagnostics={"instrument_multipliers": {"ES": "50"}},
+            ),
+            initial_cash=Decimal(100_000),
+            created_at="2026-07-17T00:00:00Z",
+            start_time="2026-07-17T00:00:00Z",
+            end_time="2026-07-17T00:00:01Z",
+            asset_class="futures",
+        )
+        self.assertEqual(metrics["net_metrics"]["turnover"], 0.1)
+
+    def test_nonempty_multiplier_map_must_cover_every_fill(self) -> None:
+        fill = Fill(
+            "future-fill",
+            "ES",
+            "buy",
+            Decimal(1),
+            Decimal(100),
+            1_000_000_000,
+        )
+        with self.assertRaisesRegex(
+            ValueError, "instrument_multipliers is missing fill instruments: ES"
+        ):
+            build_metrics_and_costs(
+                self.result(
+                    equities=[Decimal(100_000), Decimal(100_000)],
+                    fills=[fill],
+                    diagnostics={"instrument_multipliers": {"NQ": "20"}},
+                ),
+                initial_cash=Decimal(100_000),
+                created_at="2026-07-17T00:00:00Z",
+                start_time="2026-07-17T00:00:00Z",
+                end_time="2026-07-17T00:00:01Z",
+                asset_class="futures",
+            )
+
+    def test_zero_equity_run_writes_complete_blocked_package(self) -> None:
+        result = self.result(equities=[Decimal(100), Decimal(0)])
+        search_space = {
+            "schema_version": 1,
+            "registered_at": "2026-07-17T00:00:00Z",
+            "family": "zero-equity-proof",
+            "variants": [{}],
+            "selection_policy": "fixed test fixture",
+            "selected_variant_id": 0,
+        }
+        events = [
+            event(
+                EventType.BAR,
+                timestamp=timestamp * 1_000_000_000,
+                sequence=timestamp,
+                payload={
+                    "open": "100",
+                    "high": "100",
+                    "low": "100",
+                    "close": "100",
+                    "volume": "100",
+                },
+            )
+            for timestamp in (1, 2)
+        ]
+        with tempfile.TemporaryDirectory() as tmp:
+            package = Path(tmp) / "package"
+            preregister_search_space(package, search_space)
+            write_run_package(
+                package,
+                result=result,
+                events=events,
+                search_space=search_space,
+                initial_cash=Decimal(100),
+                asset_class="crypto_spot",
+                random_seed=None,
+            )
+            validation = validate_package(package)
+            metrics = json.loads(
+                (package / "metrics_report.json").read_text(encoding="utf-8")
+            )
+            verdict = json.loads(
+                (package / "verdict_report.json").read_text(encoding="utf-8")
+            )
+            markdown = (package / "run_report.md").read_text(encoding="utf-8")
+            self.assertTrue(validation.ok, validation.issues)
+            self.assertFalse(metrics["promotion_eligible"])
+            self.assertEqual(verdict["verdict"], "blocked")
+            self.assertIn("N/A", markdown)
+            self.assertIn("equity reached zero — metrics invalid", markdown)
+            self.assertTrue((package / "receipt-ledger.jsonl").is_file())
 
 
 class ScreenTests(unittest.TestCase):

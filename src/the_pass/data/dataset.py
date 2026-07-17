@@ -13,7 +13,11 @@ from typing import Any, Callable, Iterator, Mapping
 from the_pass.adapters.base import FetchRequest, ReadOnlyAdapter
 
 from .contracts import CanonicalEvent, canonical_json_bytes, stable_fingerprint
-from .ingest import OfflineIngestService, validate_ingest_bundle
+from .ingest import (
+    OfflineIngestService,
+    default_chunk_quality_policy,
+    validate_ingest_bundle,
+)
 from .quality import QualityPolicy, build_quality_report
 
 
@@ -99,6 +103,8 @@ def build_dataset_plan(
         isinstance(expected_interval_ns, bool) or expected_interval_ns <= 0
     ):
         raise ValueError("expected_interval_ns must be positive when provided")
+    if kind.lower() in {"bar", "bars", "klines"} and expected_interval_ns is None:
+        raise ValueError("bar dataset plans require expected_interval_ns")
     requests = []
     cursor = start_ns
     index = 0
@@ -172,6 +178,11 @@ def validate_dataset_plan(document: Mapping[str, Any]) -> dict[str, Any]:
         or expected_interval <= 0
     ):
         raise ValueError("dataset plan expected_interval_ns must be positive or null")
+    if (
+        document["kind"].lower() in {"bar", "bars", "klines"}
+        and expected_interval is None
+    ):
+        raise ValueError("bar dataset plans require expected_interval_ns")
     if not isinstance(document.get("cross_check_required"), bool):
         raise ValueError("dataset plan cross_check_required must be boolean")
     core = {key: value for key, value in document.items() if key != "plan_fingerprint"}
@@ -406,6 +417,7 @@ def _build_dataset_locked(
 
     service = OfflineIngestService(**({} if clock_ns is None else {"clock_ns": clock_ns}))
     references = dict(cross_check_references or {})
+    expected_interval = plan["expected_interval_ns"]
     all_events: list[CanonicalEvent] = []
     chunk_rows = []
     resumed = 0
@@ -424,6 +436,10 @@ def _build_dataset_locked(
                 adapter,
                 request,
                 chunk_dir,
+                quality_policy=default_chunk_quality_policy(
+                    request,
+                    expected_interval_ns=expected_interval,
+                ),
                 cross_check_reference=references.get(chunk_id),
             )
             events, receipt, bundle_fingerprint = _load_chunk(
@@ -465,7 +481,6 @@ def _build_dataset_locked(
         raise ValueError("dataset build produced no canonical events")
     dataset_fingerprint = stable_fingerprint([event.as_dict() for event in ordered])
     interval = plan["requested_interval"]
-    expected_interval = plan["expected_interval_ns"]
     requested_quality_end = (
         interval["end_ns"] - expected_interval if expected_interval is not None else None
     )

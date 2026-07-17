@@ -94,6 +94,11 @@ class PolymarketAdapter:
         timestamp = int(raw.get("timestamp", receive_time_ns))
         if timestamp < 10**15:
             timestamp *= 1_000_000
+        earliest_supported_ns = 1_577_836_800_000_000_000
+        if not earliest_supported_ns <= timestamp <= receive_time_ns + 86_400_000_000_000:
+            raise ValueError(
+                "Polymarket timestamp is outside 2020-01-01 through receive time plus one day; check timestamp units"
+            )
         sequence_value = raw.get("sequence")
         sequence = int(sequence_value) if sequence_value is not None else None
         return [

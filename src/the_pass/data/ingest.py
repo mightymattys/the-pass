@@ -98,10 +98,7 @@ class OfflineIngestService:
         ordered = sorted(normalized, key=CanonicalEvent.sort_key)
         canonical_fingerprint = stable_fingerprint([event.as_dict() for event in ordered])
         resolved_dataset_id = dataset_id or f"manifest-{canonical_fingerprint[:16]}"
-        policy = quality_policy or QualityPolicy(
-            requested_start_ns=request.start_ns,
-            requested_end_ns=request.end_ns,
-        )
+        policy = quality_policy or default_chunk_quality_policy(request)
         created_at = _rfc3339(max(receive_time_ns, *(event.receive_time_ns for event in normalized)))
         quality_report = build_quality_report(
             resolved_dataset_id,
@@ -236,6 +233,26 @@ def ingest_bundle(
         quality_policy=quality_policy,
         dataset_id=dataset_id,
         cross_check_reference=cross_check_reference,
+    )
+
+
+def default_chunk_quality_policy(
+    request: FetchRequest, *, expected_interval_ns: int | None = None
+) -> QualityPolicy:
+    """Build half-open chunk coverage policy for point-labeled bar events."""
+
+    corrected_end = request.end_ns
+    if expected_interval_ns is not None and corrected_end is not None:
+        candidate = corrected_end - expected_interval_ns
+        corrected_end = (
+            candidate
+            if request.start_ns is None or candidate > request.start_ns
+            else None
+        )
+    return QualityPolicy(
+        expected_interval_ns=expected_interval_ns,
+        requested_start_ns=request.start_ns,
+        requested_end_ns=corrected_end,
     )
 
 

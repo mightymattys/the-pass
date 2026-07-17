@@ -54,6 +54,7 @@
     "gross_metrics.capacity_estimate": "not estimated without market depth, participation, and impact evidence",
     "net_metrics.capacity_estimate": "not estimated without market depth, participation, and impact evidence"
   },
+  "promotion_eligible": true,
   "robustness": {
     "dsr_or_psr": null,
     "null_baseline_result": "not evaluated until V3",

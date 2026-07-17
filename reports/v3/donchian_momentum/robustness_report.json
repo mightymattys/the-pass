@@ -103,7 +103,7 @@
         -1.979576887506852e-05
       ],
       "phase": "train",
-      "result_fingerprint": "cc618f6de1761f5fb6218edf0f022f81e3549feb8885fa0febcc5f78ba06ef9a",
+      "result_fingerprint": "219d8da924b81c66225b16d0e32bd96d997ee39901295536bc298d40689ccd3b",
       "runtime_promotion_eligible": false,
       "status": "complete",
       "variant_index": 0
@@ -211,7 +211,7 @@
         -1.9799231343886205e-05
       ],
       "phase": "train",
-      "result_fingerprint": "db128210fb842b21bf9b39785814f9992dbc10e6db2051ef76371a4b41d92af8",
+      "result_fingerprint": "9c22365b3ae99704632a385d7425226c32fb23f42c731d1950c2b589483fff54",
       "runtime_promotion_eligible": false,
       "status": "complete",
       "variant_index": 1
@@ -319,7 +319,7 @@
         -1.9803882850668568e-05
       ],
       "phase": "train",
-      "result_fingerprint": "619ec363bb4c206a5a6821cd4941b89195c5f6e3323bb304a01a4ece6de36446",
+      "result_fingerprint": "44ebe731e0bfd43e2184021e8cb083d28b206eaecab673683a45b5ba1ab47739",
       "runtime_promotion_eligible": false,
       "status": "complete",
       "variant_index": 2
@@ -427,7 +427,7 @@
         0.0
       ],
       "phase": "train",
-      "result_fingerprint": "042f33bbbeeed74186a3b400925ed17cdb545968ee6bff87ae6537885474a5b6",
+      "result_fingerprint": "11e4c4114ea154ffb46fda3e459b0438ca0a06c5fcf39d62adea795c81dde918",
       "runtime_promotion_eligible": false,
       "status": "complete",
       "variant_index": 3
@@ -471,7 +471,7 @@
         -2.136330485380736e-05
       ],
       "phase": "test",
-      "result_fingerprint": "a4af7c5af4a0090ec336930394a122437d0f49b6e3f9986f1c15ba62d5f857ad",
+      "result_fingerprint": "9fe2c9a3a5cee3df1484316f9655959622378274aea37209f60abc8244b0f749",
       "runtime_promotion_eligible": false,
       "status": "complete",
       "variant_index": 0
@@ -515,7 +515,7 @@
         -2.13645879792988e-05
       ],
       "phase": "test",
-      "result_fingerprint": "c69eaa206313bcde60cb64550cfbc88c32cfd34d313ba8a10c24144c94348f05",
+      "result_fingerprint": "3e7b4874523003d5ef9317e837f61fbcc6db3ef3181ef01f5e92b8760c9aca39",
       "runtime_promotion_eligible": false,
       "status": "complete",
       "variant_index": 1
@@ -559,7 +559,7 @@
         -2.137111291780562e-05
       ],
       "phase": "test",
-      "result_fingerprint": "d77a1f8e3f9fce2eedeafc24a945126c0ee89efe7fa1d39ee8fd89a08acb47f9",
+      "result_fingerprint": "0f74ec51dd72da6d63ebc154d956cd42a88ce3930de02e22f0b028bcd6c09230",
       "runtime_promotion_eligible": false,
       "status": "complete",
       "variant_index": 2
@@ -603,7 +603,7 @@
         0.0
       ],
       "phase": "test",
-      "result_fingerprint": "e1f6862e92717004f3cd25dc05759fafabc5dc76b2a8b340e5114593f0778b42",
+      "result_fingerprint": "7a9ec7e6373c1794f1072fcdc4b4b6c08b473164be9b6ff7dd61e4960648b3b5",
       "runtime_promotion_eligible": false,
       "status": "complete",
       "variant_index": 3
@@ -747,7 +747,7 @@
         -2.123652932326462e-05
       ],
       "phase": "train",
-      "result_fingerprint": "e4f2c8513065957ceb819b6be1a2539b7d263583f914aed3d371efcf53c425ba",
+      "result_fingerprint": "c559ce0f81a2a5071cdf8b32d4fd54efd7087fb8486c6d9ddcdafedfad8da23c",
       "runtime_promotion_eligible": false,
       "status": "complete",
       "variant_index": 0
@@ -891,7 +891,7 @@
         -2.1240240406366438e-05
       ],
       "phase": "train",
-      "result_fingerprint": "593d09eedc5eb1b6537342875642d40eb7dee15447f7b51263bb534276e264e3",
+      "result_fingerprint": "a790cf8ce2c2a2619651768ebe8fa99de2874906a697ff93f906fda2f8c7b09d",
       "runtime_promotion_eligible": false,
       "status": "complete",
       "variant_index": 1
@@ -1035,7 +1035,7 @@
         -2.124522590159357e-05
       ],
       "phase": "train",
-      "result_fingerprint": "20e939e3adad5fc654c2cb4ef1d588de0a781d06628950d52daa73fc332bbf6d",
+      "result_fingerprint": "8c67f97a3f2b58246b9bff4894d15c27f623788f6ef90a84f62d4d9d8bdd9aff",
       "runtime_promotion_eligible": false,
       "status": "complete",
       "variant_index": 2
@@ -1179,7 +1179,7 @@
         0.0
       ],
       "phase": "train",
-      "result_fingerprint": "7a74dc802f1adb7b89851fd41278628862d0845ac355f23faa07569365c2a458",
+      "result_fingerprint": "e8beea951f3d3687ebb2d587a2229ea53ec8208954e2f9bd715328ed19b6361f",
       "runtime_promotion_eligible": false,
       "status": "complete",
       "variant_index": 3
@@ -1223,7 +1223,7 @@
         -2.282592142216174e-05
       ],
       "phase": "test",
-      "result_fingerprint": "6b4d69a5090d7e76131d6d7520209a708dfeae4c357e51d94e6f6571f6947ab5",
+      "result_fingerprint": "d695b90b129f698ef2a2a4524345e4ef70efbe9f3f4820bd7123852f71194d46",
       "runtime_promotion_eligible": false,
       "status": "complete",
       "variant_index": 0
@@ -1267,7 +1267,7 @@
         -2.2828892076931316e-05
       ],
       "phase": "test",
-      "result_fingerprint": "167070a893c85134cfb263a611f22d3b1d4b47db2fa24f6ff84b2e045a29cec8",
+      "result_fingerprint": "dc9001d181e70fbfaa62452e306f08b74caa7cc8673ec8c23ce15c8a8091ee3e",
       "runtime_promotion_eligible": false,
       "status": "complete",
       "variant_index": 1
@@ -1311,7 +1311,7 @@
         -2.283529303723831e-05
       ],
       "phase": "test",
-      "result_fingerprint": "168b25935dab01c0ebefe5d254cbc7a9c9bbb27225fc5d8a5cdab5d049506103",
+      "result_fingerprint": "0ab7bd6190bc5533c5c909bc5e0867ba4a437288187b5d9039e985c3f085dd7b",
       "runtime_promotion_eligible": false,
       "status": "complete",
       "variant_index": 2
@@ -1355,7 +1355,7 @@
         0.0
       ],
       "phase": "test",
-      "result_fingerprint": "837783cbbfa0cc9447b9b3b0afbf59cc64208aab7efec6bb2b6937f162eea13e",
+      "result_fingerprint": "1570e34ebebd56cedf0471827d2883cd9e3def7ccbc50f32471176d259be3648",
       "runtime_promotion_eligible": false,
       "status": "complete",
       "variant_index": 3
@@ -1535,7 +1535,7 @@
         -2.2855227790289524e-05
       ],
       "phase": "train",
-      "result_fingerprint": "e1000e3839cacd73a98072a385ae54a0099b09458d3561593b42ba431c3b4305",
+      "result_fingerprint": "4c4381902e951efd94e1007934221b6c7aaa24dc9aa527fe717ae3f652f5cf77",
       "runtime_promotion_eligible": false,
       "status": "complete",
       "variant_index": 0
@@ -1715,7 +1715,7 @@
         -2.2859217643797918e-05
       ],
       "phase": "train",
-      "result_fingerprint": "a715519ced190b1ebff9382e8576fae874b42b0981b428f3a478d47f57fcde24",
+      "result_fingerprint": "cd8bba3df575844e5de078e4883efd50695fffb0f99e0469daedef044b5ddf2f",
       "runtime_promotion_eligible": false,
       "status": "complete",
       "variant_index": 1
@@ -1895,7 +1895,7 @@
         -2.2864577638905177e-05
       ],
       "phase": "train",
-      "result_fingerprint": "cff1ae4e20a69bf228588771ef0587e191d166dbedf35f0b11b2d904770099f7",
+      "result_fingerprint": "f6ccfa424171ae4b27b13b2dc8029a5c994779d3b03bd965aa59f3e88996271f",
       "runtime_promotion_eligible": false,
       "status": "complete",
       "variant_index": 2
@@ -2075,7 +2075,7 @@
         0.0
       ],
       "phase": "train",
-      "result_fingerprint": "2bd056364d6883d4bc530501cdebea2b9b902e1cfa3b2f34a8865bd9af774e3f",
+      "result_fingerprint": "a19814bbace9d5d5209d5c2b1b39dd642466b916194dc50f5b3ebc64285e0740",
       "runtime_promotion_eligible": false,
       "status": "complete",
       "variant_index": 3
@@ -2119,7 +2119,7 @@
         -2.4288542271867792e-05
       ],
       "phase": "test",
-      "result_fingerprint": "3201e8af419a2659c83097e9749100bd5ea88690c938109fd5416ec32264035d",
+      "result_fingerprint": "edf7098b0e68e385b8792235deb56779521c76ea1b66999ae6895da78ca60b73",
       "runtime_promotion_eligible": false,
       "status": "complete",
       "variant_index": 0
@@ -2163,7 +2163,7 @@
         -2.4292797670149433e-05
       ],
       "phase": "test",
-      "result_fingerprint": "786fd780380c9d5f9156360a83c3655f635c5298d3b5984b73bdd4958e7e0ba9",
+      "result_fingerprint": "c2c8b279fb633d60c6d040345766f8a1b58854d9fd7f1257aa7b0f91782de0ba",
       "runtime_promotion_eligible": false,
       "status": "complete",
       "variant_index": 1
@@ -2207,7 +2207,7 @@
         -2.4298514408283107e-05
       ],
       "phase": "test",
-      "result_fingerprint": "379613866e068e10e53cd320afa0e30dced6de738ad6b9f026d8ad7562d8ae57",
+      "result_fingerprint": "59a302ba291ccb6438fd3ee89ec69d30b79d99b731b8287dae6dcb4821d32006",
       "runtime_promotion_eligible": false,
       "status": "complete",
       "variant_index": 2
@@ -2251,7 +2251,7 @@
         0.0
       ],
       "phase": "test",
-      "result_fingerprint": "760a5a6813046e6dc1906e24acd4ac61f5f623e12c768d09dc257c256c600444",
+      "result_fingerprint": "01d0949779973a957ba763c52e1d384b3d281cfd7a4be17829b44c04a38850ee",
       "runtime_promotion_eligible": false,
       "status": "complete",
       "variant_index": 3
@@ -2467,7 +2467,7 @@
         -2.4290415276673603e-05
       ],
       "phase": "train",
-      "result_fingerprint": "8ee90fec649085a3874bbadb3d6457ed49fb2f77b0bcdc1e88ffd056a547c648",
+      "result_fingerprint": "46274c54fce94191283ab1fde9672481d3a059f71c1512cbcdde74a24b48546d",
       "runtime_promotion_eligible": false,
       "status": "complete",
       "variant_index": 0
@@ -2683,7 +2683,7 @@
         -2.4294651811150205e-05
       ],
       "phase": "train",
-      "result_fingerprint": "c68116fb88913b14ca831c0a626c2a0bcf0d327abd52c8db4055b7f051846521",
+      "result_fingerprint": "bd3c7923446c6def9c81ecfd94318ad327b13773f2fa359eeee6de2959fdceab",
       "runtime_promotion_eligible": false,
       "status": "complete",
       "variant_index": 1
@@ -2899,7 +2899,7 @@
         -2.430034319695227e-05
       ],
       "phase": "train",
-      "result_fingerprint": "13c54dcb7bcdaa082a1e2d6740a5cf9816b983fbebc683191ad276cfe017d27c",
+      "result_fingerprint": "4eee23489330b311742ae6cd030d8fdd7bd089fdb76c26d71c687787710f1d85",
       "runtime_promotion_eligible": false,
       "status": "complete",
       "variant_index": 2
@@ -3115,7 +3115,7 @@
         0.0
       ],
       "phase": "train",
-      "result_fingerprint": "240e4472a2db56a1f0729811f7a8433c77c946450ee670a729008cb9dd1a6e01",
+      "result_fingerprint": "d9cc701efb430135cf2f2499997142ca9716e46225ed4f75626090e7c8a17b3b",
       "runtime_promotion_eligible": false,
       "status": "complete",
       "variant_index": 3
@@ -3159,7 +3159,7 @@
         -2.575116740294431e-05
       ],
       "phase": "test",
-      "result_fingerprint": "0a770ddb04c29180241582cbf7c9d82d9be22ba7d43550579713f734646d7154",
+      "result_fingerprint": "21860e56aeaf6ece8c71b20f15b107adab57dee72d9ffbcdeb06bf7a6b5c8302",
       "runtime_promotion_eligible": false,
       "status": "complete",
       "variant_index": 0
@@ -3203,7 +3203,7 @@
         -2.5755679062503836e-05
       ],
       "phase": "test",
-      "result_fingerprint": "a63ce928e37d6e20f1adb1a365fd748bf1271f915a58bac1ab9d76076377717a",
+      "result_fingerprint": "b18acc8374fcc4d63ee78f74369e6502535552664c24e3d487756e32cbe045b0",
       "runtime_promotion_eligible": false,
       "status": "complete",
       "variant_index": 1
@@ -3247,7 +3247,7 @@
         -2.5761740064214734e-05
       ],
       "phase": "test",
-      "result_fingerprint": "51c2e7d392f603f067c56bf8a95f1dfa19919d865f29debf05031f72477f49c7",
+      "result_fingerprint": "72bea9974df127238c52730020451e1c9b6c5b2961b113463002efa0f96cb045",
       "runtime_promotion_eligible": false,
       "status": "complete",
       "variant_index": 2
@@ -3291,7 +3291,7 @@
         0.0
       ],
       "phase": "test",
-      "result_fingerprint": "a15b89c5c6e2e0e344a13c6a0463ca8715a329c1a9a087217c0af5e72d4df0f2",
+      "result_fingerprint": "a1726967419941b9b3ccd93bf537bc0680f5f353d3fd554b399797dc5f497e30",
       "runtime_promotion_eligible": false,
       "status": "complete",
       "variant_index": 3
@@ -3543,7 +3543,7 @@
         -2.5722992212974755e-05
       ],
       "phase": "train",
-      "result_fingerprint": "88da4ee2a5e1183d73f1107e2bb669454ea499c1993675606f337ac513efc88d",
+      "result_fingerprint": "dca94908bbae98a690bdef18b96ca8385a6bb7134b0840a594e91fd0dc8c3b5f",
       "runtime_promotion_eligible": false,
       "status": "complete",
       "variant_index": 0
@@ -3795,7 +3795,7 @@
         -2.5727474524741806e-05
       ],
       "phase": "train",
-      "result_fingerprint": "4a1b10af8388fd3ccb7a7cfc11b3ca6441ac9ff3666d651926cd3a6f93578f87",
+      "result_fingerprint": "5300e98545a8bc2bfd986bfa8b632c0c9e97305d8f390d52d07cb39229d5f743",
       "runtime_promotion_eligible": false,
       "status": "complete",
       "variant_index": 1
@@ -4047,7 +4047,7 @@
         -2.5733496086990266e-05
       ],
       "phase": "train",
-      "result_fingerprint": "c7bcf6c60c30459e03e3530fd5fc2388d54ec0a0dbd66aba1cf1832ea07d7090",
+      "result_fingerprint": "6cf7e7e33e5e34445a426bc1c0a0983618e0369186e9036feea80f975e028239",
       "runtime_promotion_eligible": false,
       "status": "complete",
       "variant_index": 2
@@ -4299,7 +4299,7 @@
         0.0
       ],
       "phase": "train",
-      "result_fingerprint": "d6c872b0b494650d536b0217f1412b4a2c08d40f3bf7ac4dd2131acf10a2005b",
+      "result_fingerprint": "e619d23abfc39e64deac80ecfe0e2cf5d8fd06aa0cdfefd4060115fb346094b5",
       "runtime_promotion_eligible": false,
       "status": "complete",
       "variant_index": 3
@@ -4343,7 +4343,7 @@
         -2.7397350616271126e-05
       ],
       "phase": "test",
-      "result_fingerprint": "7333f95a26a4ebc54d53b2e4fc336f475f34d48ce2048abb9213c5329f1e078d",
+      "result_fingerprint": "282fe66ae11e4b8ab5c92a952185349f77e57e0050da46d1563736995723aca2",
       "runtime_promotion_eligible": false,
       "status": "complete",
       "variant_index": 0
@@ -4387,7 +4387,7 @@
         -2.739927042815184e-05
       ],
       "phase": "test",
-      "result_fingerprint": "4b4259a691f0b6bd5e2ce87a0d17c74a8a45df6651d15fdc8c0ed5e7cb95f7d3",
+      "result_fingerprint": "7090c7ea6a5682bb0868256f42a0e56d56dcd2deb476fe912e27f1532f9cc96e",
       "runtime_promotion_eligible": false,
       "status": "complete",
       "variant_index": 1
@@ -4431,7 +4431,7 @@
         -2.7406677937834215e-05
       ],
       "phase": "test",
-      "result_fingerprint": "9328a48e2d04ebf6df8f62dbba5ecbb5b9082abe2984e686d076dcab6607b906",
+      "result_fingerprint": "7c76a405c01d29cc6bc7da40191c97f768d8cdcb241741d383e96b168ad906ba",
       "runtime_promotion_eligible": false,
       "status": "complete",
       "variant_index": 2
@@ -4475,7 +4475,7 @@
         0.0
       ],
       "phase": "test",
-      "result_fingerprint": "83aec6f2ffabaf38ee59ad94b39e6a8885e844868a00429a6c3307b93eb6eed8",
+      "result_fingerprint": "14883660c6ff1dc1608a90aaa33938c8b081471081a448bd1d33247bc8fbfe11",
       "runtime_promotion_eligible": false,
       "status": "complete",
       "variant_index": 3
@@ -4763,7 +4763,7 @@
         -2.715296571545411e-05
       ],
       "phase": "train",
-      "result_fingerprint": "51193713037308516c52710e3b6b9eda42ff244176e126a0a59743a86bb16779",
+      "result_fingerprint": "3bef76ce3f28f4048e27669a733b4371b69310dca3b8c7d28d6f465dd063703f",
       "runtime_promotion_eligible": false,
       "status": "complete",
       "variant_index": 0
@@ -5051,7 +5051,7 @@
         -2.7157692904536575e-05
       ],
       "phase": "train",
-      "result_fingerprint": "754acaad6bb06253b5fb4e189cf3ba5594c763ebe9c5195ab615b7f2576f470b",
+      "result_fingerprint": "39dae39682c47c6f21dac0021ac16ef4063aa9f93f682d1d209527f2f13d6d0e",
       "runtime_promotion_eligible": false,
       "status": "complete",
       "variant_index": 1
@@ -5339,7 +5339,7 @@
         -2.71640434339593e-05
       ],
       "phase": "train",
-      "result_fingerprint": "5f964884f1833c66bffed556e9595f0c98fdafdefce18d67ce30ee316a72fafb",
+      "result_fingerprint": "4cf5dd4450b6900b0a0dac99868e4d96d3ac2c17cfa03a7ed096dc69d217570a",
       "runtime_promotion_eligible": false,
       "status": "complete",
       "variant_index": 2
@@ -5627,7 +5627,7 @@
         0.0
       ],
       "phase": "train",
-      "result_fingerprint": "5742b4afd9baa01201d43c79be7448e53c9c1bd08957e572f0ec0bd3d97f5163",
+      "result_fingerprint": "e3800ad3b7981655f62b8ac2a40bd4d3b2a94851888741f4e39139d77356e7b7",
       "runtime_promotion_eligible": false,
       "status": "complete",
       "variant_index": 3
@@ -5671,7 +5671,7 @@
         -2.886025909061519e-05
       ],
       "phase": "test",
-      "result_fingerprint": "f923bcdc7b03a07d3756bc70f19958a996417fe097bf087bfbfaa27d5996fcdc",
+      "result_fingerprint": "f141c2aac2b9a7d3e74156ede8c12fc9080c40fbb641073767104392ad1cb75e",
       "runtime_promotion_eligible": false,
       "status": "complete",
       "variant_index": 0
@@ -5715,7 +5715,7 @@
         -2.8863003770821445e-05
       ],
       "phase": "test",
-      "result_fingerprint": "2862fb64f201ab442038a7ea6c682d20a048dc429ac5b3eb27af43c837191d31",
+      "result_fingerprint": "2875adce3cd5d39aa265fb997efd9476f8ee6da4f6eaf58e7da7465edac105f2",
       "runtime_promotion_eligible": false,
       "status": "complete",
       "variant_index": 1
@@ -5759,7 +5759,7 @@
         -2.8872108289079137e-05
       ],
       "phase": "test",
-      "result_fingerprint": "e33a105460787bf83f4d4ddfae2a02d562fe87ae2d10894479fba08711751e10",
+      "result_fingerprint": "ed0e38a0933e8755a13e923f282a12f60f9159ef0004661dae5e447f452fe4f3",
       "runtime_promotion_eligible": false,
       "status": "complete",
       "variant_index": 2
@@ -5803,7 +5803,7 @@
         0.0
       ],
       "phase": "test",
-      "result_fingerprint": "9cf5c57b81ce9fa633cdf6c7f6a378cb71d1ef140e5a721d11919445a1132201",
+      "result_fingerprint": "4bb32b598c66aa5645d7e57dbef1cac7f7f006a70ca2eb829d71682aa0548803",
       "runtime_promotion_eligible": false,
       "status": "complete",
       "variant_index": 3
@@ -7074,7 +7074,7 @@
       }
     ]
   },
-  "report_fingerprint": "9b4128578697638eba5d38cfd9378c0d545362c04ff74e70bcdeab792590c191",
+  "report_fingerprint": "2c296f43152bc3d2a899b72f636485fbd54273616a39a87bf2714d4ab4e7003d",
   "sample": {
     "effective_observations": 170.65567444183264,
     "lag1_autocorrelation": 0.0588556227364115,
@@ -7275,7 +7275,7 @@
     3.4979637149059016e-05,
     -2.886025909061519e-05
   ],
-  "source_package_id": "pkg_4d49e7573d3ed8aa992b4ee9",
+  "source_package_id": "pkg_93103c0d7ae0a3d1066456af",
   "statistics": {
     "dsr": 0.9921852618361431,
     "effective_trial_count": 4,
@@ -7443,7 +7443,7 @@
   "status": "complete",
   "stress_evidence": {
     "cost_waterfall_sha256": "84c65cb577b80aec7726c1134f81accee5ae17e900143840305af8ecec71a1e3",
-    "source_package_id": "pkg_4d49e7573d3ed8aa992b4ee9",
+    "source_package_id": "pkg_93103c0d7ae0a3d1066456af",
     "source_package_path": "examples/b2-baselines/donchian_momentum/package"
   },
   "stress_results": [

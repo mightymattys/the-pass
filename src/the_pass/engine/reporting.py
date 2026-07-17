@@ -6,7 +6,7 @@ import html
 import math
 from decimal import Decimal
 from statistics import mean, median, pstdev
-from typing import Any
+from typing import Any, Mapping
 
 from .contracts import RunnerResult
 
@@ -54,7 +54,10 @@ def _metrics(
     equities: list[float],
     periods_per_year: float,
 ) -> tuple[dict[str, float | None], dict[str, str]]:
-    returns = [equities[index] / equities[index - 1] - 1 for index in range(1, len(equities)) if equities[index - 1]]
+    returns = [
+        equities[index] / equities[index - 1] - 1
+        for index in range(1, len(equities))
+    ]
     total_return = float(pnl / initial_cash)
     annualized = None
     if returns and total_return > -1:
@@ -77,7 +80,7 @@ def _metrics(
     max_duration = 0
     for equity in equities:
         peak = max(peak, equity)
-        drawdown = (peak - equity) / peak if peak else 0.0
+        drawdown = (peak - equity) / peak
         drawdowns.append(drawdown)
         current_duration = current_duration + 1 if drawdown > 0 else 0
         max_duration = max(max_duration, current_duration)
@@ -85,7 +88,30 @@ def _metrics(
     positive = [value for value in returns if value > 0]
     negative = [value for value in returns if value < 0]
     payoff = _safe_ratio(mean(positive), abs(mean(negative))) if positive and negative else None
-    turnover = sum(float(fill.price * fill.quantity) for fill in result.fills) / float(initial_cash)
+    multipliers = result.diagnostics.get("instrument_multipliers", {})
+    if not isinstance(multipliers, Mapping):
+        raise ValueError("instrument_multipliers must be a mapping")
+    if multipliers:
+        missing_multipliers = sorted(
+            {
+                fill.instrument_id
+                for fill in result.fills
+                if fill.instrument_id not in multipliers
+            }
+        )
+        if missing_multipliers:
+            raise ValueError(
+                "instrument_multipliers is missing fill instruments: "
+                + ", ".join(missing_multipliers)
+            )
+    turnover = sum(
+        float(
+            fill.price
+            * fill.quantity
+            * Decimal(str(multipliers.get(fill.instrument_id, "1")))
+        )
+        for fill in result.fills
+    ) / float(initial_cash)
     holding = [
         result.fills[index].event_time_ns - result.fills[index - 1].event_time_ns
         for index in range(1, len(result.fills))
@@ -113,6 +139,7 @@ def _metrics(
         "capacity_estimate": None,
     }
     values = {name: _stable_metric(value) for name, value in values.items()}
+    values["pnl"] = float(pnl)
     reasons = {name: "insufficient observations for diagnostic metric" for name, value in values.items() if value is None}
     reasons["capacity_estimate"] = (
         "not estimated without market depth, participation, and impact evidence"
@@ -212,20 +239,36 @@ def build_metrics_and_costs(
     periods_per_year = float(annualization["periods_per_year"])
     net_equities = [float(row["equity"]) for row in result.equity_curve]
     gross_equities = _gross_equities(result)
-    net_metrics, net_reasons = _metrics(
-        result,
-        initial_cash,
-        net_pnl,
-        equities=net_equities,
-        periods_per_year=periods_per_year,
-    )
-    gross_metrics, gross_reasons = _metrics(
-        result,
-        initial_cash,
-        gross_pnl,
-        equities=gross_equities,
-        periods_per_year=periods_per_year,
-    )
+    nonpositive_equity = any(value <= 0 for value in net_equities)
+    if nonpositive_equity:
+        blocking_limitation = "equity reached zero — metrics invalid"
+        effective_limitations = list(limitations or ["synthetic diagnostic data"])
+        if blocking_limitation not in effective_limitations:
+            effective_limitations.append(blocking_limitation)
+        invalid = {name: None for name in METRIC_NAMES}
+        invalid_reasons = {
+            name: blocking_limitation for name in METRIC_NAMES
+        }
+        net_metrics = dict(invalid)
+        gross_metrics = dict(invalid)
+        net_reasons = dict(invalid_reasons)
+        gross_reasons = dict(invalid_reasons)
+    else:
+        effective_limitations = limitations
+        net_metrics, net_reasons = _metrics(
+            result,
+            initial_cash,
+            net_pnl,
+            equities=net_equities,
+            periods_per_year=periods_per_year,
+        )
+        gross_metrics, gross_reasons = _metrics(
+            result,
+            initial_cash,
+            gross_pnl,
+            equities=gross_equities,
+            periods_per_year=periods_per_year,
+        )
     reasons = {f"gross_metrics.{name}": reason for name, reason in gross_reasons.items()}
     reasons.update({f"net_metrics.{name}": reason for name, reason in net_reasons.items()})
     cost_waterfall = {
@@ -242,7 +285,7 @@ def build_metrics_and_costs(
             "latency_model": "decision at receive time; no same-event fill",
             "depth_model": "available depth with conservative rejection",
         },
-        "limitations": limitations or ["synthetic diagnostic data"],
+        "limitations": effective_limitations or ["synthetic diagnostic data"],
     }
     metrics_report = {
         "schema_version": 2,
@@ -268,22 +311,38 @@ def build_metrics_and_costs(
             "stress_results": [],
             "parameter_stability": "not evaluated until V3",
         },
-        "limitations": limitations or ["diagnostic synthetic baseline; no promotion claim"],
+        "promotion_eligible": not nonpositive_equity,
+        "limitations": effective_limitations
+        or ["diagnostic synthetic baseline; no promotion claim"],
     }
     return metrics_report, cost_waterfall
 
 
+def _display_metric(value: object) -> str:
+    return "N/A" if value is None else f"{value:.8f}"
+
+
 def render_markdown(strategy_id: str, metrics: dict[str, Any], costs: dict[str, Any]) -> str:
     net = metrics["net_metrics"]
+    invalid = not metrics.get("promotion_eligible", True)
+    limitations = metrics.get("limitations", [])
+    blocking = "\n".join(
+        f"- Blocking limitation: {limitation}"
+        for limitation in limitations
+        if "metrics invalid" in limitation
+    )
+    if blocking:
+        blocking += "\n\n"
     return (
         f"# {strategy_id}\n\n"
-        "Status: diagnostic baseline\n\n"
-        f"- Net PnL: {net['pnl']:.8f}\n"
-        f"- Total return: {net['total_return']:.8f}\n"
-        f"- Max drawdown: {net['max_drawdown']:.8f}\n"
+        f"Status: {'blocked — metrics invalid' if invalid else 'diagnostic baseline'}\n\n"
+        f"- Net PnL: {_display_metric(net['pnl'])}\n"
+        f"- Total return: {_display_metric(net['total_return'])}\n"
+        f"- Max drawdown: {_display_metric(net['max_drawdown'])}\n"
         f"- Trades: {metrics['sample']['trades']}\n"
-        f"- Fees: {costs['costs']['fees']:.8f}\n"
-        f"- Slippage: {costs['costs']['slippage']:.8f}\n\n"
+        f"- Fees: {_display_metric(costs['costs']['fees'])}\n"
+        f"- Slippage: {_display_metric(costs['costs']['slippage'])}\n\n"
+        f"{blocking}"
         "This report is read-only and does not grant promotion.\n"
     )
 
@@ -297,13 +356,28 @@ def render_html(strategy_id: str, metrics: dict[str, Any], costs: dict[str, Any]
         ("Fees", costs["costs"]["fees"]),
         ("Slippage", costs["costs"]["slippage"]),
     ]
-    body = "".join(f"<tr><th>{html.escape(label)}</th><td>{html.escape(str(value))}</td></tr>" for label, value in rows)
+    body = "".join(
+        f"<tr><th>{html.escape(label)}</th><td>"
+        f"{html.escape('N/A' if value is None else str(value))}</td></tr>"
+        for label, value in rows
+    )
+    invalid = not metrics.get("promotion_eligible", True)
+    blocking = "".join(
+        f"<li>{html.escape(str(limitation))}</li>"
+        for limitation in metrics.get("limitations", [])
+        if "metrics invalid" in str(limitation)
+    )
+    blocking_section = (
+        f"<h2>Blocking limitations</h2><ul>{blocking}</ul>" if blocking else ""
+    )
     return (
         "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">"
         f"<title>{html.escape(strategy_id)}</title>"
         "<style>body{font-family:system-ui,sans-serif;max-width:760px;margin:40px auto;padding:0 20px;color:#17202a}"
         "table{border-collapse:collapse;width:100%}th,td{padding:10px;border-bottom:1px solid #d5d8dc;text-align:left}"
         "small{color:#566573}</style></head><body>"
-        f"<h1>{html.escape(strategy_id)}</h1><p>Diagnostic baseline</p><table>{body}</table>"
+        f"<h1>{html.escape(strategy_id)}</h1><p>"
+        f"{'Blocked — metrics invalid' if invalid else 'Diagnostic baseline'}"
+        f"</p><table>{body}</table>{blocking_section}"
         "<p><small>Read-only evidence. No promotion or live capability.</small></p></body></html>"
     )
